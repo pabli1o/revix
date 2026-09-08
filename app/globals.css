@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #191a2e;
+  --color-bg-elevated: #21223b;
+  --color-bg-card: #262845;
+  --color-border: #383a5c;
+  --color-text: #f2f1ea;
+  --color-text-muted: #b3b3c9;
+  --color-accent: #e8a33d;
+  --color-accent-strong: #c7842a;
+  --color-danger: #e8664d;
+  --color-success: #6fa88b;
+
+  --font-heading: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-bg-card: var(--color-bg-card);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-danger: var(--color-danger);
+  --color-success: var(--color-success);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #191a2e;
+}
+
+/* Grid-paper "cahier" texture used behind fiche content */
+.notebook-paper {
+  background-color: #21223b;
+  background-image:
+    linear-gradient(rgba(232, 163, 61, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 163, 61, 0.09) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
