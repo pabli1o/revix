@@ -101,6 +101,11 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       body: JSON.stringify({ chapterId, difficulty, reponses: answers }),
     });
     const data = await res.json();
+    if (!res.ok || typeof data.score !== "number") {
+      setError(data.error ?? "Impossible d'enregistrer le résultat du quiz.");
+      setPhase("select");
+      return;
+    }
     setFinalScore({ score: data.score, total: data.total, previousScore: data.previousScore });
     setPhase("finished");
     if (difficulty) {
