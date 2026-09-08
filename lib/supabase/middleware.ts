@@ -39,7 +39,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!user && pathname !== "/" && !isPublicPath(pathname)) {
+  // API routes handle their own 401 JSON responses — redirecting them to
+  // /login would hand a fetch() caller an HTML page instead of JSON.
+  if (!user && pathname !== "/" && !pathname.startsWith("/api/") && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
