@@ -1,5 +1,5 @@
 import type { FicheContenu } from "@/lib/supabase/database.types";
-import { FREE_PREVIEW_SENTENCES } from "./gate";
+import { FREE_PREVIEW_SENTENCES } from "./constants";
 
 /**
  * Points at the exact position, inside a fiche's structured content, where

@@ -2,14 +2,9 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
+import { MONTHLY_FICHE_CAP } from "./constants";
 
-/** Fiche generation itself is unlimited and free; this cap only bites at
- * SAVE time, and only for active subscribers (see spec: "business model"). */
-export const MONTHLY_FICHE_CAP = 20;
-
-/** Sentences shown in clear before the progressive blur kicks in for
- * non-subscribers. */
-export const FREE_PREVIEW_SENTENCES = 2;
+export { MONTHLY_FICHE_CAP, FREE_PREVIEW_SENTENCES } from "./constants";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;

@@ -7,15 +7,13 @@ import type {
   QuizDifficulty,
   QuizQuestion,
 } from "@/lib/supabase/database.types";
+import type { FicheProposal } from "@/lib/fiches/types";
+
+export type { FicheProposal };
 
 // ---------------------------------------------------------------------------
 // Fiche generation
 // ---------------------------------------------------------------------------
-
-export interface FicheProposal {
-  titre: string;
-  contenu: FicheContenu;
-}
 
 export const FICHE_GENERATION_SYSTEM = `Tu es un assistant pédagogique qui aide des élèves français (collège, lycée, supérieur) à transformer des sources de cours (texte, photos de notes, PDF) en fiches de révision structurées.
 
