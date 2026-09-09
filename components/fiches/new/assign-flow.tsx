@@ -254,8 +254,11 @@ export function AssignFlow({
   if (phase === "not-subscribed") {
     return (
       <Card className="mx-auto max-w-md text-center">
-        <p className="mb-4 text-sm">
-          Un abonnement actif est nécessaire pour enregistrer cette fiche.
+        <h1 className="mb-2 font-heading text-2xl font-semibold">
+          Profite pleinement de tes fiches
+        </h1>
+        <p className="mb-6 text-sm text-text-muted">
+          Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
         </p>
         {error && <p className="mb-3 text-sm text-danger">{error}</p>}
         <Button onClick={startCheckout} disabled={checkoutLoading}>

@@ -85,12 +85,14 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   }
 
   /**
-   * "Enregistrer" no longer saves directly: matière/chapitre is chosen on
-   * the next screen, once we know for sure the user has an active
-   * subscription (required to save at all). The reviewed fiches are stored
-   * as a draft first because a not-yet-subscribed user is about to leave
-   * the site entirely for Stripe Checkout, and the in-memory selection
-   * here wouldn't survive that round trip.
+   * "Enregistrer" no longer saves directly: matière/chapitre — and, for a
+   * non-subscriber, the subscription offer itself — are handled on the
+   * next screen (app/(app)/fiches/new/assign). The reviewed fiches are
+   * stored as a draft first because a non-subscriber may go on to leave
+   * the site entirely for Stripe Checkout from that screen, and the
+   * in-memory selection here wouldn't survive that round trip. This step
+   * never redirects to Stripe itself — only a click on that next screen's
+   * own "S'abonner" button does.
    */
   async function handleContinue() {
     setError(null);
@@ -122,27 +124,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         setStep("validation");
         return;
       }
-      const draftId = draftRes.data.draftId;
-
-      if (isSubscribed) {
-        router.push(`/fiches/new/assign?draft=${draftId}`);
-        return;
-      }
-
-      const checkoutRes = await fetchJson<{ url?: string; error?: string }>(
-        "/api/stripe/checkout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId }),
-        },
-      );
-      if (checkoutRes.status < 200 || checkoutRes.status >= 300 || !checkoutRes.data?.url) {
-        setError(checkoutRes.data?.error ?? "Impossible d'ouvrir la page de paiement.");
-        setStep("validation");
-        return;
-      }
-      window.location.href = checkoutRes.data.url;
+      router.push(`/fiches/new/assign?draft=${draftRes.data.draftId}`);
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
       setStep("validation");
@@ -183,11 +165,6 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
       {(step === "validation" || step === "preparing") && (
         <div className="flex flex-col gap-5">
-          {!isSubscribed && (
-            <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
-              Aperçu limité : abonne-toi pour lire et enregistrer tes fiches en entier.
-            </p>
-          )}
           {items.map((item) => (
             <Card key={item.key}>
               <div className="mb-3 flex items-start gap-3">
