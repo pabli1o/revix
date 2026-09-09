@@ -5,7 +5,8 @@
 -- Route Handler is what lets fiche generation accept a PDF of any size.
 -- The server (app/api/fiches/generate) later downloads the file
 -- server-to-server via the service-role client and deletes it once
--- processed; see lib/files/upload.ts for the client-side upload helper.
+-- processed; see components/fiches/new/upload-source.ts for the
+-- client-side upload helper.
 insert into storage.buckets (id, name, public)
 values ('source-uploads', 'source-uploads', false)
 on conflict (id) do nothing;
