@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { useSessionTimer, formatDuration } from "@/components/timer/session-timer-context";
@@ -14,6 +13,9 @@ import { useSessionTimer, formatDuration } from "@/components/timer/session-time
  * task (?duree=<minutes>, also set by that same link) turns this into a
  * countdown instead of a plain stopwatch: it starts at the planned time and
  * counts down to 0, then flips into a "+MM:SS" overtime display.
+ *
+ * Rendered as a small floating pill (bottom-right), not a full-width bar,
+ * so it never gets in the way of the fiche/chapter content underneath.
  */
 export function PlanningTaskTimerBar() {
   const searchParams = useSearchParams();
@@ -22,14 +24,25 @@ export function PlanningTaskTimerBar() {
   const plannedSeconds = Number.isFinite(plannedMinutes) && plannedMinutes > 0 ? plannedMinutes * 60 : null;
   const { startTask, pauseActive, elapsedSeconds, isRunning, activeTaskId } = useSessionTimer();
 
-  // Pause (never fully stop) if this screen is left without an explicit
-  // pause click — mirrors the planning list's own row-collapse behavior.
+  // Kept in a ref (rather than read directly in the effect below) so the
+  // unmount cleanup always sees the LATEST activeTaskId. The effect itself
+  // only re-runs when `taskId` changes (i.e. essentially never, for the
+  // lifetime of this component), so without the ref its cleanup closure
+  // would keep whatever `activeTaskId` was at mount time — typically still
+  // `null`, since the timer is usually started by a click *after* mount.
+  // That stale value meant leaving the page after starting the chrono never
+  // actually paused it, so time kept accumulating in the background and the
+  // task didn't resume from where it was really left off.
+  const activeTaskIdRef = useRef(activeTaskId);
+  useEffect(() => {
+    activeTaskIdRef.current = activeTaskId;
+  }, [activeTaskId]);
+
   useEffect(() => {
     return () => {
-      if (taskId && activeTaskId === taskId) pauseActive();
+      if (taskId && activeTaskIdRef.current === taskId) pauseActive();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId]);
+  }, [taskId, pauseActive]);
 
   if (!taskId) return null;
 
@@ -37,60 +50,40 @@ export function PlanningTaskTimerBar() {
   const elapsed = elapsedSeconds(taskId);
   const isOvertime = plannedSeconds !== null && elapsed >= plannedSeconds;
   const displaySeconds = plannedSeconds === null ? elapsed : isOvertime ? elapsed - plannedSeconds : plannedSeconds - elapsed;
-  const progress = plannedSeconds !== null ? Math.min(elapsed / plannedSeconds, 1) : 0;
 
   return (
-    <div className="sticky top-2 z-20 mb-4 overflow-hidden rounded-2xl border border-accent/40 bg-bg-card shadow-xl">
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2">
-        <Link href="/planning" className="text-sm text-text-muted transition-colors hover:text-accent">
-          ← Retour au planning
-        </Link>
+    <div className="fixed bottom-5 right-5 z-30 flex items-center gap-2.5 rounded-full border border-accent/50 bg-bg-card py-1.5 pl-1.5 pr-4 shadow-xl">
+      <button
+        type="button"
+        onClick={() => (running ? pauseActive() : startTask(taskId))}
+        aria-label={running ? "Mettre en pause" : "Démarrer le chrono"}
+        className={clsx(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base transition-transform active:scale-90",
+          running
+            ? "border-2 border-accent bg-bg-elevated text-accent"
+            : "bg-accent text-[#191A2E] hover:bg-accent-strong",
+        )}
+      >
+        {running ? "⏸" : "▶"}
+      </button>
+      <div className="flex flex-col leading-tight">
         <span
           className={clsx(
-            "font-mono text-[11px] uppercase tracking-wide",
-            isOvertime ? "text-danger" : "text-text-muted",
-          )}
-        >
-          {plannedSeconds === null ? "Temps écoulé" : isOvertime ? "Temps prévu dépassé" : "Temps restant"}
-        </span>
-      </div>
-
-      <div className="flex flex-col items-center gap-4 px-6 py-6">
-        <span
-          className={clsx(
-            "font-mono text-5xl font-bold tabular-nums tracking-tight transition-colors",
-            isOvertime ? "text-danger" : "text-accent",
+            "font-mono text-sm font-semibold tabular-nums",
+            isOvertime ? "text-danger" : "text-text",
           )}
         >
           {isOvertime && "+"}
           {formatDuration(displaySeconds)}
         </span>
-
-        {plannedSeconds !== null && (
-          <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-border/50">
-            <div
-              className={clsx(
-                "h-full rounded-full transition-[width] duration-1000 ease-linear",
-                isOvertime ? "bg-danger" : "bg-accent",
-              )}
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => (running ? pauseActive() : startTask(taskId))}
-          aria-label={running ? "Mettre en pause" : "Démarrer le chrono"}
+        <span
           className={clsx(
-            "flex h-14 w-14 items-center justify-center rounded-full text-xl shadow-lg transition-transform active:scale-90",
-            running
-              ? "border-2 border-accent bg-bg-elevated text-accent"
-              : "bg-accent text-[#191A2E] hover:bg-accent-strong",
+            "text-[10px] uppercase tracking-wide",
+            isOvertime ? "text-danger" : "text-text-muted",
           )}
         >
-          {running ? "⏸" : "▶"}
-        </button>
+          {plannedSeconds === null ? "Écoulé" : isOvertime ? "Dépassé" : "Restant"}
+        </span>
       </div>
     </div>
   );

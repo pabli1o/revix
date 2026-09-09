@@ -141,14 +141,17 @@ function Tile({
           <Link href={href} className="absolute inset-0" aria-label={item.nom} />
           <div className="flex items-start justify-between gap-1">
             <span className="font-heading text-lg font-semibold leading-tight">{item.nom}</span>
-            <div className="relative z-10 flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            {/* Always visible (not hover-gated): hover has no equivalent on
+               touch devices, so gating these behind group-hover made them
+               practically impossible to reach on phones/tablets. */}
+            <div className="relative z-10 flex shrink-0 gap-1">
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   setEditing(true);
                 }}
-                className="rounded-md p-1 hover:bg-black/10"
+                className="rounded-full bg-black/15 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/30 active:scale-90"
                 aria-label="Renommer"
                 title="Renommer"
               >
@@ -162,7 +165,7 @@ function Tile({
                     e.preventDefault();
                     handleDelete();
                   }}
-                  className="rounded-md p-1 hover:bg-black/10"
+                  className="rounded-full bg-black/15 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/30 active:scale-90"
                   aria-label="Supprimer"
                   title="Supprimer"
                 >
