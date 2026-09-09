@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DurationSelector } from "@/components/ui/duration-selector";
 
 export function SettingsPanel({
   initialJours,
@@ -50,18 +51,8 @@ export function SettingsPanel({
           />
         </div>
         <div>
-          <label className="text-sm font-medium">
-            Minutes par jour : <span className="text-accent">{minutes} min</span>
-          </label>
-          <input
-            type="range"
-            min={10}
-            max={120}
-            step={5}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-            className="mt-2 w-full accent-[#E8A33D]"
-          />
+          <label className="text-sm font-medium">Minutes par jour</label>
+          <DurationSelector value={minutes} onChange={setMinutes} className="mt-2" />
         </div>
         <Button onClick={save} disabled={saving} size="sm">
           {saving ? "Régénération…" : "Enregistrer et régénérer le planning"}

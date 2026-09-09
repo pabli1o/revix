@@ -8,8 +8,9 @@ des examens à venir, et propose un quiz par chapitre pour se tester.
 ## Stack
 
 - **Frontend** : Next.js 16 (App Router, React 19, Turbopack), Tailwind CSS v4
-- **Auth + base de données** : Supabase (Postgres + Auth par lien magique,
-  sans mot de passe, sans OAuth)
+- **Auth + base de données** : Supabase (Postgres + Auth par e-mail/mot de
+  passe, sans OAuth ; e-mail vérifié par lien de confirmation à
+  l'inscription)
 - **IA** : Anthropic (Claude), uniquement depuis des Route Handlers côté
   serveur
 - **Paiement** : Stripe (abonnement mensuel à 9,99 €)
@@ -38,13 +39,18 @@ modules serveur (marqués `import "server-only"`).
 
 ### 2. Configuration Supabase (dashboard)
 
-- **Auth → Providers** : Email activé (c'est le comportement par défaut).
+- **Auth → Providers → Email** : activé, avec **"Confirm email"** coché (pour
+  que l'inscription exige bien un clic de confirmation avant de pouvoir se
+  connecter par mot de passe).
 - **Auth → URL Configuration → Redirect URLs** : ajouter
   `http://localhost:3000/auth/callback` et l'équivalent en production
   (`https://ton-domaine/auth/callback`).
-- Le lien magique utilise le template d'e-mail par défaut de Supabase (aucun
-  template personnalisé requis) et repose sur PKCE : le lien doit être ouvert
-  dans le **même navigateur** que celui qui a fait la demande.
+- Le mail de confirmation utilise le template "Confirm signup" par défaut de
+  Supabase (aucun template personnalisé requis) et repose sur PKCE : le lien
+  doit être ouvert dans le **même navigateur** que celui qui a fait
+  l'inscription. Une fois l'e-mail confirmé, les connexions suivantes se
+  font directement par e-mail + mot de passe (`signInWithPassword`), sans
+  nouveau lien à envoyer.
 
 ### 3. Migrations SQL
 

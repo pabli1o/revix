@@ -35,20 +35,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Champs manquants ou invalides" }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      prenom: body.prenom.trim(),
-      classe_cycle: body.classeCycle,
-      classe_niveau: body.classeNiveau.trim(),
-      revision_jours_semaine: Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine))),
-      revision_minutes_jour: Math.max(5, Math.round(body.revisionMinutesJour)),
-      onboarding_completed: true,
-    })
-    .eq("id", user.id);
+  const { error } = await supabase.from("profiles").upsert({
+    id: user.id,
+    prenom: body.prenom.trim(),
+    classe_cycle: body.classeCycle,
+    classe_niveau: body.classeNiveau.trim(),
+    revision_jours_semaine: Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine))),
+    revision_minutes_jour: Math.max(5, Math.round(body.revisionMinutesJour)),
+    onboarding_completed: true,
+  });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // 42P01 = undefined_table: the `profiles` table doesn't exist yet,
+    // which means the SQL migrations in supabase/migrations/ were never
+    // applied to this Supabase project (see README "Migrations SQL").
+    const message =
+      error.code === "42P01"
+        ? "La base de données n'est pas encore initialisée (migrations SQL manquantes). Contacte l'administrateur du site."
+        : error.message;
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

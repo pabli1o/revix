@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DurationSelector } from "@/components/ui/duration-selector";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const TUTORIAL_SLIDES = [
@@ -27,6 +28,12 @@ const TUTORIAL_SLIDES = [
 
 const COLLEGE_NIVEAUX = ["6e", "5e", "4e", "3e"];
 const LYCEE_NIVEAUX = ["2nde", "1ère", "Terminale"];
+
+const CYCLE_OPTIONS: { value: ClasseCycle; label: string }[] = [
+  { value: "college", label: "Collège" },
+  { value: "lycee", label: "Lycée" },
+  { value: "superieur", label: "Supérieur" },
+];
 
 type Step = "tutorial" | "prenom" | "classe" | "rythme";
 
@@ -137,38 +144,66 @@ export function OnboardingWizard() {
         {step === "classe" && (
           <div>
             <h1 className="font-heading text-2xl font-semibold">Tu es en quelle classe ?</h1>
-            <div className="mt-6 flex flex-col gap-4">
-              <TileGroup
-                label="Collège"
-                options={COLLEGE_NIVEAUX}
-                active={cycle === "college" ? niveau : null}
-                onSelect={(v) => {
-                  setCycle("college");
-                  setNiveau(v);
-                }}
-              />
-              <TileGroup
-                label="Lycée"
-                options={LYCEE_NIVEAUX}
-                active={cycle === "lycee" ? niveau : null}
-                onSelect={(v) => {
-                  setCycle("lycee");
-                  setNiveau(v);
-                }}
-              />
-              <div>
-                <p className="mb-2 text-sm font-medium text-text-muted">Supérieur</p>
-                <Input
-                  placeholder="Ex : Licence 2 Économie, BTS, prépa…"
-                  value={superieurText}
-                  onFocus={() => setCycle("superieur")}
-                  onChange={(e) => {
-                    setCycle("superieur");
-                    setSuperieurText(e.target.value);
-                  }}
-                />
+
+            {cycle === null ? (
+              <div className="mt-6 flex flex-col gap-2">
+                {CYCLE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setCycle(opt.value)}
+                    className="rounded-lg border border-border bg-bg-elevated px-4 py-3 text-left text-sm font-medium text-text transition-colors hover:border-accent"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCycle(null);
+                    setNiveau("");
+                    setSuperieurText("");
+                  }}
+                  className="text-sm text-text-muted underline-offset-2 hover:text-accent hover:underline"
+                >
+                  ← Changer ({CYCLE_OPTIONS.find((o) => o.value === cycle)?.label})
+                </button>
+
+                <div className="mt-4">
+                  {cycle === "college" && (
+                    <TileGroup
+                      label="Collège"
+                      options={COLLEGE_NIVEAUX}
+                      active={niveau}
+                      onSelect={setNiveau}
+                    />
+                  )}
+                  {cycle === "lycee" && (
+                    <TileGroup
+                      label="Lycée"
+                      options={LYCEE_NIVEAUX}
+                      active={niveau}
+                      onSelect={setNiveau}
+                    />
+                  )}
+                  {cycle === "superieur" && (
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-text-muted">Supérieur</p>
+                      <Input
+                        autoFocus
+                        placeholder="Ex : Licence 2 Économie, BTS, prépa…"
+                        value={superieurText}
+                        onChange={(e) => setSuperieurText(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex gap-3">
               <Button variant="secondary" onClick={() => setStep("prenom")}>
                 Retour
@@ -205,18 +240,8 @@ export function OnboardingWizard() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">
-                  Minutes par jour : <span className="text-accent">{minutesJour} min</span>
-                </label>
-                <input
-                  type="range"
-                  min={10}
-                  max={120}
-                  step={5}
-                  value={minutesJour}
-                  onChange={(e) => setMinutesJour(Number(e.target.value))}
-                  className="mt-2 w-full accent-[#E8A33D]"
-                />
+                <label className="text-sm font-medium">Minutes par jour</label>
+                <DurationSelector value={minutesJour} onChange={setMinutesJour} className="mt-2" />
               </div>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}

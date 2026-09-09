@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -17,19 +21,25 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-
-      const { error: signInError } = await supabase.auth.signInWithOtp({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+        password,
       });
 
       if (signInError) {
-        setError(signInError.message);
+        setError(
+          signInError.message === "Email not confirmed"
+            ? "Ton adresse e-mail n'est pas encore confirmée. Vérifie ta boîte mail."
+            : signInError.message === "Invalid login credentials"
+              ? "Email ou mot de passe incorrect."
+              : signInError.message
+        );
         setStatus("error");
         return;
       }
-      setStatus("sent");
+
+      router.replace("/");
+      router.refresh();
     } catch (err) {
       setError(
         err instanceof Error
@@ -48,37 +58,46 @@ export default function LoginPage() {
           Tes fiches de révision, ton planning et tes quiz, générés pour toi.
         </p>
 
-        {status === "sent" ? (
-          <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">Lien envoyé !</p>
-            <p className="mt-1 text-text-muted">
-              Consulte ta boîte mail ({email}) et clique sur le lien de connexion. Ouvre-le dans
-              ce même navigateur.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
-            <label className="text-sm font-medium" htmlFor="email">
-              Adresse e-mail
-            </label>
-            <Input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="prenom@exemple.fr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" disabled={status === "sending"} className="mt-2">
-              {status === "sending" ? "Envoi en cours…" : "Recevoir un lien de connexion"}
-            </Button>
-            <p className="mt-1 text-xs text-text-muted">
-              Pas de mot de passe : on t&apos;envoie un lien magique par e-mail.
-            </p>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
+          <label className="text-sm font-medium" htmlFor="email">
+            Adresse e-mail
+          </label>
+          <Input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="prenom@exemple.fr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <label className="mt-1 text-sm font-medium" htmlFor="password">
+            Mot de passe
+          </label>
+          <Input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && <p className="text-sm text-danger">{error}</p>}
+
+          <Button type="submit" disabled={status === "sending"} className="mt-2">
+            {status === "sending" ? "Connexion…" : "Se connecter"}
+          </Button>
+
+          <p className="mt-1 text-center text-xs text-text-muted">
+            Pas encore de compte ?{" "}
+            <Link href="/signup" className="font-medium text-accent hover:underline">
+              Crée-en un
+            </Link>
+          </p>
+        </form>
       </div>
     </div>
   );
