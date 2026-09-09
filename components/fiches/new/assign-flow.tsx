@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
+import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { FicheLoader } from "./fiche-loader";
 import { ProposalPreview } from "./proposal-preview";
 import type { FicheDraftResponse, SaveFichesResponse } from "@/lib/fiches/types";
@@ -24,13 +25,15 @@ interface AssignItem {
   key: string;
   titre: string;
   contenu: FicheDraftResponse["items"][number]["contenu"];
-  subjectChoice: string; // subject id, or "__new__"
-  newSubjectNom: string;
-  chapterChoice: string; // chapter id, or "__new__"
-  newChapterNom: string;
 }
 
-const DEFAULT_FIRST_SUBJECT_NOM = "Général";
+interface Destination {
+  subjectId?: string;
+  newSubjectNom?: string;
+  chapterId?: string;
+  newChapterNom?: string;
+}
+
 const POLL_INTERVAL_MS = 1500;
 const MAX_POLLS = 8;
 
@@ -42,7 +45,9 @@ type Phase =
   | "checkout-cancelled"
   | "loading-draft"
   | "draft-error"
-  | "assigning"
+  | "reviewing"
+  | "picking-subject"
+  | "picking-chapter"
   | "saving"
   | "done";
 
@@ -73,13 +78,21 @@ export function AssignFlow({
   );
   const [items, setItems] = useState<AssignItem[]>([]);
   const [sources, setSources] = useState<{ type: string; nom: string }[]>([]);
+  const [destination, setDestination] = useState<Destination>({});
+  const [newSubjectDraft, setNewSubjectDraft] = useState("");
+  const [creatingSubject, setCreatingSubject] = useState(false);
+  const [newChapterDraft, setNewChapterDraft] = useState("");
+  const [creatingChapter, setCreatingChapter] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const pollCount = useRef(0);
 
-  const isFirstEverFiche = subjects.length === 0;
-  const canCreateSubject = !isFirstEverFiche;
+  const subjectColors = assignSubjectColors(subjects.map((s) => s.nom));
+  const chosenSubject = subjects.find((s) => s.id === destination.subjectId);
+  const chapterOptions = destination.subjectId
+    ? chapters.filter((c) => c.subject_id === destination.subjectId)
+    : [];
 
   // Poll /api/me until the subscription webhook has landed (it can arrive
   // slightly after Stripe redirects the browser back here). Deliberately
@@ -134,18 +147,15 @@ export function AssignFlow({
           return;
         }
         setItems(
-          data.items.map((it, i) => ({
-            key: `${i}-${it.titre}`,
-            titre: it.titre,
-            contenu: it.contenu,
-            subjectChoice: isFirstEverFiche ? "__new__" : subjects[0].id,
-            newSubjectNom: isFirstEverFiche ? DEFAULT_FIRST_SUBJECT_NOM : "",
-            chapterChoice: "__new__",
-            newChapterNom: "",
-          })),
+          data.items.map((it, i) => ({ key: `${i}-${it.titre}`, titre: it.titre, contenu: it.contenu })),
         );
         setSources(data.sources);
-        setPhase("assigning");
+        // A user who was already subscribed reviewed the fiche on the
+        // previous screen already — go straight to matière. A user who
+        // just subscribed via Stripe never saw it (creation-flow shows
+        // the subscription offer instead of the fiche to a non-
+        // subscriber), so show it here first.
+        setPhase(checkoutStatus === "success" ? "reviewing" : "picking-subject");
       })
       .catch(() => {
         if (!cancelled) {
@@ -188,6 +198,33 @@ export function AssignFlow({
     }
   }
 
+  function chooseExistingSubject(subjectId: string) {
+    setDestination({ subjectId });
+    setCreatingChapter(false);
+    setNewChapterDraft("");
+    setPhase("picking-chapter");
+  }
+
+  function confirmNewSubject() {
+    const nom = newSubjectDraft.trim();
+    if (!nom) return;
+    setDestination({ newSubjectNom: nom });
+    setCreatingChapter(false);
+    setNewChapterDraft("");
+    setPhase("picking-chapter");
+  }
+
+  function chooseExistingChapter(chapterId: string) {
+    setDestination((d) => ({ ...d, chapterId, newChapterNom: undefined }));
+    setCreatingChapter(false);
+  }
+
+  function confirmNewChapter() {
+    const nom = newChapterDraft.trim();
+    if (!nom) return;
+    setDestination((d) => ({ ...d, chapterId: undefined, newChapterNom: nom }));
+  }
+
   async function handleSave() {
     setError(null);
     setPhase("saving");
@@ -196,10 +233,10 @@ export function AssignFlow({
       titre: it.titre,
       contenu: it.contenu,
       sources,
-      subjectId: it.subjectChoice !== "__new__" ? it.subjectChoice : undefined,
-      newSubjectNom: it.subjectChoice === "__new__" ? it.newSubjectNom : undefined,
-      chapterId: it.chapterChoice !== "__new__" ? it.chapterChoice : undefined,
-      newChapterNom: it.chapterChoice === "__new__" ? it.newChapterNom : undefined,
+      subjectId: destination.subjectId,
+      newSubjectNom: destination.newSubjectNom,
+      chapterId: destination.chapterId,
+      newChapterNom: destination.newChapterNom,
     }));
 
     try {
@@ -211,7 +248,7 @@ export function AssignFlow({
 
       if (status < 200 || status >= 300 || !data || data.saved === 0) {
         setError(data?.error ?? "Échec de l'enregistrement.");
-        setPhase("assigning");
+        setPhase("picking-chapter");
         return;
       }
 
@@ -223,7 +260,7 @@ export function AssignFlow({
       }, 900);
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant l'enregistrement.");
-      setPhase("assigning");
+      setPhase("picking-chapter");
     }
   }
 
@@ -231,7 +268,9 @@ export function AssignFlow({
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-center">
         <div className="text-4xl">🎉</div>
-        <p className="text-lg font-medium">Fiche{items.length > 1 ? "s" : ""} enregistrée{items.length > 1 ? "s" : ""} !</p>
+        <p className="text-lg font-medium">
+          Fiche{items.length > 1 ? "s" : ""} enregistrée{items.length > 1 ? "s" : ""} !
+        </p>
       </div>
     );
   }
@@ -315,96 +354,141 @@ export function AssignFlow({
     );
   }
 
-  // phase is "assigning" or "saving"
-  return (
-    <div className="flex flex-col gap-5">
-      <h1 className="font-heading text-3xl font-semibold">Où ranger cette fiche ?</h1>
+  if (phase === "reviewing") {
+    return (
+      <div className="flex flex-col gap-8">
+        {items.map((item) => (
+          <div key={item.key} className="flex flex-col gap-3">
+            <Input
+              value={item.titre}
+              onChange={(e) => updateItem(item.key, { titre: e.target.value })}
+              className="mx-auto w-full max-w-xl"
+            />
+            <ProposalPreview contenu={item.contenu} isSubscribed />
+          </div>
+        ))}
+        <div className="mx-auto w-full max-w-xl">
+          <Button className="w-full" onClick={() => setPhase("picking-subject")}>
+            Continuer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
+  // phase is "picking-subject", "picking-chapter", or "saving"
+  return (
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
       {error && (
         <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {error}
         </p>
       )}
 
-      {items.map((item) => (
-        <Card key={item.key}>
-          <Input
-            value={item.titre}
-            onChange={(e) => updateItem(item.key, { titre: e.target.value })}
-            className="mb-3"
-          />
-
-          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Matière</label>
-              {isFirstEverFiche ? (
-                <p className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-muted">
-                  Classée automatiquement dans « {DEFAULT_FIRST_SUBJECT_NOM} » — tu pourras créer
-                  d&apos;autres matières après ce premier enregistrement.
-                </p>
-              ) : (
-                <select
-                  className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
-                  value={item.subjectChoice}
-                  onChange={(e) =>
-                    updateItem(item.key, { subjectChoice: e.target.value, chapterChoice: "__new__" })
-                  }
+      {phase === "picking-subject" && (
+        <>
+          <h1 className="font-heading text-2xl font-semibold">Dans quelle matière ?</h1>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {subjects.map((s) => {
+              const color = subjectColors.get(s.nom)!;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => chooseExistingSubject(s.id)}
+                  className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform active:scale-[0.97]"
+                  style={{ backgroundColor: color.bg, borderColor: color.border, color: color.text }}
                 >
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nom}
-                    </option>
-                  ))}
-                  {canCreateSubject && <option value="__new__">+ Nouvelle matière</option>}
-                </select>
-              )}
-              {!isFirstEverFiche && item.subjectChoice === "__new__" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Nom de la matière"
-                  value={item.newSubjectNom}
-                  onChange={(e) => updateItem(item.key, { newSubjectNom: e.target.value })}
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Chapitre</label>
-              <select
-                className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
-                value={item.chapterChoice}
-                disabled={item.subjectChoice === "__new__"}
-                onChange={(e) => updateItem(item.key, { chapterChoice: e.target.value })}
-              >
-                {chapters
-                  .filter((c) => c.subject_id === item.subjectChoice)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nom}
-                    </option>
-                  ))}
-                <option value="__new__">+ Nouveau chapitre</option>
-              </select>
-              {item.chapterChoice === "__new__" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Nom du chapitre"
-                  value={item.newChapterNom}
-                  onChange={(e) => updateItem(item.key, { newChapterNom: e.target.value })}
-                />
-              )}
-            </div>
+                  {s.nom}
+                </button>
+              );
+            })}
           </div>
 
-          <ProposalPreview contenu={item.contenu} isSubscribed />
-        </Card>
-      ))}
+          {creatingSubject ? (
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                placeholder="Nom de la nouvelle matière"
+                value={newSubjectDraft}
+                onChange={(e) => setNewSubjectDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
+                className="flex-1"
+              />
+              <Button onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
+                Valider
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" onClick={() => setCreatingSubject(true)}>
+              + Nouvelle matière
+            </Button>
+          )}
+        </>
+      )}
 
-      <div className="flex gap-3">
-        <Button className="flex-1" onClick={handleSave} disabled={phase === "saving"}>
-          {phase === "saving" ? "Enregistrement…" : "Enregistrer"}
-        </Button>
-      </div>
+      {(phase === "picking-chapter" || phase === "saving") && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPhase("picking-subject")}
+            className="self-start text-sm text-text-muted hover:text-accent"
+          >
+            ← {chosenSubject?.nom ?? destination.newSubjectNom} — changer
+          </button>
+          <h1 className="font-heading text-2xl font-semibold">Dans quel chapitre ?</h1>
+
+          {chapterOptions.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {chapterOptions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => chooseExistingChapter(c.id)}
+                  className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all active:scale-[0.97] ${
+                    destination.chapterId === c.id
+                      ? "border-accent bg-accent text-[#191A2E]"
+                      : "border-border bg-bg-elevated text-text hover:border-accent"
+                  }`}
+                >
+                  {c.nom}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {creatingChapter ? (
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                placeholder="Nom du nouveau chapitre"
+                value={newChapterDraft}
+                onChange={(e) => setNewChapterDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && confirmNewChapter()}
+                className="flex-1"
+              />
+              <Button onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
+                Valider
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant={destination.newChapterNom ? "primary" : "secondary"}
+              onClick={() => setCreatingChapter(true)}
+            >
+              {destination.newChapterNom ? `+ Nouveau : ${destination.newChapterNom}` : "+ Nouveau chapitre"}
+            </Button>
+          )}
+
+          <Button
+            className="mt-2"
+            onClick={handleSave}
+            disabled={phase === "saving" || (!destination.chapterId && !destination.newChapterNom)}
+          >
+            {phase === "saving" ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

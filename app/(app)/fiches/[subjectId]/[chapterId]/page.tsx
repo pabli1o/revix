@@ -61,14 +61,9 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
       </p>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-3xl font-semibold">{chapter.nom}</h1>
-        <div className="flex gap-2">
-          <Link href={`/quiz/${chapterId}`}>
-            <Button variant="secondary">🎯 Lancer un quiz</Button>
-          </Link>
-          <Link href="/fiches/new">
-            <Button>+ Nouvelle fiche</Button>
-          </Link>
-        </div>
+        <Link href="/fiches/new">
+          <Button>+ Nouvelle fiche</Button>
+        </Link>
       </div>
       <TileGrid items={items} emptyMessage="Aucune fiche dans ce chapitre pour l'instant." />
     </div>

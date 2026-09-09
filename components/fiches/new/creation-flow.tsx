@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Modal } from "@/components/ui/modal";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
@@ -28,7 +27,6 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [sources, setSources] = useState<PendingSource[]>([]);
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showSubscribeOffer, setShowSubscribeOffer] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
 
   async function handleGenerate() {
@@ -120,21 +118,12 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     return draftRes.data.draftId;
   }
 
-  /**
-   * A subscribed user goes straight to the matière/chapitre step. A
-   * non-subscriber sees the subscription offer as a modal right here
-   * instead — no draft is created and no navigation happens until they
-   * actually choose to subscribe (see handleSubscribeFromOffer).
-   */
+  /** Only reachable when isSubscribed (see render below) — a
+   * non-subscriber never sees this step at all, only the offer screen. */
   async function handleContinue() {
     setError(null);
     const toSave = selectedProposals();
     if (!toSave) return;
-
-    if (!isSubscribed) {
-      setShowSubscribeOffer(true);
-      return;
-    }
 
     setStep("preparing");
     try {
@@ -154,10 +143,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   async function handleSubscribeFromOffer() {
     setError(null);
     const toSave = selectedProposals();
-    if (!toSave) {
-      setShowSubscribeOffer(false);
-      return;
-    }
+    if (!toSave) return;
 
     setSubscribing(true);
     try {
@@ -218,11 +204,39 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         </Card>
       )}
 
-      {(step === "validation" || step === "preparing") && (
+      {/* Not subscribed: the generated fiche is never shown here — only
+          once subscribed does its content become visible (on this same
+          step if already subscribed, or on the assign step after
+          returning from Stripe otherwise). */}
+      {step === "validation" && !isSubscribed && (
+        <Card className="mx-auto max-w-md text-center">
+          <h2 className="mb-2 font-heading text-2xl font-semibold">
+            Profite pleinement de tes fiches
+          </h2>
+          <p className="mb-6 text-sm text-text-muted">
+            Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
+          </p>
+          <div className="flex flex-col items-center gap-3">
+            <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
+              {subscribing ? "Redirection…" : "S'abonner — 9,99 €/mois"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setStep("sources")}
+              disabled={subscribing}
+              className="text-sm text-text-muted hover:text-text"
+            >
+              Retour
+            </button>
+          </div>
+        </Card>
+      )}
+
+      {(step === "validation" || step === "preparing") && isSubscribed && (
         <div className="flex flex-col gap-8">
           {items.map((item) => (
             <div key={item.key} className="flex flex-col gap-3">
-              <div className="mx-auto flex w-full max-w-md items-center gap-2">
+              <div className="mx-auto flex w-full max-w-xl items-center gap-2">
                 <input
                   type="checkbox"
                   className="size-4 shrink-0 accent-[#E8A33D]"
@@ -240,7 +254,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             </div>
           ))}
 
-          <div className="mx-auto flex w-full max-w-md gap-3">
+          <div className="mx-auto flex w-full max-w-xl gap-3">
             <Button variant="secondary" onClick={() => setStep("sources")}>
               Retour
             </Button>
@@ -249,32 +263,6 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             </Button>
           </div>
         </div>
-      )}
-
-      {showSubscribeOffer && (
-        <Modal onClose={() => !subscribing && setShowSubscribeOffer(false)}>
-          <Card className="text-center">
-            <h2 className="mb-2 font-heading text-2xl font-semibold">
-              Profite pleinement de tes fiches
-            </h2>
-            <p className="mb-6 text-sm text-text-muted">
-              Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
-            </p>
-            <div className="flex flex-col items-center gap-3">
-              <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
-                {subscribing ? "Redirection…" : "S'abonner — 9,99 €/mois"}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setShowSubscribeOffer(false)}
-                disabled={subscribing}
-                className="text-sm text-text-muted hover:text-text"
-              >
-                Plus tard
-              </button>
-            </div>
-          </Card>
-        </Modal>
       )}
     </div>
   );

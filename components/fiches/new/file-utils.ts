@@ -49,13 +49,23 @@ export async function compressImageFile(
  * cannot be raised via Next.js config, so the only fix is keeping what we
  * send comfortably under it. Budget in base64 characters (≈ bytes, since
  * base64 is ASCII); left well under 4.5 MB to leave headroom for the rest
- * of the JSON payload and multiple sources.
+ * of the JSON payload, multiple sources, and request/cookie overhead.
  */
-export const MAX_TOTAL_PAYLOAD_BYTES = 3_800_000;
+export const MAX_TOTAL_PAYLOAD_BYTES = 2_500_000;
 /** A single source over this is almost certainly going to blow the total
  * budget on its own — reject it immediately with a clear reason instead of
  * silently adding it and failing later at submit time. */
-export const MAX_SINGLE_SOURCE_BYTES = 3_000_000;
+export const MAX_SINGLE_SOURCE_BYTES = 2_000_000;
+
+/**
+ * PDF/Word aren't recompressed the way photos are (no lossy re-encode
+ * available without a heavy PDF-processing dependency), so they're
+ * checked against their raw file size — before ever reading them into
+ * memory — rather than the post-base64 size used for everything else.
+ * ~1.4 MB raw becomes ~1.9 MB once base64-encoded (×4/3), safely under
+ * MAX_SINGLE_SOURCE_BYTES with room for one more source alongside it.
+ */
+export const MAX_RAW_DOCUMENT_BYTES = 1_400_000;
 
 export function estimateBase64Bytes(base64: string): number {
   return base64.length;

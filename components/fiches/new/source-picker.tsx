@@ -8,9 +8,14 @@ import {
   compressImageFile,
   estimateBase64Bytes,
   fileToBase64,
+  MAX_RAW_DOCUMENT_BYTES,
   MAX_SINGLE_SOURCE_BYTES,
   MAX_TOTAL_PAYLOAD_BYTES,
 } from "./file-utils";
+
+function formatMB(bytes: number): string {
+  return `${(bytes / 1_000_000).toFixed(1)} Mo`;
+}
 
 function totalPayloadBytes(sources: PendingSource[]): number {
   return sources.reduce(
@@ -49,10 +54,10 @@ export function SourcePicker({
    * MAX_TOTAL_PAYLOAD_BYTES in file-utils.ts — a hard, non-configurable
    * platform limit, not something we can raise server-side).
    */
-  function tryAddSources(candidates: PendingSource[]): PendingSource[] {
+  function tryAddSources(candidates: PendingSource[], preRejected: string[] = []): PendingSource[] {
     const accepted: PendingSource[] = [];
     let runningTotal = totalPayloadBytes(sources);
-    const rejected: string[] = [];
+    const rejected: string[] = [...preRejected];
 
     for (const candidate of candidates) {
       const size = estimateBase64Bytes(candidate.data ?? "") + (candidate.texte?.length ?? 0);
@@ -109,16 +114,37 @@ export function SourcePicker({
     }
   }
 
+  /**
+   * PDF/Word are never recompressed (unlike photos, which are always
+   * downscaled/re-encoded regardless of input size), so a large one is
+   * rejected by its raw size *before* it's ever read into memory — no
+   * point spending time/memory decoding a file we're going to refuse
+   * anyway.
+   */
+  async function handleDocumentFiles(
+    files: FileList,
+    type: "pdf" | "word",
+  ): Promise<PendingSource[]> {
+    const tooLarge: string[] = [];
+    const added: PendingSource[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_RAW_DOCUMENT_BYTES) {
+        tooLarge.push(
+          `${file.name} (${formatMB(file.size)}, max ${formatMB(MAX_RAW_DOCUMENT_BYTES)})`,
+        );
+        continue;
+      }
+      const data = await fileToBase64(file);
+      added.push({ id: makeId(), type, nom: file.name, data });
+    }
+    return tryAddSources(added, tooLarge);
+  }
+
   async function handlePdf(files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
     try {
-      const added: PendingSource[] = [];
-      for (const file of Array.from(files)) {
-        const data = await fileToBase64(file);
-        added.push({ id: makeId(), type: "pdf", nom: file.name, data });
-      }
-      onChange([...sources, ...tryAddSources(added)]);
+      onChange([...sources, ...(await handleDocumentFiles(files, "pdf"))]);
     } finally {
       setBusy(false);
       if (pdfInputRef.current) pdfInputRef.current.value = "";
@@ -129,12 +155,7 @@ export function SourcePicker({
     if (!files || files.length === 0) return;
     setBusy(true);
     try {
-      const added: PendingSource[] = [];
-      for (const file of Array.from(files)) {
-        const data = await fileToBase64(file);
-        added.push({ id: makeId(), type: "word", nom: file.name, data });
-      }
-      onChange([...sources, ...tryAddSources(added)]);
+      onChange([...sources, ...(await handleDocumentFiles(files, "word"))]);
     } finally {
       setBusy(false);
       if (wordInputRef.current) wordInputRef.current.value = "";
