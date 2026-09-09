@@ -8,6 +8,7 @@ import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { computePreviewCutoff, getSousPointVisibility, isARetenirVisible } from "@/lib/subscription/preview";
 import { RichText } from "./rich-text";
 import { Button } from "@/components/ui/button";
+import { PlanningTaskTimerBar } from "./planning-task-timer-bar";
 
 export function FicheViewer({
   ficheId,
@@ -77,6 +78,7 @@ export function FicheViewer({
 
   return (
     <div>
+      <PlanningTaskTimerBar />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link href={backHref} className="text-sm text-text-muted hover:text-accent">
           ← Retour au chapitre

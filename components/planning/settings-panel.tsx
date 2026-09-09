@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DurationSelector } from "@/components/ui/duration-selector";
+import { DaysPerWeekSelector } from "@/components/ui/days-per-week-selector";
 
 export function SettingsPanel({
   initialJours,
@@ -38,17 +39,8 @@ export function SettingsPanel({
       <h2 className="mb-4 font-heading text-lg font-semibold">Rythme de révision</h2>
       <div className="flex flex-col gap-4">
         <div>
-          <label className="text-sm font-medium">
-            Jours par semaine : <span className="text-accent">{jours}</span>
-          </label>
-          <input
-            type="range"
-            min={1}
-            max={7}
-            value={jours}
-            onChange={(e) => setJours(Number(e.target.value))}
-            className="mt-2 w-full accent-[#E8A33D]"
-          />
+          <label className="text-sm font-medium">Jours par semaine</label>
+          <DaysPerWeekSelector value={jours} onChange={setJours} className="mt-2" />
         </div>
         <div>
           <label className="text-sm font-medium">Minutes par jour</label>

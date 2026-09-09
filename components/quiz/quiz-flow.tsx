@@ -45,8 +45,9 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     Promise.all(
       DIFFICULTIES.map((d) =>
         fetch(`/api/quiz/attempts?chapterId=${chapterId}&difficulty=${d.value}`)
-          .then((r) => r.json())
-          .then((data) => [d.value, data.attempts ?? []] as const),
+          .then((r) => (r.ok ? r.json() : { attempts: [] }))
+          .then((data) => [d.value, data.attempts ?? []] as const)
+          .catch(() => [d.value, []] as const),
       ),
     ).then((entries) => setHistoryByDifficulty(Object.fromEntries(entries)));
   }, [chapterId]);

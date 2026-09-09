@@ -57,6 +57,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
               texte: s.texte,
               data: s.data,
               mediaType: s.mediaType,
+              storagePath: s.storagePath,
             })),
           }),
         },

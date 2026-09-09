@@ -20,3 +20,36 @@ export async function GET() {
     subscription,
   });
 }
+
+export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const body = (await request.json().catch(() => null)) as { prenom?: string; nom?: string } | null;
+  if (!body || (body.prenom === undefined && body.nom === undefined)) {
+    return NextResponse.json({ error: "Aucun champ à mettre à jour" }, { status: 400 });
+  }
+
+  const fields: { prenom?: string; nom?: string | null } = {};
+  if (body.prenom !== undefined) {
+    const trimmed = body.prenom.trim();
+    if (!trimmed) return NextResponse.json({ error: "Le prénom ne peut pas être vide" }, { status: 400 });
+    fields.prenom = trimmed;
+  }
+  if (body.nom !== undefined) {
+    fields.nom = body.nom.trim() || null;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .update(fields)
+    .eq("id", user.id)
+    .select("prenom, nom")
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ profile });
+}

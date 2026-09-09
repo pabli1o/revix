@@ -75,6 +75,7 @@ function Tile({
   const [value, setValue] = useState(item.nom);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function submitRename() {
     const trimmed = value.trim();
@@ -84,16 +85,28 @@ function Tile({
       return;
     }
     setSaving(true);
-    await fetch(renameUrl, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      // Subjects/chapters expect `nom`, fiches expect `titre` — sending
-      // both keeps this component generic across all three rename routes.
-      body: JSON.stringify({ nom: trimmed, titre: trimmed }),
-    });
-    setSaving(false);
-    setEditing(false);
-    router.refresh();
+    setActionError(null);
+    try {
+      const res = await fetch(renameUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        // Subjects/chapters expect `nom`, fiches expect `titre` — sending
+        // both keeps this component generic across all three rename routes.
+        body: JSON.stringify({ nom: trimmed, titre: trimmed }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setActionError(data?.error ?? "Le renommage a échoué.");
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      setEditing(false);
+      router.refresh();
+    } catch {
+      setActionError("Erreur réseau — le renommage a échoué.");
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {
@@ -102,8 +115,20 @@ function Tile({
       : `Supprimer « ${item.nom} » ? Cette action est définitive.`;
     if (!window.confirm(message)) return;
     setDeleting(true);
-    await fetch(renameUrl, { method: "DELETE" });
-    router.refresh();
+    setActionError(null);
+    try {
+      const res = await fetch(renameUrl, { method: "DELETE" });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setActionError(data?.error ?? "La suppression a échoué.");
+        setDeleting(false);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setActionError("Erreur réseau — la suppression a échoué.");
+      setDeleting(false);
+    }
   }
 
   return (
@@ -188,6 +213,12 @@ function Tile({
             </button>
           </div>
         </div>
+      )}
+
+      {actionError && (
+        <p className="absolute inset-x-2 bottom-2 z-10 rounded-md bg-black/80 px-2 py-1 text-center text-xs text-white">
+          {actionError}
+        </p>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
+import { PlanningTaskTimerBar } from "@/components/fiches/planning-task-timer-bar";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
@@ -49,6 +50,7 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
 
   return (
     <div>
+      <PlanningTaskTimerBar />
       <p className="mb-1 text-sm text-text-muted">
         <Link href="/fiches" className="hover:text-accent">
           Mes matières

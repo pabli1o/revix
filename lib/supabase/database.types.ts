@@ -50,6 +50,7 @@ export interface PlanningTaskPartie {
 export type ProfileRow = {
   id: string;
   prenom: string | null;
+  nom: string | null;
   classe_cycle: ClasseCycle | null;
   classe_niveau: string | null;
   onboarding_completed: boolean;

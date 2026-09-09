@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DurationSelector } from "@/components/ui/duration-selector";
+import { DaysPerWeekSelector } from "@/components/ui/days-per-week-selector";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const TUTORIAL_SLIDES = [
@@ -227,17 +228,8 @@ export function OnboardingWizard() {
             </p>
             <div className="mt-6 flex flex-col gap-5">
               <div>
-                <label className="text-sm font-medium">
-                  Jours de révision par semaine : <span className="text-accent">{joursSemaine}</span>
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={7}
-                  value={joursSemaine}
-                  onChange={(e) => setJoursSemaine(Number(e.target.value))}
-                  className="mt-2 w-full accent-[#E8A33D]"
-                />
+                <label className="text-sm font-medium">Jours de révision par semaine</label>
+                <DaysPerWeekSelector value={joursSemaine} onChange={setJoursSemaine} className="mt-2" />
               </div>
               <div>
                 <label className="text-sm font-medium">Minutes par jour</label>
