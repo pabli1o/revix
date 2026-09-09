@@ -35,26 +35,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Champs manquants ou invalides" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("profiles").upsert({
-    id: user.id,
+  const fields = {
     prenom: body.prenom.trim(),
     classe_cycle: body.classeCycle,
     classe_niveau: body.classeNiveau.trim(),
     revision_jours_semaine: Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine))),
     revision_minutes_jour: Math.max(5, Math.round(body.revisionMinutesJour)),
     onboarding_completed: true,
-  });
+  };
 
-  if (error) {
-    // 42P01 = undefined_table: the `profiles` table doesn't exist yet,
-    // which means the SQL migrations in supabase/migrations/ were never
-    // applied to this Supabase project (see README "Migrations SQL").
-    const message =
-      error.code === "42P01"
-        ? "La base de données n'est pas encore initialisée (migrations SQL manquantes). Contacte l'administrateur du site."
-        : error.message;
-    return NextResponse.json({ error: message }, { status: 500 });
+  // Plain UPDATE first: the `handle_new_user` trigger already created this
+  // row at signup, and only requires the UPDATE RLS policy. We deliberately
+  // avoid `.upsert()` here — it compiles to INSERT ... ON CONFLICT DO UPDATE,
+  // which Postgres RLS evaluates against the INSERT policy even when the row
+  // already exists, so it can fail in setups where UPDATE otherwise works.
+  const { error: updateError, data: updated } = await supabase
+    .from("profiles")
+    .update(fields)
+    .eq("id", user.id)
+    .select("id");
+
+  if (updateError) {
+    return NextResponse.json({ error: describeDbError(updateError) }, { status: 500 });
+  }
+
+  // No row existed yet (trigger didn't fire, or ran before this migration
+  // existed) — create it now.
+  if (!updated || updated.length === 0) {
+    const { error: insertError } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, ...fields });
+
+    if (insertError) {
+      return NextResponse.json({ error: describeDbError(insertError) }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true });
+}
+
+function describeDbError(error: { code?: string; message: string }): string {
+  // 42P01 = undefined_table: the migrations in supabase/migrations/ were
+  // never applied to this Supabase project (see README "Migrations SQL").
+  if (error.code === "42P01") {
+    return "La base de données n'est pas encore initialisée (migrations SQL manquantes). Contacte l'administrateur du site.";
+  }
+  // 42501 = insufficient_privilege: an RLS policy rejected the query.
+  if (error.code === "42501") {
+    return `Accès refusé par la base de données (policy manquante ou incorrecte). Détail : ${error.message}`;
+  }
+  return error.code ? `${error.message} (code ${error.code})` : error.message;
 }
