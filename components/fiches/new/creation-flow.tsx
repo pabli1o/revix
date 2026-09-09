@@ -50,6 +50,15 @@ export function CreationFlow({
   const [error, setError] = useState<string | null>(null);
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
+  // A subject only ever exists because a fiche was saved into it, so "no
+  // subjects yet" is exactly "hasn't saved a fiche yet" — no extra query
+  // needed. Creating additional matières is a premium feature offered only
+  // once that first fiche exists; the very first one is filed automatically
+  // so it's never presented as a choice.
+  const isFirstEverFiche = subjects.length === 0;
+  const canCreateSubject = !isFirstEverFiche && isSubscribed;
+  const DEFAULT_FIRST_SUBJECT_NOM = "Général";
+
   async function handleGenerate() {
     setError(null);
 
@@ -93,8 +102,8 @@ export function CreationFlow({
           proposal,
           selected: true,
           titre: proposal.titre,
-          subjectChoice: subjects[0]?.id ?? "__new__",
-          newSubjectNom: subjects.length === 0 ? "Nouvelle matière" : "",
+          subjectChoice: isFirstEverFiche ? "__new__" : subjects[0].id,
+          newSubjectNom: isFirstEverFiche ? DEFAULT_FIRST_SUBJECT_NOM : "",
           chapterChoice: "__new__",
           newChapterNom: "",
         })),
@@ -180,16 +189,25 @@ export function CreationFlow({
         </p>
       )}
 
-      {(step === "sources" || step === "generating") && (
+      {step === "sources" && (
         <Card>
           <SourcePicker sources={sources} onChange={setSources} />
-          <Button
-            className="mt-6 w-full"
-            disabled={sources.length === 0 || step === "generating"}
-            onClick={handleGenerate}
-          >
-            {step === "generating" ? "Génération en cours…" : "Générer la fiche ✨"}
+          <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerate}>
+            Générer la fiche ✨
           </Button>
+        </Card>
+      )}
+
+      {step === "generating" && (
+        <Card>
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="size-10 animate-spin rounded-full border-4 border-accent/25 border-t-accent" />
+            <p className="font-heading text-lg font-semibold">Génération de ta fiche…</p>
+            <p className="max-w-sm text-sm text-text-muted">
+              Lecture de tes sources et rédaction du plan par l&apos;IA — ça prend en général
+              quelques dizaines de secondes.
+            </p>
+          </div>
         </Card>
       )}
 
@@ -219,27 +237,44 @@ export function CreationFlow({
               <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-text-muted">Matière</label>
-                  <select
-                    className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
-                    value={item.subjectChoice}
-                    onChange={(e) =>
-                      updateItem(item.key, { subjectChoice: e.target.value, chapterChoice: "__new__" })
-                    }
-                  >
-                    {subjects.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nom}
-                      </option>
-                    ))}
-                    <option value="__new__">+ Nouvelle matière</option>
-                  </select>
-                  {item.subjectChoice === "__new__" && (
-                    <Input
-                      className="mt-2"
-                      placeholder="Nom de la matière"
-                      value={item.newSubjectNom}
-                      onChange={(e) => updateItem(item.key, { newSubjectNom: e.target.value })}
-                    />
+                  {isFirstEverFiche ? (
+                    <p className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-muted">
+                      Classée automatiquement dans « {DEFAULT_FIRST_SUBJECT_NOM} » — tu pourras créer
+                      d&apos;autres matières après ce premier enregistrement.
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
+                        value={item.subjectChoice}
+                        onChange={(e) =>
+                          updateItem(item.key, {
+                            subjectChoice: e.target.value,
+                            chapterChoice: "__new__",
+                          })
+                        }
+                      >
+                        {subjects.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.nom}
+                          </option>
+                        ))}
+                        {canCreateSubject && <option value="__new__">+ Nouvelle matière</option>}
+                      </select>
+                      {!isSubscribed && (
+                        <p className="mt-1 text-xs text-text-muted">
+                          Créer de nouvelles matières est réservé aux abonnés.
+                        </p>
+                      )}
+                      {canCreateSubject && item.subjectChoice === "__new__" && (
+                        <Input
+                          className="mt-2"
+                          placeholder="Nom de la matière"
+                          value={item.newSubjectNom}
+                          onChange={(e) => updateItem(item.key, { newSubjectNom: e.target.value })}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
 

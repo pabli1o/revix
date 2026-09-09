@@ -152,7 +152,7 @@ export function OnboardingWizard() {
                     key={opt.value}
                     type="button"
                     onClick={() => setCycle(opt.value)}
-                    className="rounded-lg border border-border bg-bg-elevated px-4 py-3 text-left text-sm font-medium text-text transition-colors hover:border-accent"
+                    className="rounded-lg border border-border bg-bg-elevated px-4 py-3 text-left text-sm font-medium text-text transition-all duration-150 hover:border-accent active:scale-[0.97] active:bg-bg-card"
                   >
                     {opt.label}
                   </button>
@@ -281,10 +281,10 @@ function TileGroup({
             type="button"
             onClick={() => onSelect(opt)}
             className={clsx(
-              "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+              "rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.94]",
               active === opt
                 ? "border-accent bg-accent text-[#191A2E]"
-                : "border-border bg-bg-elevated text-text hover:border-accent",
+                : "border-border bg-bg-elevated text-text hover:border-accent active:bg-bg-card",
             )}
           >
             {opt}

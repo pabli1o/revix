@@ -5,11 +5,14 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-accent text-[#191A2E] hover:bg-accent-strong disabled:opacity-50",
+  primary:
+    "bg-accent text-[#191A2E] hover:bg-accent-strong active:bg-accent-strong active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
   secondary:
-    "bg-bg-card border border-border text-text hover:border-accent disabled:opacity-50",
-  ghost: "bg-transparent text-text-muted hover:text-text hover:bg-bg-card",
-  danger: "bg-danger/90 text-white hover:bg-danger disabled:opacity-50",
+    "bg-bg-card border border-border text-text hover:border-accent active:border-accent active:bg-bg-elevated active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
+  ghost:
+    "bg-transparent text-text-muted hover:text-text hover:bg-bg-card active:bg-bg-elevated active:scale-[0.96]",
+  danger:
+    "bg-danger/90 text-white hover:bg-danger active:bg-danger active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
@@ -29,7 +32,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={clsx(
-          "inline-flex items-center justify-center font-medium transition-colors cursor-pointer disabled:cursor-not-allowed",
+          "inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer disabled:cursor-not-allowed",
           VARIANT_CLASSES[variant],
           SIZE_CLASSES[size],
           className,

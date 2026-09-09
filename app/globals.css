@@ -61,6 +61,23 @@ h1, h2, h3, h4 {
   background-size: 24px 24px;
 }
 
+/* Same grid-paper texture, but as an actual light sheet of paper — used for
+   the fiche content itself (generated fiche + its validation preview), so
+   it reads as a real revision sheet even though the rest of the app chrome
+   stays on the dark theme. Overriding --color-text(-muted) here (rather
+   than fighting utility-class specificity) means text-text-muted / RichText
+   etc. inside automatically render legibly on the light background. */
+.notebook-paper-light {
+  --color-text: #232342;
+  --color-text-muted: #5c5c78;
+  background-color: #fffdf6;
+  background-image:
+    linear-gradient(rgba(70, 90, 140, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(70, 90, 140, 0.14) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--color-text);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;

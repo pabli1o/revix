@@ -38,7 +38,7 @@ export function FicheViewer({
       const html2canvas = (await import("html2canvas")).default;
       const node = containerRef.current;
       if (!node) return;
-      const canvas = await html2canvas(node, { backgroundColor: "#21223B", scale: 2 });
+      const canvas = await html2canvas(node, { backgroundColor: "#FFFDF6", scale: 2 });
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) return;
 
@@ -91,7 +91,7 @@ export function FicheViewer({
         </div>
       </div>
 
-      <div ref={containerRef} className="notebook-paper rounded-2xl border border-border p-6 md:p-10">
+      <div ref={containerRef} className="notebook-paper-light rounded-2xl border border-border p-6 md:p-10">
         <div
           className="mb-6 inline-block rounded-lg px-3 py-1 font-mono text-xs uppercase tracking-wide"
           style={{ backgroundColor: color.bg, color: color.text }}

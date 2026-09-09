@@ -28,10 +28,10 @@ export function DurationSelector({
           type="button"
           onClick={() => onChange(minutes)}
           className={clsx(
-            "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            "rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.94]",
             value === minutes
               ? "border-accent bg-accent text-[#191A2E]"
-              : "border-border bg-bg-elevated text-text hover:border-accent",
+              : "border-border bg-bg-elevated text-text hover:border-accent active:bg-bg-card",
           )}
         >
           {formatDuration(minutes)}
