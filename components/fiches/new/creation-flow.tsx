@@ -219,13 +219,13 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       )}
 
       {(step === "validation" || step === "preparing") && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-8">
           {items.map((item) => (
-            <Card key={item.key}>
-              <div className="mb-3 flex items-start gap-3">
+            <div key={item.key} className="flex flex-col gap-3">
+              <div className="mx-auto flex w-full max-w-md items-center gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1.5 size-4 accent-[#E8A33D]"
+                  className="size-4 shrink-0 accent-[#E8A33D]"
                   checked={item.selected}
                   onChange={(e) => updateItem(item.key, { selected: e.target.checked })}
                 />
@@ -237,15 +237,15 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
               </div>
 
               <ProposalPreview contenu={item.proposal.contenu} isSubscribed={isSubscribed} />
-            </Card>
+            </div>
           ))}
 
-          <div className="flex gap-3">
+          <div className="mx-auto flex w-full max-w-md gap-3">
             <Button variant="secondary" onClick={() => setStep("sources")}>
               Retour
             </Button>
             <Button className="flex-1" onClick={handleContinue} disabled={step === "preparing"}>
-              {step === "preparing" ? "Un instant…" : "Enregistrer la fiche"}
+              {step === "preparing" ? "Un instant…" : "Continuer"}
             </Button>
           </div>
         </div>

@@ -18,7 +18,7 @@ export function ProposalPreview({
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
 
   return (
-    <div className="notebook-paper-light max-h-72 overflow-y-auto rounded-lg border border-border p-4 text-sm">
+    <div className="notebook-paper-light mx-auto w-full max-w-md min-h-[70vh] rounded-lg border border-border p-4 text-sm sm:p-6">
       <div className="flex flex-col gap-4">
         {contenu.plan.map((section, sectionIndex) => (
           <div key={section.numero}>

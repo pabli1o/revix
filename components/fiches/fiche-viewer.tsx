@@ -91,7 +91,10 @@ export function FicheViewer({
         </div>
       </div>
 
-      <div ref={containerRef} className="notebook-paper-light rounded-2xl border border-border p-6 md:p-10">
+      <div
+        ref={containerRef}
+        className="notebook-paper-light mx-auto min-h-[75vh] max-w-xl rounded-2xl border border-border p-6 md:p-10"
+      >
         <div
           className="mb-6 inline-block rounded-lg px-3 py-1 font-mono text-xs uppercase tracking-wide"
           style={{ backgroundColor: color.bg, color: color.text }}
