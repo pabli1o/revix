@@ -69,9 +69,14 @@ export function SessionTimerProvider({ children }: { children: React.ReactNode }
   // SSR pass of this "use client" component) `loadState` short-circuits to
   // the empty default since `window` isn't defined yet.
   const [state, setState] = useState<PersistedState>(() => loadState());
-  // Forces a re-render once per second while a task is running, without
-  // storing "now" in state (and re-triggering the persistence effect).
-  const [, forceTick] = useState(0);
+  // Bumped once per second while a task is running, without storing "now"
+  // in state (and re-triggering the persistence effect). It's fed into the
+  // `value` memo below so that context consumers actually re-render each
+  // tick — without it, `elapsedSeconds` would keep computing a fresh number
+  // internally, but nothing would tell React to call it again, so the
+  // on-screen time would only ever refresh when some unrelated state change
+  // (e.g. a pause click) happened to re-render the consumer.
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     saveState(state);
@@ -79,7 +84,7 @@ export function SessionTimerProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (state.runningSince === null) return;
-    const id = window.setInterval(() => forceTick((n) => n + 1), 1000);
+    const id = window.setInterval(() => setTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [state.runningSince]);
 
@@ -138,7 +143,12 @@ export function SessionTimerProvider({ children }: { children: React.ReactNode }
 
   const value = useMemo<SessionTimerContextValue>(
     () => ({ activeTaskId: state.activeTaskId, isRunning, elapsedSeconds, startTask, pauseActive, resetTask }),
-    [state.activeTaskId, isRunning, elapsedSeconds, startTask, pauseActive, resetTask],
+    // `tick` is intentionally included even though none of the functions
+    // above change with it: it forces this object to a new reference every
+    // second while a task runs, which is what makes context consumers
+    // re-render and show the live countdown instead of a frozen number.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.activeTaskId, isRunning, elapsedSeconds, startTask, pauseActive, resetTask, tick],
   );
 
   return <SessionTimerContext.Provider value={value}>{children}</SessionTimerContext.Provider>;

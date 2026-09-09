@@ -80,10 +80,11 @@ export default async function PlanningPage() {
     // timer bar on that screen keys off ?planningTask, which is only ever
     // set via this link (never on a normal fiches/ visit).
     const ficheIds = chapter ? (ficheIdsByChapter.get(chapter.id) ?? []) : [];
+    const taskQuery = `planningTask=${t.id}&duree=${t.duree_minutes}`;
     const href = chapter
       ? ficheIds.length === 1
-        ? `/fiches/${chapter.subject_id}/${chapter.id}/${ficheIds[0]}?planningTask=${t.id}`
-        : `/fiches/${chapter.subject_id}/${chapter.id}?planningTask=${t.id}`
+        ? `/fiches/${chapter.subject_id}/${chapter.id}/${ficheIds[0]}?${taskQuery}`
+        : `/fiches/${chapter.subject_id}/${chapter.id}?${taskQuery}`
       : "/fiches";
     const view: PlanningTaskView = {
       id: t.id,
