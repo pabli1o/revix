@@ -30,7 +30,12 @@ export function TileGrid({
    * tiles have their own dedicated soft-delete flow (FicheViewer's
    * "Corbeille" button) and should never set this. */
   allowDelete?: boolean;
-  deleteWarning?: (nom: string) => string;
+  /** Confirmation message template, with "{nom}" replaced by the tile's
+   * name. A plain string, not a function: this component is a Client
+   * Component instantiated from Server Component pages, and a function
+   * prop can't cross that boundary (see the earlier hrefFor/renameEndpoint
+   * bug in this same file — React error #441 in production). */
+  deleteWarning?: string;
 }) {
   if (items.length === 0) {
     return <p className="text-text-muted">{emptyMessage}</p>;
@@ -63,7 +68,7 @@ function Tile({
   href: string;
   renameUrl: string;
   allowDelete: boolean;
-  deleteWarning?: (nom: string) => string;
+  deleteWarning?: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -92,9 +97,9 @@ function Tile({
   }
 
   async function handleDelete() {
-    const message =
-      deleteWarning?.(item.nom) ??
-      `Supprimer « ${item.nom} » ? Cette action est définitive.`;
+    const message = deleteWarning
+      ? deleteWarning.replace("{nom}", item.nom)
+      : `Supprimer « ${item.nom} » ? Cette action est définitive.`;
     if (!window.confirm(message)) return;
     setDeleting(true);
     await fetch(renameUrl, { method: "DELETE" });

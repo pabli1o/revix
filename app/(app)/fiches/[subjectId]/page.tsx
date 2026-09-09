@@ -62,9 +62,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
         items={items}
         emptyMessage="Aucun chapitre pour cette matière pour l'instant."
         allowDelete
-        deleteWarning={(nom) =>
-          `Supprimer le chapitre « ${nom} » ? Toutes ses fiches seront définitivement supprimées (sans passer par la corbeille).`
-        }
+        deleteWarning="Supprimer le chapitre « {nom} » ? Toutes ses fiches seront définitivement supprimées (sans passer par la corbeille)."
       />
     </div>
   );
