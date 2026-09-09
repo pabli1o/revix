@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
+import { QuizLoader } from "./quiz-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 
 const DIFFICULTIES: { value: QuizDifficulty; label: string; emoji: string }[] = [
@@ -118,7 +119,16 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     }
   }
 
-  if (phase === "select" || phase === "loading") {
+  if (phase === "loading") {
+    return (
+      <div className="flex flex-col items-center gap-5 py-20 text-center">
+        <QuizLoader />
+        <p className="font-heading text-lg font-semibold">Préparation du quiz…</p>
+      </div>
+    );
+  }
+
+  if (phase === "select") {
     return (
       <div>
         <h1 className="mb-1 font-heading text-3xl font-semibold">Quiz — {chapterNom}</h1>
@@ -139,17 +149,8 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
                 ) : (
                   <span className="text-sm text-text-muted">Pas encore tenté</span>
                 )}
-                <Button
-                  size="sm"
-                  className="w-full"
-                  disabled={phase === "loading" && difficulty === d.value}
-                  onClick={() => startQuiz(d.value)}
-                >
-                  {phase === "loading" && difficulty === d.value
-                    ? "Préparation…"
-                    : last
-                      ? "Refaire"
-                      : "Commencer"}
+                <Button size="sm" className="w-full" onClick={() => startQuiz(d.value)}>
+                  {last ? "Refaire" : "Commencer"}
                 </Button>
                 {history.length > 0 && (
                   <ul className="mt-1 w-full text-left text-xs text-text-muted">

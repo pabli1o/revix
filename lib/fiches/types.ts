@@ -15,10 +15,20 @@ export interface GenerateSourceInput {
   nom: string;
   /** Plain text content, for type "texte". */
   texte?: string;
-  /** Base64-encoded bytes (no "data:" prefix), for photo/pdf/word. */
+  /** Base64-encoded bytes (no "data:" prefix) — used for "photo" (always)
+   * and as a fallback path for "pdf"/"word" when not uploaded to storage. */
   data?: string;
   /** Required for type "photo": image/jpeg | image/png | image/webp. */
   mediaType?: string;
+  /**
+   * "pdf"/"word" only: path of the file in the `source-uploads` Supabase
+   * Storage bucket, used instead of `data` — the file went straight from
+   * the browser to Storage rather than through this request body, so
+   * generation works regardless of file size despite Vercel's 4.5 MB
+   * request limit. The server downloads it server-to-server and deletes
+   * it once processed (see app/api/fiches/generate/route.ts).
+   */
+  storagePath?: string;
 }
 
 export interface GenerateFichesRequest {

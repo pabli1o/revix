@@ -1,21 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
-import {
-  compressImageFile,
-  estimateBase64Bytes,
-  fileToBase64,
-  MAX_RAW_DOCUMENT_BYTES,
-  MAX_SINGLE_SOURCE_BYTES,
-  MAX_TOTAL_PAYLOAD_BYTES,
-} from "./file-utils";
-
-function formatMB(bytes: number): string {
-  return `${(bytes / 1_000_000).toFixed(1)} Mo`;
-}
+import { compressImageFile, estimateBase64Bytes, MAX_SINGLE_SOURCE_BYTES, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
+import { SOURCE_UPLOADS_BUCKET, uploadSourceFile } from "./upload-source";
 
 function totalPayloadBytes(sources: PendingSource[]): number {
   return sources.reduce(
@@ -115,29 +106,29 @@ export function SourcePicker({
   }
 
   /**
-   * PDF/Word are never recompressed (unlike photos, which are always
-   * downscaled/re-encoded regardless of input size), so a large one is
-   * rejected by its raw size *before* it's ever read into memory — no
-   * point spending time/memory decoding a file we're going to refuse
-   * anyway.
+   * PDF/Word files go straight from the browser to Supabase Storage
+   * (uploadSourceFile) instead of being read into memory as base64 and
+   * sent through /api/fiches/generate's request body — that body is
+   * capped at 4.5 MB by Vercel with no way to raise it, so this is what
+   * lets a source file of any size work. Only the short storage path is
+   * sent to the generation request, so these never count against the
+   * inline-payload budget below (still relevant to photos/text).
    */
   async function handleDocumentFiles(
     files: FileList,
     type: "pdf" | "word",
   ): Promise<PendingSource[]> {
-    const tooLarge: string[] = [];
+    const failed: string[] = [];
     const added: PendingSource[] = [];
     for (const file of Array.from(files)) {
-      if (file.size > MAX_RAW_DOCUMENT_BYTES) {
-        tooLarge.push(
-          `${file.name} (${formatMB(file.size)}, max ${formatMB(MAX_RAW_DOCUMENT_BYTES)})`,
-        );
-        continue;
+      try {
+        const storagePath = await uploadSourceFile(file);
+        added.push({ id: makeId(), type, nom: file.name, storagePath });
+      } catch {
+        failed.push(`${file.name} (échec de l'envoi)`);
       }
-      const data = await fileToBase64(file);
-      added.push({ id: makeId(), type, nom: file.name, data });
     }
-    return tryAddSources(added, tooLarge);
+    return tryAddSources(added, failed);
   }
 
   async function handlePdf(files: FileList | null) {
@@ -163,6 +154,15 @@ export function SourcePicker({
   }
 
   function removeSource(id: string) {
+    const removed = sources.find((s) => s.id === id);
+    if (removed?.storagePath) {
+      // Best-effort: an orphaned upload is harmless clutter, not worth
+      // blocking or erroring the UI over.
+      createClient()
+        .storage.from(SOURCE_UPLOADS_BUCKET)
+        .remove([removed.storagePath])
+        .catch(() => {});
+    }
     onChange(sources.filter((s) => s.id !== id));
   }
 

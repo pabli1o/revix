@@ -58,7 +58,14 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
         / {subject.nom}
       </p>
       <h1 className="mb-6 font-heading text-3xl font-semibold">{subject.nom}</h1>
-      <TileGrid items={items} emptyMessage="Aucun chapitre pour cette matière pour l'instant." />
+      <TileGrid
+        items={items}
+        emptyMessage="Aucun chapitre pour cette matière pour l'instant."
+        allowDelete
+        deleteWarning={(nom) =>
+          `Supprimer le chapitre « ${nom} » ? Toutes ses fiches seront définitivement supprimées (sans passer par la corbeille).`
+        }
+      />
     </div>
   );
 }

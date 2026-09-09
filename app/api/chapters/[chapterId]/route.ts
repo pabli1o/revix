@@ -24,3 +24,24 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/chapters/[
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ chapter: data });
 }
+
+/** Deleting a chapter cascades (see supabase/migrations/0001_init.sql) to
+ * its fiches — a hard delete, not the app's soft-delete corbeille. The
+ * client confirms this with the user before calling here. */
+export async function DELETE(_request: Request, ctx: RouteContext<"/api/chapters/[chapterId]">) {
+  const { chapterId } = await ctx.params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const { error } = await supabase
+    .from("chapters")
+    .delete()
+    .eq("id", chapterId)
+    .eq("user_id", user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
+import { SettingsLink } from "@/components/layout/settings-link";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const supabase = await createClient();
@@ -31,6 +32,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <Link href="/fiches" className="font-heading text-xl font-semibold text-accent">
             Revix
           </Link>
+          <SettingsLink />
         </div>
         <div className="hidden md:block">
           <NavLinks />

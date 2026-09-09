@@ -16,7 +16,22 @@ export interface TileItem {
   renameUrl: string;
 }
 
-export function TileGrid({ items, emptyMessage }: { items: TileItem[]; emptyMessage: string }) {
+export function TileGrid({
+  items,
+  emptyMessage,
+  allowDelete = false,
+  deleteWarning,
+}: {
+  items: TileItem[];
+  emptyMessage: string;
+  /** Shows a delete (🗑️) action alongside rename — only meaningful for
+   * matières/chapitres: deleting them cascades to a HARD delete of their
+   * fiches (see the DELETE handlers), bypassing the corbeille. Fiche
+   * tiles have their own dedicated soft-delete flow (FicheViewer's
+   * "Corbeille" button) and should never set this. */
+  allowDelete?: boolean;
+  deleteWarning?: (nom: string) => string;
+}) {
   if (items.length === 0) {
     return <p className="text-text-muted">{emptyMessage}</p>;
   }
@@ -24,17 +39,37 @@ export function TileGrid({ items, emptyMessage }: { items: TileItem[]; emptyMess
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((item) => (
-        <Tile key={item.id} item={item} href={item.href} renameUrl={item.renameUrl} />
+        <Tile
+          key={item.id}
+          item={item}
+          href={item.href}
+          renameUrl={item.renameUrl}
+          allowDelete={allowDelete}
+          deleteWarning={deleteWarning}
+        />
       ))}
     </div>
   );
 }
 
-function Tile({ item, href, renameUrl }: { item: TileItem; href: string; renameUrl: string }) {
+function Tile({
+  item,
+  href,
+  renameUrl,
+  allowDelete,
+  deleteWarning,
+}: {
+  item: TileItem;
+  href: string;
+  renameUrl: string;
+  allowDelete: boolean;
+  deleteWarning?: (nom: string) => string;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(item.nom);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function submitRename() {
     const trimmed = value.trim();
@@ -56,6 +91,16 @@ function Tile({ item, href, renameUrl }: { item: TileItem; href: string; renameU
     router.refresh();
   }
 
+  async function handleDelete() {
+    const message =
+      deleteWarning?.(item.nom) ??
+      `Supprimer « ${item.nom} » ? Cette action est définitive.`;
+    if (!window.confirm(message)) return;
+    setDeleting(true);
+    await fetch(renameUrl, { method: "DELETE" });
+    router.refresh();
+  }
+
   return (
     <div
       className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border p-4 shadow-sm transition-transform hover:-translate-y-0.5"
@@ -64,20 +109,37 @@ function Tile({ item, href, renameUrl }: { item: TileItem; href: string; renameU
       {!editing ? (
         <>
           <Link href={href} className="absolute inset-0" aria-label={item.nom} />
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-1">
             <span className="font-heading text-lg font-semibold leading-tight">{item.nom}</span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setEditing(true);
-              }}
-              className="relative z-10 rounded-md p-1 opacity-0 transition-opacity hover:bg-black/10 group-hover:opacity-100"
-              aria-label="Renommer"
-              title="Renommer"
-            >
-              ✎
-            </button>
+            <div className="relative z-10 flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setEditing(true);
+                }}
+                className="rounded-md p-1 hover:bg-black/10"
+                aria-label="Renommer"
+                title="Renommer"
+              >
+                ✎
+              </button>
+              {allowDelete && (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDelete();
+                  }}
+                  className="rounded-md p-1 hover:bg-black/10"
+                  aria-label="Supprimer"
+                  title="Supprimer"
+                >
+                  {deleting ? "…" : "🗑️"}
+                </button>
+              )}
+            </div>
           </div>
           <span className="font-mono text-xs uppercase tracking-wide opacity-80">
             {item.countLabel}

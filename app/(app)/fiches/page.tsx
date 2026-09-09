@@ -45,6 +45,10 @@ export default async function FichesPage() {
       <TileGrid
         items={items}
         emptyMessage="Aucune matière pour l'instant. Crée ta première fiche pour commencer !"
+        allowDelete
+        deleteWarning={(nom) =>
+          `Supprimer la matière « ${nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille).`
+        }
       />
     </div>
   );
