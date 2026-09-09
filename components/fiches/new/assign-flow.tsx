@@ -75,16 +75,26 @@ export function AssignFlow({
   const [sources, setSources] = useState<{ type: string; nom: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const pollCount = useRef(0);
 
   const isFirstEverFiche = subjects.length === 0;
   const canCreateSubject = !isFirstEverFiche;
 
   // Poll /api/me until the subscription webhook has landed (it can arrive
-  // slightly after Stripe redirects the browser back here).
+  // slightly after Stripe redirects the browser back here). Deliberately
+  // NOT keyed on `phase`: this loop itself calls setPhase("waiting-
+  // subscription") on every tick, and phase is also this effect's guard —
+  // using it as a dependency would tear the effect down (and, critically,
+  // clear the just-scheduled retry timeout) on every single tick, so
+  // polling would stop after the very first check instead of continuing.
+  // draftId/checkoutStatus/initialIsSubscribed are fixed for the life of
+  // this component (a full navigation is needed to change them), so
+  // running this once on mount is correct.
   useEffect(() => {
-    if (phase !== "checking-subscription") return;
+    if (!draftId || checkoutStatus !== "success" || initialIsSubscribed) return;
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
       const { data } = await fetchJson<{ subscription?: { isActive: boolean } }>("/api/me").catch(
@@ -101,14 +111,15 @@ export function AssignFlow({
         return;
       }
       setPhase("waiting-subscription");
-      setTimeout(poll, POLL_INTERVAL_MS);
+      timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
     }
 
     poll();
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
-  }, [phase]);
+  }, [draftId, checkoutStatus, initialIsSubscribed, retryTick]);
 
   useEffect(() => {
     if (phase !== "loading-draft") return;
@@ -295,6 +306,7 @@ export function AssignFlow({
           onClick={() => {
             pollCount.current = 0;
             setPhase("checking-subscription");
+            setRetryTick((n) => n + 1);
           }}
         >
           Réessayer
