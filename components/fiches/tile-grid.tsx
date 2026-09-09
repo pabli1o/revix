@@ -12,19 +12,11 @@ export interface TileItem {
   count: number;
   countLabel: string;
   color: SubjectColor;
+  href: string;
+  renameUrl: string;
 }
 
-export function TileGrid({
-  items,
-  hrefFor,
-  renameEndpoint,
-  emptyMessage,
-}: {
-  items: TileItem[];
-  hrefFor: (id: string) => string;
-  renameEndpoint: (id: string) => string;
-  emptyMessage: string;
-}) {
+export function TileGrid({ items, emptyMessage }: { items: TileItem[]; emptyMessage: string }) {
   if (items.length === 0) {
     return <p className="text-text-muted">{emptyMessage}</p>;
   }
@@ -32,7 +24,7 @@ export function TileGrid({
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((item) => (
-        <Tile key={item.id} item={item} href={hrefFor(item.id)} renameUrl={renameEndpoint(item.id)} />
+        <Tile key={item.id} item={item} href={item.href} renameUrl={item.renameUrl} />
       ))}
     </div>
   );

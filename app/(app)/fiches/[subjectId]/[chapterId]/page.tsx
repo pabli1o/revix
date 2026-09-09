@@ -43,6 +43,8 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
     count: 0,
     countLabel: DATE_FORMATTER.format(new Date(f.created_at)),
     color,
+    href: `/fiches/${subjectId}/${chapterId}/${f.id}`,
+    renameUrl: `/api/fiches/${f.id}`,
   }));
 
   return (
@@ -68,12 +70,7 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
           </Link>
         </div>
       </div>
-      <TileGrid
-        items={items}
-        hrefFor={(id) => `/fiches/${subjectId}/${chapterId}/${id}`}
-        renameEndpoint={(id) => `/api/fiches/${id}`}
-        emptyMessage="Aucune fiche dans ce chapitre pour l'instant."
-      />
+      <TileGrid items={items} emptyMessage="Aucune fiche dans ce chapitre pour l'instant." />
     </div>
   );
 }

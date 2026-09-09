@@ -29,6 +29,8 @@ export default async function FichesPage() {
       count: chapterCount,
       countLabel: `${chapterCount} chapitre${chapterCount !== 1 ? "s" : ""}`,
       color: colors.get(s.nom)!,
+      href: `/fiches/${s.id}`,
+      renameUrl: `/api/subjects/${s.id}`,
     };
   });
 
@@ -42,8 +44,6 @@ export default async function FichesPage() {
       </div>
       <TileGrid
         items={items}
-        hrefFor={(id) => `/fiches/${id}`}
-        renameEndpoint={(id) => `/api/subjects/${id}`}
         emptyMessage="Aucune matière pour l'instant. Crée ta première fiche pour commencer !"
       />
     </div>

@@ -44,6 +44,8 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
       count,
       countLabel: `${count} fiche${count !== 1 ? "s" : ""}`,
       color,
+      href: `/fiches/${subjectId}/${c.id}`,
+      renameUrl: `/api/chapters/${c.id}`,
     };
   });
 
@@ -56,12 +58,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
         / {subject.nom}
       </p>
       <h1 className="mb-6 font-heading text-3xl font-semibold">{subject.nom}</h1>
-      <TileGrid
-        items={items}
-        hrefFor={(id) => `/fiches/${subjectId}/${id}`}
-        renameEndpoint={(id) => `/api/chapters/${id}`}
-        emptyMessage="Aucun chapitre pour cette matière pour l'instant."
-      />
+      <TileGrid items={items} emptyMessage="Aucun chapitre pour cette matière pour l'instant." />
     </div>
   );
 }
