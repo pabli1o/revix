@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
@@ -27,6 +28,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [sources, setSources] = useState<PendingSource[]>([]);
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showSubscribeOffer, setShowSubscribeOffer] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   async function handleGenerate() {
     setError(null);
@@ -84,50 +87,102 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
   }
 
-  /**
-   * "Enregistrer" no longer saves directly: matière/chapitre — and, for a
-   * non-subscriber, the subscription offer itself — are handled on the
-   * next screen (app/(app)/fiches/new/assign). The reviewed fiches are
-   * stored as a draft first because a non-subscriber may go on to leave
-   * the site entirely for Stripe Checkout from that screen, and the
-   * in-memory selection here wouldn't survive that round trip. This step
-   * never redirects to Stripe itself — only a click on that next screen's
-   * own "S'abonner" button does.
-   */
-  async function handleContinue() {
-    setError(null);
-
+  function selectedProposals(): FicheProposal[] | null {
     const toSave: FicheProposal[] = items
       .filter((it) => it.selected)
       .map((it) => ({ titre: it.titre, contenu: it.proposal.contenu }));
-
     if (toSave.length === 0) {
       setError("Sélectionne au moins une fiche à enregistrer.");
+      return null;
+    }
+    return toSave;
+  }
+
+  /** Stores the reviewed fiches server-side so they survive a full
+   * navigation away (to the assign step, or further out to Stripe
+   * Checkout) — the in-memory selection here can't. */
+  async function createDraft(toSave: FicheProposal[]): Promise<string | null> {
+    const draftRes = await fetchJson<CreateDraftResponse & { error?: string }>(
+      "/api/fiches/drafts",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: toSave,
+          sources: sources.map((s) => ({ type: s.type, nom: s.nom })),
+        }),
+      },
+    );
+    if (draftRes.status < 200 || draftRes.status >= 300 || !draftRes.data?.draftId) {
+      setError(draftRes.data?.error ?? "Impossible de préparer l'enregistrement.");
+      return null;
+    }
+    return draftRes.data.draftId;
+  }
+
+  /**
+   * A subscribed user goes straight to the matière/chapitre step. A
+   * non-subscriber sees the subscription offer as a modal right here
+   * instead — no draft is created and no navigation happens until they
+   * actually choose to subscribe (see handleSubscribeFromOffer).
+   */
+  async function handleContinue() {
+    setError(null);
+    const toSave = selectedProposals();
+    if (!toSave) return;
+
+    if (!isSubscribed) {
+      setShowSubscribeOffer(true);
       return;
     }
 
     setStep("preparing");
     try {
-      const draftRes = await fetchJson<CreateDraftResponse & { error?: string }>(
-        "/api/fiches/drafts",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: toSave,
-            sources: sources.map((s) => ({ type: s.type, nom: s.nom })),
-          }),
-        },
-      );
-      if (draftRes.status < 200 || draftRes.status >= 300 || !draftRes.data?.draftId) {
-        setError(draftRes.data?.error ?? "Impossible de préparer l'enregistrement.");
+      const draftId = await createDraft(toSave);
+      if (!draftId) {
         setStep("validation");
         return;
       }
-      router.push(`/fiches/new/assign?draft=${draftRes.data.draftId}`);
+      router.push(`/fiches/new/assign?draft=${draftId}`);
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
       setStep("validation");
+    }
+  }
+
+  /** Only this click ever leaves the site for Stripe. */
+  async function handleSubscribeFromOffer() {
+    setError(null);
+    const toSave = selectedProposals();
+    if (!toSave) {
+      setShowSubscribeOffer(false);
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const draftId = await createDraft(toSave);
+      if (!draftId) {
+        setSubscribing(false);
+        return;
+      }
+      const checkoutRes = await fetchJson<{ url?: string; error?: string }>(
+        "/api/stripe/checkout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId }),
+        },
+      );
+      if (checkoutRes.status < 200 || checkoutRes.status >= 300 || !checkoutRes.data?.url) {
+        setError(checkoutRes.data?.error ?? "Impossible d'ouvrir la page de paiement.");
+        setSubscribing(false);
+        return;
+      }
+      window.location.href = checkoutRes.data.url;
+    } catch (err) {
+      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
+      setSubscribing(false);
     }
   }
 
@@ -194,6 +249,32 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             </Button>
           </div>
         </div>
+      )}
+
+      {showSubscribeOffer && (
+        <Modal onClose={() => !subscribing && setShowSubscribeOffer(false)}>
+          <Card className="text-center">
+            <h2 className="mb-2 font-heading text-2xl font-semibold">
+              Profite pleinement de tes fiches
+            </h2>
+            <p className="mb-6 text-sm text-text-muted">
+              Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
+            </p>
+            <div className="flex flex-col items-center gap-3">
+              <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
+                {subscribing ? "Redirection…" : "S'abonner — 9,99 €/mois"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setShowSubscribeOffer(false)}
+                disabled={subscribing}
+                className="text-sm text-text-muted hover:text-text"
+              >
+                Plus tard
+              </button>
+            </div>
+          </Card>
+        </Modal>
       )}
     </div>
   );
