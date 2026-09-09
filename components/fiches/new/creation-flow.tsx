@@ -6,58 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
-import type { FicheProposal, SaveFicheItem, SaveFichesResponse } from "@/lib/fiches/types";
+import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
+import { FicheLoader } from "./fiche-loader";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
-
-interface SubjectOption {
-  id: string;
-  nom: string;
-}
-interface ChapterOption {
-  id: string;
-  nom: string;
-  subject_id: string;
-}
 
 interface ValidationItem {
   key: string;
   proposal: FicheProposal;
   selected: boolean;
   titre: string;
-  subjectChoice: string; // subject id, or "__new__"
-  newSubjectNom: string;
-  chapterChoice: string; // chapter id, or "__new__"
-  newChapterNom: string;
 }
 
-type Step = "sources" | "generating" | "validation" | "saving";
+type Step = "sources" | "generating" | "validation" | "preparing";
 
-export function CreationFlow({
-  subjects,
-  chapters,
-  isSubscribed,
-}: {
-  subjects: SubjectOption[];
-  chapters: ChapterOption[];
-  isSubscribed: boolean;
-}) {
+export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("sources");
   const [sources, setSources] = useState<PendingSource[]>([]);
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
-
-  // A subject only ever exists because a fiche was saved into it, so "no
-  // subjects yet" is exactly "hasn't saved a fiche yet" — no extra query
-  // needed. Creating additional matières is a premium feature offered only
-  // once that first fiche exists; the very first one is filed automatically
-  // so it's never presented as a choice.
-  const isFirstEverFiche = subjects.length === 0;
-  const canCreateSubject = !isFirstEverFiche && isSubscribed;
-  const DEFAULT_FIRST_SUBJECT_NOM = "Général";
 
   async function handleGenerate() {
     setError(null);
@@ -102,10 +71,6 @@ export function CreationFlow({
           proposal,
           selected: true,
           titre: proposal.titre,
-          subjectChoice: isFirstEverFiche ? "__new__" : subjects[0].id,
-          newSubjectNom: isFirstEverFiche ? DEFAULT_FIRST_SUBJECT_NOM : "",
-          chapterChoice: "__new__",
-          newChapterNom: "",
         })),
       );
       setStep("validation");
@@ -119,64 +84,69 @@ export function CreationFlow({
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
   }
 
-  async function handleSave() {
+  /**
+   * "Enregistrer" no longer saves directly: matière/chapitre is chosen on
+   * the next screen, once we know for sure the user has an active
+   * subscription (required to save at all). The reviewed fiches are stored
+   * as a draft first because a not-yet-subscribed user is about to leave
+   * the site entirely for Stripe Checkout, and the in-memory selection
+   * here wouldn't survive that round trip.
+   */
+  async function handleContinue() {
     setError(null);
-    setStep("saving");
 
-    const toSave: SaveFicheItem[] = items
+    const toSave: FicheProposal[] = items
       .filter((it) => it.selected)
-      .map((it) => ({
-        titre: it.titre,
-        contenu: it.proposal.contenu,
-        sources: sources.map((s) => ({ type: s.type, nom: s.nom })),
-        subjectId: it.subjectChoice !== "__new__" ? it.subjectChoice : undefined,
-        newSubjectNom: it.subjectChoice === "__new__" ? it.newSubjectNom : undefined,
-        chapterId: it.chapterChoice !== "__new__" ? it.chapterChoice : undefined,
-        newChapterNom: it.chapterChoice === "__new__" ? it.newChapterNom : undefined,
-      }));
+      .map((it) => ({ titre: it.titre, contenu: it.proposal.contenu }));
 
     if (toSave.length === 0) {
       setError("Sélectionne au moins une fiche à enregistrer.");
-      setStep("validation");
       return;
     }
 
+    setStep("preparing");
     try {
-      const { status, data } = await fetchJson<SaveFichesResponse>("/api/fiches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: toSave }),
-      });
-
-      if (status === 402) {
-        setError("Un abonnement actif est nécessaire pour enregistrer une fiche.");
+      const draftRes = await fetchJson<CreateDraftResponse & { error?: string }>(
+        "/api/fiches/drafts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: toSave,
+            sources: sources.map((s) => ({ type: s.type, nom: s.nom })),
+          }),
+        },
+      );
+      if (draftRes.status < 200 || draftRes.status >= 300 || !draftRes.data?.draftId) {
+        setError(draftRes.data?.error ?? "Impossible de préparer l'enregistrement.");
         setStep("validation");
         return;
       }
+      const draftId = draftRes.data.draftId;
 
-      if (data && data.saved > 0) {
-        setResultMessage(`${data.saved} fiche${data.saved > 1 ? "s" : ""} enregistrée${data.saved > 1 ? "s" : ""} !`);
-        setTimeout(() => {
-          router.push("/fiches");
-          router.refresh();
-        }, 900);
-      } else {
-        setError(data?.error ?? "Échec de l'enregistrement.");
-        setStep("validation");
+      if (isSubscribed) {
+        router.push(`/fiches/new/assign?draft=${draftId}`);
+        return;
       }
+
+      const checkoutRes = await fetchJson<{ url?: string; error?: string }>(
+        "/api/stripe/checkout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId }),
+        },
+      );
+      if (checkoutRes.status < 200 || checkoutRes.status >= 300 || !checkoutRes.data?.url) {
+        setError(checkoutRes.data?.error ?? "Impossible d'ouvrir la page de paiement.");
+        setStep("validation");
+        return;
+      }
+      window.location.href = checkoutRes.data.url;
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant l'enregistrement.");
+      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
       setStep("validation");
     }
-  }
-
-  if (step === "saving" && resultMessage) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-20 text-center">
-        <div className="text-4xl">🎉</div>
-        <p className="text-lg font-medium">{resultMessage}</p>
-      </div>
-    );
   }
 
   return (
@@ -200,18 +170,18 @@ export function CreationFlow({
 
       {step === "generating" && (
         <Card>
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <div className="size-10 animate-spin rounded-full border-4 border-accent/25 border-t-accent" />
+          <div className="flex flex-col items-center gap-5 py-16 text-center">
+            <FicheLoader />
             <p className="font-heading text-lg font-semibold">Génération de ta fiche…</p>
             <p className="max-w-sm text-sm text-text-muted">
-              Lecture de tes sources et rédaction du plan par l&apos;IA — ça prend en général
-              quelques dizaines de secondes.
+              Lecture de tes sources et rédaction du plan — ça prend en général quelques
+              dizaines de secondes.
             </p>
           </div>
         </Card>
       )}
 
-      {(step === "validation" || step === "saving") && (
+      {(step === "validation" || step === "preparing") && (
         <div className="flex flex-col gap-5">
           {!isSubscribed && (
             <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
@@ -234,78 +204,6 @@ export function CreationFlow({
                 />
               </div>
 
-              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-text-muted">Matière</label>
-                  {isFirstEverFiche ? (
-                    <p className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-muted">
-                      Classée automatiquement dans « {DEFAULT_FIRST_SUBJECT_NOM} » — tu pourras créer
-                      d&apos;autres matières après ce premier enregistrement.
-                    </p>
-                  ) : (
-                    <>
-                      <select
-                        className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
-                        value={item.subjectChoice}
-                        onChange={(e) =>
-                          updateItem(item.key, {
-                            subjectChoice: e.target.value,
-                            chapterChoice: "__new__",
-                          })
-                        }
-                      >
-                        {subjects.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.nom}
-                          </option>
-                        ))}
-                        {canCreateSubject && <option value="__new__">+ Nouvelle matière</option>}
-                      </select>
-                      {!isSubscribed && (
-                        <p className="mt-1 text-xs text-text-muted">
-                          Créer de nouvelles matières est réservé aux abonnés.
-                        </p>
-                      )}
-                      {canCreateSubject && item.subjectChoice === "__new__" && (
-                        <Input
-                          className="mt-2"
-                          placeholder="Nom de la matière"
-                          value={item.newSubjectNom}
-                          onChange={(e) => updateItem(item.key, { newSubjectNom: e.target.value })}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-text-muted">Chapitre</label>
-                  <select
-                    className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
-                    value={item.chapterChoice}
-                    disabled={item.subjectChoice === "__new__"}
-                    onChange={(e) => updateItem(item.key, { chapterChoice: e.target.value })}
-                  >
-                    {chapters
-                      .filter((c) => c.subject_id === item.subjectChoice)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nom}
-                        </option>
-                      ))}
-                    <option value="__new__">+ Nouveau chapitre</option>
-                  </select>
-                  {item.chapterChoice === "__new__" && (
-                    <Input
-                      className="mt-2"
-                      placeholder="Nom du chapitre"
-                      value={item.newChapterNom}
-                      onChange={(e) => updateItem(item.key, { newChapterNom: e.target.value })}
-                    />
-                  )}
-                </div>
-              </div>
-
               <ProposalPreview contenu={item.proposal.contenu} isSubscribed={isSubscribed} />
             </Card>
           ))}
@@ -314,8 +212,8 @@ export function CreationFlow({
             <Button variant="secondary" onClick={() => setStep("sources")}>
               Retour
             </Button>
-            <Button className="flex-1" onClick={handleSave} disabled={step === "saving"}>
-              {step === "saving" ? "Enregistrement…" : "Enregistrer"}
+            <Button className="flex-1" onClick={handleContinue} disabled={step === "preparing"}>
+              {step === "preparing" ? "Un instant…" : "Enregistrer la fiche"}
             </Button>
           </div>
         </div>

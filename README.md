@@ -63,6 +63,9 @@ Les migrations vivent dans `supabase/migrations/` :
 - `0002_ai_lock.sql` : table `ai_lock` (1 seule ligne) + fonctions
   `try_acquire_ai_lock` / `release_ai_lock`, le verrou global qui sérialise
   tous les appels à Claude (voir plus bas).
+- `0003_fiche_drafts.sql` : table `fiche_drafts`, stockage temporaire entre
+  la génération d'une fiche et son assignation matière/chapitre — voir
+  "Flux d'enregistrement d'une fiche" plus bas.
 
 Appliquer avec la CLI Supabase :
 
@@ -175,6 +178,34 @@ chapitres, contenu des fiches, réglages du profil).
   reste est flouté côté rendu. Le contenu n'est jamais dupliqué ni tronqué
   côté serveur : c'est un pointeur de lecture, pas une copie du texte.
 
+### Flux d'enregistrement d'une fiche — brouillon + Checkout différé
+
+Matière/chapitre ne sont **plus** demandés juste après la génération : cet
+écran (`components/fiches/new/creation-flow.tsx`) ne fait que sélectionner
+les fiches à garder et éditer leur titre. Au clic sur "Enregistrer la
+fiche" :
+
+1. Le contenu sélectionné est stocké dans `public.fiche_drafts`
+   (`POST /api/fiches/drafts`) — nécessaire car un utilisateur non abonné
+   s'apprête à quitter entièrement le site pour Stripe Checkout, ce que
+   l'état React de la page ne survivrait pas.
+2. Si l'utilisateur est déjà abonné (`GET /api/me`) → redirection directe
+   vers `(app)/fiches/new/assign?draft=<id>`.
+3. Sinon → `POST /api/stripe/checkout` avec ce `draftId` ; la session Stripe
+   pointe son `success_url`/`cancel_url` vers cette même page `assign` (au
+   lieu de `/abonnement`), pour reprendre exactement où l'utilisateur s'est
+   arrêté une fois payé (ou annulé).
+
+`(app)/fiches/new/assign` (`components/fiches/new/assign-flow.tsx`) gère
+l'atterrissage post-Stripe : comme le webhook peut arriver légèrement après
+la redirection du navigateur, la page **sonde** `/api/me` (jusqu'à 8 fois,
+1,5 s d'intervalle) avant d'afficher le choix matière/chapitre — c'est
+seulement à cet endroit que la logique "première fiche = matière automatique
+« Général », matières supplémentaires réservées aux abonnés" (déjà
+appliquée avant) s'exécute, puisque désormais garantie d'être un abonné actif.
+Une fois enregistrée via `POST /api/fiches` (inchangé), le brouillon est
+supprimé (`DELETE /api/fiches/drafts/[draftId]`).
+
 ### `components/timer/session-timer-context.tsx` — chronomètre de session
 
 Contexte React (persisté en `localStorage`) qui garde, par tâche de
@@ -199,5 +230,6 @@ sans ajouter de dépendance dédiée.
 `/auth/callback`, `(app)/fiches`, `(app)/fiches/[subjectId]`,
 `(app)/fiches/[subjectId]/[chapterId]`,
 `(app)/fiches/[subjectId]/[chapterId]/[ficheId]`, `(app)/fiches/new`,
+`(app)/fiches/new/assign`,
 `(app)/planning`, `(app)/quiz/[chapterId]`, `(app)/abonnement`,
 `(app)/corbeille`, plus les Route Handlers sous `app/api/`.

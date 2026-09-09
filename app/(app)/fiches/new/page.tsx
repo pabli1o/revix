@@ -8,17 +8,7 @@ export default async function NewFichePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: subjects }, { data: chapters }, subscription] = await Promise.all([
-    supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),
-    supabase.from("chapters").select("id, nom, subject_id").eq("user_id", user!.id).order("nom"),
-    getSubscriptionInfo(user!.id),
-  ]);
+  const subscription = await getSubscriptionInfo(user!.id);
 
-  return (
-    <CreationFlow
-      subjects={subjects ?? []}
-      chapters={chapters ?? []}
-      isSubscribed={subscription.isActive}
-    />
-  );
+  return <CreationFlow isSubscribed={subscription.isActive} />;
 }

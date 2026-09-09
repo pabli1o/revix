@@ -154,6 +154,19 @@ export type AiLockRow = {
   locked_by: string | null;
 };
 
+export interface FicheDraftItem {
+  titre: string;
+  contenu: FicheContenu;
+}
+
+export type FicheDraftRow = {
+  id: string;
+  user_id: string;
+  items: FicheDraftItem[];
+  sources: FicheSource[];
+  created_at: string;
+};
+
 // ---------------------------------------------------------------------------
 // Supabase generic-client scaffolding
 // ---------------------------------------------------------------------------
@@ -226,6 +239,11 @@ export interface Database {
         Partial<SubscriptionRow>
       >;
       ai_lock: Table<AiLockRow, Partial<AiLockRow>, Partial<AiLockRow>>;
+      fiche_drafts: Table<
+        FicheDraftRow,
+        Partial<FicheDraftRow> & { user_id: string; items: FicheDraftItem[] },
+        Partial<FicheDraftRow>
+      >;
     };
     Views: Record<string, never>;
     Functions: {

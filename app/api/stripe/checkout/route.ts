@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/client";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -11,6 +11,9 @@ export async function POST() {
 
   const priceId = process.env.STRIPE_PRICE_ID;
   if (!priceId) return NextResponse.json({ error: "Configuration Stripe manquante" }, { status: 500 });
+
+  const body = (await request.json().catch(() => null)) as { draftId?: string } | null;
+  const draftId = body?.draftId;
 
   const { data: existingSub } = await supabase
     .from("subscriptions")
@@ -21,16 +24,26 @@ export async function POST() {
   const stripe = getStripe();
   const siteUrl = getSiteUrl();
 
+  // A draftId means this checkout was triggered from the "Enregistrer" step
+  // of fiche creation (user isn't subscribed yet) — send them back to pick
+  // up right where they left off instead of the generic subscription page.
+  const successUrl = draftId
+    ? `${siteUrl}/fiches/new/assign?draft=${draftId}&checkout=success`
+    : `${siteUrl}/abonnement?checkout=success`;
+  const cancelUrl = draftId
+    ? `${siteUrl}/fiches/new/assign?draft=${draftId}&checkout=cancel`
+    : `${siteUrl}/abonnement?checkout=cancel`;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${siteUrl}/abonnement?checkout=success`,
-    cancel_url: `${siteUrl}/abonnement?checkout=cancel`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     client_reference_id: user.id,
     customer: existingSub?.stripe_customer_id ?? undefined,
     customer_email: existingSub?.stripe_customer_id ? undefined : (user.email ?? undefined),
     subscription_data: { metadata: { userId: user.id } },
-    metadata: { userId: user.id },
+    metadata: { userId: user.id, ...(draftId ? { draftId } : {}) },
   });
 
   if (!session.url) {

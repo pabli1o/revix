@@ -94,12 +94,12 @@ export async function generateJson<T>({
       const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
 
       if (!rawText.trim()) {
-        lastError = "Réponse vide de l'IA";
+        lastError = "Réponse vide reçue";
         continue;
       }
 
       if (response.stop_reason === "max_tokens") {
-        lastError = "Réponse tronquée par l'IA (limite de tokens atteinte)";
+        lastError = "Réponse tronquée (limite de longueur atteinte)";
         continue;
       }
 
@@ -107,13 +107,13 @@ export async function generateJson<T>({
       try {
         parsed = JSON.parse(stripCodeFence(rawText));
       } catch {
-        lastError = "JSON invalide renvoyé par l'IA";
+        lastError = "Format de réponse invalide";
         continue;
       }
 
       const validated = validate(parsed);
       if (validated === null) {
-        lastError = "Structure JSON incomplète renvoyée par l'IA";
+        lastError = "Réponse incomplète reçue";
         continue;
       }
 
@@ -121,7 +121,7 @@ export async function generateJson<T>({
     }
 
     throw new AiGenerationError(
-      `Échec de la génération IA après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
+      `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
     );
   });
 }

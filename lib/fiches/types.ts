@@ -50,3 +50,20 @@ export interface SaveFichesResponse {
   total: number;
   error?: string;
 }
+
+/** Created right after the review step (title/selection, no matière yet) —
+ * see components/fiches/new/creation-flow.tsx and app/api/fiches/drafts. */
+export interface CreateDraftRequest {
+  items: FicheProposal[];
+  sources: FicheSource[];
+}
+
+export interface CreateDraftResponse {
+  draftId: string;
+}
+
+export interface FicheDraftResponse {
+  id: string;
+  items: FicheProposal[];
+  sources: FicheSource[];
+}

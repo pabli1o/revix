@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 500;
 
 export class AiLockTimeoutError extends Error {
   constructor() {
-    super("Impossible d'obtenir le verrou IA : une autre génération est en cours.");
+    super("Une autre génération est déjà en cours, réessaie dans un instant.");
     this.name = "AiLockTimeoutError";
   }
 }
@@ -31,7 +31,7 @@ async function tryAcquire(holder: string): Promise<boolean> {
     stale_after_seconds: LOCK_STALE_AFTER_SECONDS,
   });
   if (error) {
-    throw new Error(`Erreur lors de l'acquisition du verrou IA : ${error.message}`);
+    throw new Error(`Erreur lors de la préparation de la génération : ${error.message}`);
   }
   return data === true;
 }
