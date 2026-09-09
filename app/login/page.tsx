@@ -15,20 +15,29 @@ export default function LoginPage() {
     setStatus("sending");
     setError(null);
 
-    const supabase = createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    try {
+      const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${siteUrl}/auth/callback` },
-    });
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      if (signInError) {
+        setError(signInError.message);
+        setStatus("error");
+        return;
+      }
+      setStatus("sent");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur inattendue est survenue. Réessaie dans quelques instants."
+      );
       setStatus("error");
-      return;
     }
-    setStatus("sent");
   }
 
   return (
