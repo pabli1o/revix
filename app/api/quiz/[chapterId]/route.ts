@@ -6,6 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 
 const VALID_DIFFICULTIES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
+// See app/api/fiches/generate/route.ts for why this is needed: the
+// on-demand fallback path here can wait on the AI lock and run a full
+// (retried) Claude generation, which can exceed the platform's default
+// serverless duration.
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[chapterId]">) {
   const { chapterId } = await ctx.params;
   const supabase = await createClient();

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { FicheProposal, SaveFicheItem, SaveFichesResponse } from "@/lib/fiches/types";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
@@ -52,22 +53,24 @@ export function CreationFlow({
     setError(null);
     setStep("generating");
     try {
-      const res = await fetch("/api/fiches/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sources: sources.map((s) => ({
-            type: s.type,
-            nom: s.nom,
-            texte: s.texte,
-            data: s.data,
-            mediaType: s.mediaType,
-          })),
-        }),
-      });
-      const data = (await res.json()) as { proposals?: FicheProposal[]; error?: string };
-      if (!res.ok || !data.proposals) {
-        setError(data.error ?? "La génération a échoué.");
+      const { status, data } = await fetchJson<{ proposals?: FicheProposal[]; error?: string }>(
+        "/api/fiches/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sources: sources.map((s) => ({
+              type: s.type,
+              nom: s.nom,
+              texte: s.texte,
+              data: s.data,
+              mediaType: s.mediaType,
+            })),
+          }),
+        },
+      );
+      if (status < 200 || status >= 300 || !data?.proposals) {
+        setError(data?.error ?? "La génération a échoué.");
         setStep("sources");
         return;
       }
@@ -84,8 +87,8 @@ export function CreationFlow({
         })),
       );
       setStep("validation");
-    } catch {
-      setError("Erreur réseau pendant la génération.");
+    } catch (err) {
+      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant la génération.");
       setStep("sources");
     }
   }
@@ -117,31 +120,30 @@ export function CreationFlow({
     }
 
     try {
-      const res = await fetch("/api/fiches", {
+      const { status, data } = await fetchJson<SaveFichesResponse>("/api/fiches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: toSave }),
       });
-      const data = (await res.json()) as SaveFichesResponse;
 
-      if (res.status === 402) {
+      if (status === 402) {
         setError("Un abonnement actif est nécessaire pour enregistrer une fiche.");
         setStep("validation");
         return;
       }
 
-      if (data.saved > 0) {
+      if (data && data.saved > 0) {
         setResultMessage(`${data.saved} fiche${data.saved > 1 ? "s" : ""} enregistrée${data.saved > 1 ? "s" : ""} !`);
         setTimeout(() => {
           router.push("/fiches");
           router.refresh();
         }, 900);
       } else {
-        setError(data.error ?? "Échec de l'enregistrement.");
+        setError(data?.error ?? "Échec de l'enregistrement.");
         setStep("validation");
       }
-    } catch {
-      setError("Erreur réseau pendant l'enregistrement.");
+    } catch (err) {
+      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant l'enregistrement.");
       setStep("validation");
     }
   }

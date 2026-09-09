@@ -4,6 +4,12 @@ import { checkAndIncrementFicheQuota, FicheQuotaExceededError, getSubscriptionIn
 import type { SaveFichesRequest, SaveFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 
+// scheduleQuizPreparation() below runs its 3 background quiz generations via
+// after(), which Vercel bills against this route's duration budget even
+// though the response itself is sent immediately. Same reasoning as
+// app/api/fiches/generate/route.ts.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {

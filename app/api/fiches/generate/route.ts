@@ -8,6 +8,14 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_SOURCES = 12;
 
+// Waiting for the AI lock plus up to 3 retried Claude calls (see
+// lib/anthropic/client.ts) can comfortably exceed a platform's default
+// serverless duration (10s on Vercel Hobby). Without this, a slow-but-
+// legitimate generation gets killed and the client receives a non-JSON
+// gateway error instead of our JSON response. 60 is the max allowed on
+// Vercel Hobby; raise it if the project is on a plan that allows more.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {

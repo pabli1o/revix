@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 
 const DIFFICULTIES: { value: QuizDifficulty; label: string; emoji: string }[] = [
@@ -54,10 +55,11 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     setPhase("loading");
     setError(null);
     try {
-      const res = await fetch(`/api/quiz/${chapterId}?difficulty=${diff}`);
-      const data = (await res.json()) as { questions?: QuizQuestion[]; error?: string };
-      if (!res.ok || !data.questions) {
-        setError(data.error ?? "Impossible de charger le quiz.");
+      const { status, data } = await fetchJson<{ questions?: QuizQuestion[]; error?: string }>(
+        `/api/quiz/${chapterId}?difficulty=${diff}`,
+      );
+      if (status < 200 || status >= 300 || !data?.questions) {
+        setError(data?.error ?? "Impossible de charger le quiz.");
         setPhase("select");
         return;
       }
@@ -67,8 +69,8 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       setSelected(null);
       setConfirmed(false);
       setPhase("playing");
-    } catch {
-      setError("Erreur réseau.");
+    } catch (err) {
+      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
       setPhase("select");
     }
   }
