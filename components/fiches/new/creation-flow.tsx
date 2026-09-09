@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { FicheProposal, SaveFicheItem, SaveFichesResponse } from "@/lib/fiches/types";
+import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
 
@@ -51,6 +52,18 @@ export function CreationFlow({
 
   async function handleGenerate() {
     setError(null);
+
+    const totalBytes = sources.reduce(
+      (sum, s) => sum + estimateBase64Bytes(s.data ?? "") + (s.texte?.length ?? 0),
+      0,
+    );
+    if (totalBytes > MAX_TOTAL_PAYLOAD_BYTES) {
+      setError(
+        "Le contenu total dépasse ce que le serveur peut recevoir en une fois. Retire une ou plusieurs sources (photos surtout), ou répartis-les sur plusieurs fiches.",
+      );
+      return;
+    }
+
     setStep("generating");
     try {
       const { status, data } = await fetchJson<{ proposals?: FicheProposal[]; error?: string }>(

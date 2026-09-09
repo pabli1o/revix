@@ -43,6 +43,24 @@ export async function compressImageFile(
   return { data: dataUrl.split(",")[1] ?? "", mediaType: "image/jpeg" };
 }
 
+/**
+ * Vercel's Node.js serverless functions (what our Route Handlers run on)
+ * reject any request body over 4.5 MB with a platform-level 413 — this
+ * cannot be raised via Next.js config, so the only fix is keeping what we
+ * send comfortably under it. Budget in base64 characters (≈ bytes, since
+ * base64 is ASCII); left well under 4.5 MB to leave headroom for the rest
+ * of the JSON payload and multiple sources.
+ */
+export const MAX_TOTAL_PAYLOAD_BYTES = 3_800_000;
+/** A single source over this is almost certainly going to blow the total
+ * budget on its own — reject it immediately with a clear reason instead of
+ * silently adding it and failing later at submit time. */
+export const MAX_SINGLE_SOURCE_BYTES = 3_000_000;
+
+export function estimateBase64Bytes(base64: string): number {
+  return base64.length;
+}
+
 /** Reads any file as base64 (no "data:" prefix) — used for PDF/Word
  * sources, which aren't compressed, only transported as-is. */
 export function fileToBase64(file: File): Promise<string> {

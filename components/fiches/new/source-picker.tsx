@@ -4,7 +4,20 @@ import { useRef, useState } from "react";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
-import { compressImageFile, fileToBase64 } from "./file-utils";
+import {
+  compressImageFile,
+  estimateBase64Bytes,
+  fileToBase64,
+  MAX_SINGLE_SOURCE_BYTES,
+  MAX_TOTAL_PAYLOAD_BYTES,
+} from "./file-utils";
+
+function totalPayloadBytes(sources: PendingSource[]): number {
+  return sources.reduce(
+    (sum, s) => sum + estimateBase64Bytes(s.data ?? "") + (s.texte?.length ?? 0),
+    0,
+  );
+}
 
 export interface PendingSource extends GenerateSourceInput {
   id: string;
@@ -24,9 +37,45 @@ export function SourcePicker({
 }) {
   const [textDraft, setTextDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const wordInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Accumulates newly-picked sources one at a time, rejecting any single
+   * source that's too large on its own and stopping early if the running
+   * total would exceed what the server can accept in one request (see
+   * MAX_TOTAL_PAYLOAD_BYTES in file-utils.ts — a hard, non-configurable
+   * platform limit, not something we can raise server-side).
+   */
+  function tryAddSources(candidates: PendingSource[]): PendingSource[] {
+    const accepted: PendingSource[] = [];
+    let runningTotal = totalPayloadBytes(sources);
+    const rejected: string[] = [];
+
+    for (const candidate of candidates) {
+      const size = estimateBase64Bytes(candidate.data ?? "") + (candidate.texte?.length ?? 0);
+      if (size > MAX_SINGLE_SOURCE_BYTES) {
+        rejected.push(`${candidate.nom} (trop lourd même compressé)`);
+        continue;
+      }
+      if (runningTotal + size > MAX_TOTAL_PAYLOAD_BYTES) {
+        rejected.push(`${candidate.nom} (limite totale atteinte)`);
+        continue;
+      }
+      runningTotal += size;
+      accepted.push(candidate);
+    }
+
+    setSizeError(
+      rejected.length > 0
+        ? `Non ajouté(s) car trop volumineux pour être envoyés en une fois : ${rejected.join(", ")}. Réduis leur nombre ou leur taille, ou crée une fiche séparée pour le reste.`
+        : null,
+    );
+
+    return accepted;
+  }
 
   function addText() {
     if (!textDraft.trim()) return;
@@ -53,7 +102,7 @@ export function SourcePicker({
           previewUrl: `data:${mediaType};base64,${data}`,
         });
       }
-      onChange([...sources, ...added]);
+      onChange([...sources, ...tryAddSources(added)]);
     } finally {
       setBusy(false);
       if (photoInputRef.current) photoInputRef.current.value = "";
@@ -69,7 +118,7 @@ export function SourcePicker({
         const data = await fileToBase64(file);
         added.push({ id: makeId(), type: "pdf", nom: file.name, data });
       }
-      onChange([...sources, ...added]);
+      onChange([...sources, ...tryAddSources(added)]);
     } finally {
       setBusy(false);
       if (pdfInputRef.current) pdfInputRef.current.value = "";
@@ -85,7 +134,7 @@ export function SourcePicker({
         const data = await fileToBase64(file);
         added.push({ id: makeId(), type: "word", nom: file.name, data });
       }
-      onChange([...sources, ...added]);
+      onChange([...sources, ...tryAddSources(added)]);
     } finally {
       setBusy(false);
       if (wordInputRef.current) wordInputRef.current.value = "";
@@ -150,6 +199,7 @@ export function SourcePicker({
       </div>
 
       {busy && <p className="text-sm text-text-muted">Traitement des fichiers…</p>}
+      {sizeError && <p className="text-sm text-danger">{sizeError}</p>}
 
       {sources.length > 0 && (
         <ul className="flex flex-col gap-2">

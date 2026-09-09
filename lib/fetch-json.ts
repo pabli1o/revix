@@ -30,6 +30,11 @@ export async function fetchJson<T>(
         "Le serveur a mis trop de temps à répondre (délai dépassé). Réessaie, éventuellement avec moins de contenu à la fois.",
       );
     }
+    if (res.status === 413) {
+      throw new RequestFailedError(
+        "Le contenu envoyé est trop volumineux pour le serveur. Retire une ou plusieurs sources (photos surtout), ou répartis-les sur plusieurs fiches.",
+      );
+    }
     throw new RequestFailedError(`Réponse invalide du serveur (code ${res.status}).`);
   }
 }
