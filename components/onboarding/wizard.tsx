@@ -8,27 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
-const TUTORIAL_SLIDES = [
-  {
-    emoji: "📝",
-    title: "Crée une fiche à partir de tes cours",
-    text: "Ajoute une photo, un texte ou un fichier de ton cours : une fiche de révision structurée est préparée pour toi.",
-    button: "Suivant",
-  },
-  {
-    emoji: "📅",
-    title: "On te génère ton planning",
-    text: "Ajoute la date de tes examens : tes séances de révision sont réparties automatiquement jusqu'au jour J.",
-    button: "Suivant",
-  },
-  {
-    emoji: "🧠",
-    title: "Teste-toi avec un quiz",
-    text: "Une fois tes fiches prêtes, des questions sont préparées à partir de leur contenu pour vérifier ce que tu as retenu.",
-    button: "C'est parti",
-  },
-];
-
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
 
@@ -57,12 +36,11 @@ const LYCEE_NIVEAUX = [
   { value: "Terminale", color: OUTLINE_GREEN },
 ];
 
-type Step = "tutorial" | "classe" | "niveau" | "prenom" | "rythme";
+type Step = "classe" | "niveau" | "prenom" | "rythme";
 
 export function OnboardingWizard() {
   const router = useRouter();
-  const [tutorialIndex, setTutorialIndex] = useState(0);
-  const [step, setStep] = useState<Step>("tutorial");
+  const [step, setStep] = useState<Step>("classe");
 
   const [prenom, setPrenom] = useState("");
   const [cycle, setCycle] = useState<ClasseCycle | null>(null);
@@ -73,14 +51,6 @@ export function OnboardingWizard() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function nextTutorial() {
-    if (tutorialIndex < TUTORIAL_SLIDES.length - 1) {
-      setTutorialIndex(tutorialIndex + 1);
-    } else {
-      setStep("classe");
-    }
-  }
 
   function chooseCycle(value: ClasseCycle) {
     setCycle(value);
@@ -128,30 +98,6 @@ export function OnboardingWizard() {
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
-        {step === "tutorial" && (
-          <div className="flex flex-col items-center text-center">
-            <div className="text-5xl">{TUTORIAL_SLIDES[tutorialIndex].emoji}</div>
-            <h1 className="mt-4 font-heading text-2xl font-semibold">
-              {TUTORIAL_SLIDES[tutorialIndex].title}
-            </h1>
-            <p className="mt-3 text-text-muted">{TUTORIAL_SLIDES[tutorialIndex].text}</p>
-            <div className="mt-6 flex gap-2">
-              {TUTORIAL_SLIDES.map((_, i) => (
-                <span
-                  key={i}
-                  className={clsx(
-                    "h-1.5 w-6 rounded-full",
-                    i === tutorialIndex ? "bg-accent" : "bg-border",
-                  )}
-                />
-              ))}
-            </div>
-            <Button onClick={nextTutorial} className="mt-8 w-full">
-              {TUTORIAL_SLIDES[tutorialIndex].button}
-            </Button>
-          </div>
-        )}
-
         {step === "classe" && (
           <div>
             <h1 className="font-heading text-2xl font-semibold">Tu es en quelle classe ?</h1>

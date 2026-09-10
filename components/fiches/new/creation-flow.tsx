@@ -216,8 +216,9 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
       {step === "generating" && (
         <Card>
-          <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-5 py-16 text-center">
             <FicheLoader />
+            <p className="font-heading text-lg font-semibold">Tes fiches prennent forme…</p>
           </div>
         </Card>
       )}
