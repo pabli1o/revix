@@ -356,7 +356,7 @@ export function AssignFlow({
 
   if (phase === "reviewing") {
     return (
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 pb-24">
         {items.map((item) => (
           <div key={item.key} className="flex flex-col gap-3">
             <Input
@@ -367,9 +367,13 @@ export function AssignFlow({
             <ProposalPreview contenu={item.contenu} isSubscribed />
           </div>
         ))}
-        <div className="mx-auto w-full max-w-xl">
+        <div className="sticky bottom-4 mx-auto flex w-full max-w-xl flex-col gap-3">
+          <div className="flex items-center gap-2 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-sm text-success">
+            <span aria-hidden>✓</span>
+            <span>Abonnement activé — tu as maintenant accès à tes fiches.</span>
+          </div>
           <Button className="w-full" onClick={() => setPhase("picking-subject")}>
-            Continuer
+            Enregistrer les fiches
           </Button>
         </div>
       </div>
@@ -377,118 +381,141 @@ export function AssignFlow({
   }
 
   // phase is "picking-subject", "picking-chapter", or "saving"
+  const hasSubject = Boolean(destination.subjectId || destination.newSubjectNom);
+  const hasChapter = Boolean(destination.chapterId || destination.newChapterNom);
+
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
-      {error && (
-        <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          {error}
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-24">
+      <button
+        type="button"
+        onClick={() => setPhase("reviewing")}
+        className="self-start text-sm font-medium text-accent hover:underline"
+      >
+        ← Modifier les fiches
+      </button>
+
+      <Card className="flex flex-col gap-5">
+        <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+          Où ranger ces {items.length} fiche{items.length > 1 ? "s" : ""} ?
         </p>
-      )}
 
-      {phase === "picking-subject" && (
-        <>
-          <h1 className="font-heading text-2xl font-semibold">Dans quelle matière ?</h1>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {subjects.map((s) => {
-              const color = subjectColors.get(s.nom)!;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => chooseExistingSubject(s.id)}
-                  className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform active:scale-[0.97]"
-                  style={{ backgroundColor: color.bg, borderColor: color.border, color: color.text }}
-                >
-                  {s.nom}
-                </button>
-              );
-            })}
-          </div>
+        {error && (
+          <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
 
-          {creatingSubject ? (
-            <div className="flex gap-2">
-              <Input
-                autoFocus
-                placeholder="Nom de la nouvelle matière"
-                value={newSubjectDraft}
-                onChange={(e) => setNewSubjectDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
-                className="flex-1"
-              />
-              <Button onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
-                Valider
-              </Button>
-            </div>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-text-muted">Matière</p>
+
+          {hasSubject ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDestination({});
+                setCreatingSubject(false);
+                setNewSubjectDraft("");
+              }}
+              className="self-start text-sm text-text-muted hover:text-accent"
+            >
+              ← {chosenSubject?.nom ?? destination.newSubjectNom} — changer
+            </button>
           ) : (
-            <Button variant="secondary" onClick={() => setCreatingSubject(true)}>
-              + Nouvelle matière
-            </Button>
+            <>
+              {subjects.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {subjects.map((s) => {
+                    const color = subjectColors.get(s.nom)!;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => chooseExistingSubject(s.id)}
+                        className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform active:scale-[0.97]"
+                        style={{ backgroundColor: color.bg, borderColor: color.border, color: color.text }}
+                      >
+                        {s.nom}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {creatingSubject ? (
+                <Input
+                  autoFocus
+                  placeholder="Nom de la matière"
+                  value={newSubjectDraft}
+                  onChange={(e) => setNewSubjectDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
+                />
+              ) : (
+                <Button variant="outline" size="sm" className="self-start" onClick={() => setCreatingSubject(true)}>
+                  + Nouvelle
+                </Button>
+              )}
+              {creatingSubject && (
+                <Button size="sm" className="self-start" onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
+                  Valider
+                </Button>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
 
-      {(phase === "picking-chapter" || phase === "saving") && (
-        <>
-          <button
-            type="button"
-            onClick={() => setPhase("picking-subject")}
-            className="self-start text-sm text-text-muted hover:text-accent"
-          >
-            ← {chosenSubject?.nom ?? destination.newSubjectNom} — changer
-          </button>
-          <h1 className="font-heading text-2xl font-semibold">Dans quel chapitre ?</h1>
+        {hasSubject && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-text-muted">Chapitre</p>
 
-          {chapterOptions.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {chapterOptions.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => chooseExistingChapter(c.id)}
-                  className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all active:scale-[0.97] ${
-                    destination.chapterId === c.id
-                      ? "border-accent bg-accent text-[#191A2E]"
-                      : "border-border bg-bg-elevated text-text hover:border-accent"
-                  }`}
-                >
-                  {c.nom}
-                </button>
-              ))}
-            </div>
-          )}
+            {chapterOptions.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {chapterOptions.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => chooseExistingChapter(c.id)}
+                    className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all active:scale-[0.97] ${
+                      destination.chapterId === c.id
+                        ? "border-accent bg-accent text-[#191A2E]"
+                        : "border-border bg-bg-elevated text-text hover:border-accent"
+                    }`}
+                  >
+                    {c.nom}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {creatingChapter ? (
-            <div className="flex gap-2">
+            {creatingChapter ? (
               <Input
                 autoFocus
-                placeholder="Nom du nouveau chapitre"
+                placeholder="Nom du chapitre"
                 value={newChapterDraft}
                 onChange={(e) => setNewChapterDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && confirmNewChapter()}
-                className="flex-1"
               />
-              <Button onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
+            ) : (
+              <Button
+                variant={destination.newChapterNom ? "primary" : "outline"}
+                size="sm"
+                className="self-start"
+                onClick={() => setCreatingChapter(true)}
+              >
+                {destination.newChapterNom ? `Nouveau : ${destination.newChapterNom}` : "+ Nouveau"}
+              </Button>
+            )}
+            {creatingChapter && (
+              <Button size="sm" className="self-start" onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
                 Valider
               </Button>
-            </div>
-          ) : (
-            <Button
-              variant={destination.newChapterNom ? "primary" : "secondary"}
-              onClick={() => setCreatingChapter(true)}
-            >
-              {destination.newChapterNom ? `+ Nouveau : ${destination.newChapterNom}` : "+ Nouveau chapitre"}
-            </Button>
-          )}
+            )}
+          </div>
+        )}
+      </Card>
 
-          <Button
-            className="mt-2"
-            onClick={handleSave}
-            disabled={phase === "saving" || (!destination.chapterId && !destination.newChapterNom)}
-          >
-            {phase === "saving" ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-        </>
-      )}
+      <Button className="w-full" onClick={handleSave} disabled={phase === "saving" || !hasChapter}>
+        {phase === "saving" ? "Enregistrement…" : "✓ Confirmer et ranger"}
+      </Button>
     </div>
   );
 }

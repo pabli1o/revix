@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import type { SubjectColor } from "@/lib/theme/subject-colors";
+import { INK_ON_PALE, type SubjectColor } from "@/lib/theme/subject-colors";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export interface TileItem {
@@ -134,14 +134,14 @@ function Tile({
 
   return (
     <div
-      className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border p-4 shadow-sm transition-transform hover:-translate-y-0.5"
-      style={{ backgroundColor: item.color.bg, borderColor: item.color.border, color: item.color.text }}
+      className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border-2 p-4 shadow-sm transition-transform hover:-translate-y-0.5"
+      style={{ backgroundColor: item.color.pale, borderColor: item.color.border, color: INK_ON_PALE }}
     >
       {!editing ? (
         <>
           <Link href={href} className="absolute inset-0" aria-label={item.nom} />
           <div className="flex items-start justify-between gap-1">
-            <span className="font-heading text-lg font-semibold leading-tight">{item.nom}</span>
+            <span className="font-heading text-xl font-semibold leading-tight">{item.nom}</span>
             {/* Always visible (not hover-gated): hover has no equivalent on
                touch devices, so gating these behind group-hover made them
                practically impossible to reach on phones/tablets. */}

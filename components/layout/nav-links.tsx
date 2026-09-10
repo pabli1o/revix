@@ -17,7 +17,10 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
   return (
     <nav
       className={clsx(
-        compact ? "flex items-center gap-2 overflow-x-auto" : "flex flex-col gap-1",
+        "bg-bg",
+        compact
+          ? "flex items-center gap-1 overflow-x-auto rounded-full p-1.5"
+          : "flex flex-col gap-1 rounded-2xl p-2",
       )}
     >
       {LINKS.map((link) => {
@@ -27,9 +30,9 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
             key={link.href}
             href={link.href}
             className={clsx(
-              "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+              "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
               active
-                ? "bg-accent font-bold text-[#191A2E]"
+                ? "bg-accent font-bold text-[#191A2E] shadow-[0_2px_12px_-2px_rgba(232,163,61,0.6)]"
                 : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >

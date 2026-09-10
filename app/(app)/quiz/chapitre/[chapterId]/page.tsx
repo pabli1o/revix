@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { QuizFlow } from "@/components/quiz/quiz-flow";
 
-export default async function QuizPage(props: PageProps<"/quiz/[chapterId]">) {
+export default async function QuizPage(props: PageProps<"/quiz/chapitre/[chapterId]">) {
   const { chapterId } = await props.params;
   const supabase = await createClient();
   const {

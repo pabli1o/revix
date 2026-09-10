@@ -9,23 +9,30 @@
 
 export interface SubjectColor {
   name: string;
-  /** Card / tile background */
+  /** Card / tile background — vivid, used for small badges/tags. */
   bg: string;
   /** Border accent */
   border: string;
-  /** Text on the colored surface */
+  /** Text on the vivid `bg` surface */
   text: string;
   /** Soft tint for backgrounds behind content (e.g. fiche chrome) */
   soft: string;
+  /** Pale, near-white tint used for matière/chapitre cards (spec: "fond
+   * clair bleu très pâle, contour bleu") — paired with INK_ON_PALE below. */
+  pale: string;
 }
 
+/** Dark ink used for text on every `pale` card background — legible across
+ * all 6 palette colors since they're all near-white tints. */
+export const INK_ON_PALE = "#232342";
+
 export const SUBJECT_PALETTE: SubjectColor[] = [
-  { name: "corail", bg: "#E8664D", border: "#C94E37", text: "#FFF6F3", soft: "#3A1E1B" },
-  { name: "safran", bg: "#E8A33D", border: "#C7842A", text: "#241C0C", soft: "#3A2C15" },
-  { name: "sauge", bg: "#6FA88B", border: "#4F8A6D", text: "#0E1F17", soft: "#1B2F26" },
-  { name: "azur", bg: "#4E8FE0", border: "#3670BE", text: "#0B1B2E", soft: "#182C42" },
-  { name: "lavande", bg: "#9482E0", border: "#7767C4", text: "#171130", soft: "#241D3F" },
-  { name: "rose", bg: "#DB6FA6", border: "#BC5088", text: "#2B1220", soft: "#3A1E2E" },
+  { name: "corail", bg: "#E8664D", border: "#C94E37", text: "#FFF6F3", soft: "#3A1E1B", pale: "#FBEAE6" },
+  { name: "safran", bg: "#E8A33D", border: "#C7842A", text: "#241C0C", soft: "#3A2C15", pale: "#FBF0DC" },
+  { name: "sauge", bg: "#6FA88B", border: "#4F8A6D", text: "#0E1F17", soft: "#1B2F26", pale: "#E7F3ED" },
+  { name: "azur", bg: "#4E8FE0", border: "#3670BE", text: "#0B1B2E", soft: "#182C42", pale: "#E7F0FC" },
+  { name: "lavande", bg: "#9482E0", border: "#7767C4", text: "#171130", soft: "#241D3F", pale: "#EFEBFC" },
+  { name: "rose", bg: "#DB6FA6", border: "#BC5088", text: "#2B1220", soft: "#3A1E2E", pale: "#FBEAF3" },
 ];
 
 /**

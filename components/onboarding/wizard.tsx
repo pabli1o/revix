@@ -176,7 +176,7 @@ export function OnboardingWizard() {
             <button
               type="button"
               onClick={() => setStep("classe")}
-              className="mb-4 rounded-full border border-border px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← Retour
             </button>
@@ -222,7 +222,7 @@ export function OnboardingWizard() {
             </p>
             <Input
               autoFocus
-              className="mt-6 bg-[#2A2B52]"
+              className="mt-6"
               placeholder="Ex : Léa, ou un pseudo…"
               value={prenom}
               onChange={(e) => setPrenom(e.target.value)}
@@ -301,9 +301,14 @@ function OutlineChoice({
     <button
       type="button"
       onClick={onClick}
-      style={{ borderColor: color, color }}
+      style={
+        {
+          borderColor: color,
+          "--glow": `${color}55`,
+        } as React.CSSProperties
+      }
       className={clsx(
-        "rounded-xl border-2 bg-transparent px-4 py-4 text-center text-sm font-semibold transition-all duration-150 hover:bg-white/5 active:scale-[0.96]",
+        "rounded-full border-2 bg-transparent px-4 py-4 text-center text-sm font-semibold text-text transition-all duration-150 hover:shadow-[0_0_0_4px_var(--glow)] active:scale-[0.96]",
         className,
       )}
     >

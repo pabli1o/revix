@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import clsx from "clsx";
 import type { FicheContenu } from "@/lib/supabase/database.types";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { computePreviewCutoff, getSousPointVisibility, isARetenirVisible } from "@/lib/subscription/preview";
@@ -32,6 +33,17 @@ export function FicheViewer({
 
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
+  // Blur increases the further past the cutoff a sous-point is, so the
+  // paywall reads as a gradual fade into illegibility rather than a flat
+  // on/off cut. Plain running counter (not state) — safe here since it's
+  // only ever read/written synchronously during this single render pass.
+  let blurStep = 0;
+  const BLUR_CLASSES = ["blur-[2px]", "blur-[4px]", "blur-[6px]", "blur-[8px]", "blur-[10px]"];
+  function nextBlurClass(): string {
+    const cls = BLUR_CLASSES[Math.min(blurStep, BLUR_CLASSES.length - 1)];
+    blurStep++;
+    return cls;
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -110,7 +122,7 @@ export function FicheViewer({
         <div className="flex flex-col gap-8">
           {contenu.plan.map((section, sectionIndex) => (
             <section key={section.numero}>
-              <h2 className="mb-3 font-heading text-xl font-semibold text-accent">
+              <h2 className="mb-3 font-heading text-xl font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A]/40 underline-offset-4">
                 {section.numero}. {section.titre}
               </h2>
               <ul className="flex flex-col gap-2 pl-1">
@@ -123,13 +135,13 @@ export function FicheViewer({
                       {visibility === "partial" && cutoff && (
                         <>
                           <RichText text={sp.texte.slice(0, cutoff.charIndex)} />
-                          <span className="ml-1 select-none blur-[5px]">
+                          <span className={clsx("ml-1 select-none", nextBlurClass())}>
                             {sp.texte.slice(cutoff.charIndex) || "texte masqué texte masqué"}
                           </span>
                         </>
                       )}
                       {visibility === "blurred" && (
-                        <span className="select-none blur-[5px]">{sp.texte}</span>
+                        <span className={clsx("select-none", nextBlurClass())}>{sp.texte}</span>
                       )}
                     </li>
                   );
@@ -150,7 +162,7 @@ export function FicheViewer({
               ))}
             </ul>
           ) : (
-            <p className="select-none blur-[5px]">
+            <p className={clsx("select-none", nextBlurClass())}>
               {contenu.aRetenir.join(" · ") || "Résumé masqué jusqu'à l'abonnement."}
             </p>
           )}

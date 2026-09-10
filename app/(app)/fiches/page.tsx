@@ -41,7 +41,10 @@ export default async function FichesPage() {
     <div>
       <AppHeader />
       {!isEmpty && (
-        <div className="mb-6 flex items-center justify-end">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <p className="text-sm text-text-muted">
+            📚 Clique sur une matière pour voir ses chapitres.
+          </p>
           <Link href="/fiches/new">
             <Button>+ Nouvelle fiche</Button>
           </Link>

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -173,9 +175,29 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     }
   }
 
+  const isReviewing = (step === "validation" || step === "preparing") && items.length > 0;
+
   return (
-    <div>
-      <h1 className="mb-6 font-heading text-3xl font-semibold">Nouvelle fiche</h1>
+    <div className={clsx(isReviewing && "pb-24")}>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+            Nouvelle fiche
+          </p>
+          {isReviewing && (
+            <p className="mt-1 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+              {items.length} fiche{items.length > 1 ? "s" : ""} proposée{items.length > 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+        <Link
+          href="/fiches"
+          aria-label="Fermer"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          ✕
+        </Link>
+      </div>
 
       {error && (
         <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
@@ -205,50 +227,35 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         </Card>
       )}
 
-      {/* Not subscribed: the generated fiche is never shown here — only
-          once subscribed does its content become visible (on this same
-          step if already subscribed, or on the assign step after
-          returning from Stripe otherwise). */}
-      {step === "validation" && !isSubscribed && (
-        <Card className="mx-auto max-w-md text-center">
-          <h2 className="mb-2 font-heading text-2xl font-semibold">
-            Profite pleinement de tes fiches
-          </h2>
-          <p className="mb-6 text-sm text-text-muted">
-            Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
-          </p>
-          <div className="flex flex-col items-center gap-3">
-            <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
-              {subscribing ? "Redirection…" : "S'abonner — 9,99 €/mois"}
-            </Button>
-            <button
-              type="button"
-              onClick={() => setStep("sources")}
-              disabled={subscribing}
-              className="text-sm text-text-muted hover:text-text"
-            >
-              Retour
-            </button>
-          </div>
-        </Card>
-      )}
-
-      {(step === "validation" || step === "preparing") && isSubscribed && (
+      {/* Whether or not the user is subscribed, the fiche content itself is
+          always shown — ProposalPreview blurs it progressively past the
+          free preview when !isSubscribed. The only thing that changes with
+          subscription status is the bottom call to action. */}
+      {isReviewing && (
         <div className="flex flex-col gap-8">
           {items.map((item) => (
-            <div key={item.key} className="flex flex-col gap-3">
-              <div className="mx-auto flex w-full max-w-xl items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 shrink-0 accent-[#E8A33D]"
-                  checked={item.selected}
-                  onChange={(e) => updateItem(item.key, { selected: e.target.checked })}
-                />
+            <div key={item.key} className="mx-auto flex w-full max-w-xl flex-col gap-3">
+              <div className="flex items-center gap-3">
                 <Input
                   value={item.titre}
                   onChange={(e) => updateItem(item.key, { titre: e.target.value })}
                   className="flex-1"
                 />
+                <button
+                  type="button"
+                  onClick={() => updateItem(item.key, { selected: !item.selected })}
+                  className="flex shrink-0 items-center gap-1.5"
+                >
+                  <span
+                    className={clsx(
+                      "flex size-5 items-center justify-center rounded-full border-2 text-[10px] text-white transition-colors",
+                      item.selected ? "border-accent bg-accent" : "border-border bg-transparent",
+                    )}
+                  >
+                    {item.selected && "✓"}
+                  </span>
+                  <span className="text-sm text-text-muted">garder</span>
+                </button>
               </div>
 
               <ProposalPreview contenu={item.proposal.contenu} isSubscribed={isSubscribed} />
@@ -256,12 +263,18 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
           ))}
 
           <div className="mx-auto flex w-full max-w-xl gap-3">
-            <Button variant="secondary" onClick={() => setStep("sources")}>
+            <Button variant="secondary" onClick={() => setStep("sources")} disabled={subscribing}>
               Retour
             </Button>
-            <Button className="flex-1" onClick={handleContinue} disabled={step === "preparing"}>
-              {step === "preparing" ? "Un instant…" : "Continuer"}
-            </Button>
+            {isSubscribed ? (
+              <Button className="flex-1" onClick={handleContinue} disabled={step === "preparing"}>
+                {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
+              </Button>
+            ) : (
+              <Button className="flex-1" onClick={handleSubscribeFromOffer} disabled={subscribing}>
+                {subscribing ? "Redirection…" : "Débloquer — 9,99 €/mois"}
+              </Button>
+            )}
           </div>
         </div>
       )}
