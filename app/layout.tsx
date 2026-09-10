@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { SessionTimerProvider } from "@/components/timer/session-timer-context";
+import { NavigationHistoryProvider } from "@/components/navigation/navigation-history-provider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${fraunces.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-screen bg-bg text-text antialiased">
-        <SessionTimerProvider>{children}</SessionTimerProvider>
+        <NavigationHistoryProvider>
+          <SessionTimerProvider>{children}</SessionTimerProvider>
+        </NavigationHistoryProvider>
       </body>
     </html>
   );

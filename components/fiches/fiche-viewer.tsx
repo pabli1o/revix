@@ -79,10 +79,12 @@ export function FicheViewer({
   return (
     <div>
       <PlanningTaskTimerBar />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Link href={backHref} className="text-sm text-text-muted hover:text-accent">
-          ← Retour au chapitre
-        </Link>
+      {/* No inline "back" link here: the floating back button (rendered
+         globally in app/(app)/layout.tsx) already covers it, and respects
+         wherever the user actually came from — e.g. back to /planning for a
+         fiche opened from a planning task — instead of always landing on
+         this chapter's fiche list the way a hardcoded link would. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
             {exporting ? "Export…" : "📤 Exporter en image"}

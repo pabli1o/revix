@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { SettingsLink } from "@/components/layout/settings-link";
+import { FloatingBackButton } from "@/components/layout/floating-back-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const supabase = await createClient();
@@ -47,6 +48,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <SignOutButton />
         </div>
       </aside>
+      <FloatingBackButton />
       <main className="flex-1 px-4 py-6 md:px-10 md:py-10">{children}</main>
     </div>
   );
