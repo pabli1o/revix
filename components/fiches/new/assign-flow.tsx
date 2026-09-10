@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { FicheLoader } from "@/components/ui/fiche-loader";
@@ -353,45 +354,50 @@ export function AssignFlow({
 
   if (phase === "reviewing") {
     return (
-      <div className="flex flex-col gap-8 pb-24">
-        {items.map((item) => (
-          <div key={item.key} className="flex flex-col gap-3">
-            <Input
-              value={item.titre}
-              onChange={(e) => updateItem(item.key, { titre: e.target.value })}
-              className="mx-auto w-full max-w-xl"
-            />
-            <ProposalPreview contenu={item.contenu} isSubscribed />
-          </div>
-        ))}
-        <div className="sticky bottom-4 mx-auto flex w-full max-w-xl flex-col gap-3">
-          <div className="flex items-center gap-2 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-sm text-success">
-            <span aria-hidden>✓</span>
-            <span>Abonnement activé — tu as maintenant accès à tes fiches.</span>
-          </div>
-          <Button className="w-full" onClick={() => setPhase("picking-subject")}>
-            Enregistrer les fiches
-          </Button>
+      <>
+        <div className="flex flex-col gap-8 pb-24">
+          {items.map((item) => (
+            <div key={item.key} className="flex flex-col gap-3">
+              <Input
+                value={item.titre}
+                onChange={(e) => updateItem(item.key, { titre: e.target.value })}
+                className="mx-auto w-full max-w-xl"
+              />
+              <ProposalPreview contenu={item.contenu} isSubscribed />
+            </div>
+          ))}
         </div>
-      </div>
+        <FloatingBottomBar>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-sm text-success">
+              <span aria-hidden>✓</span>
+              <span>Abonnement activé — tu as maintenant accès à tes fiches.</span>
+            </div>
+            <Button className="w-full" onClick={() => setPhase("picking-subject")}>
+              Enregistrer les fiches
+            </Button>
+          </div>
+        </FloatingBottomBar>
+      </>
     );
   }
 
   // phase is "picking-subject", "picking-chapter", or "saving"
   const hasSubject = Boolean(destination.subjectId || destination.newSubjectNom);
   const hasChapter = Boolean(destination.chapterId || destination.newChapterNom);
+  const chosenSubjectColor = chosenSubject ? subjectColors.get(chosenSubject.nom) : undefined;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-24">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-6 pb-24 pt-2">
       <button
         type="button"
         onClick={() => setPhase("reviewing")}
-        className="self-start text-sm font-medium text-accent hover:underline"
+        className="self-start rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10"
       >
         ← Modifier les fiches
       </button>
 
-      <Card className="flex flex-col gap-5">
+      <Card className="flex flex-col gap-7 p-6">
         <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
           Où ranger ces {items.length} fiche{items.length > 1 ? "s" : ""} ?
         </p>
@@ -403,20 +409,41 @@ export function AssignFlow({
         )}
 
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-text-muted">Matière</p>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            Matière
+          </p>
 
           {hasSubject ? (
-            <button
-              type="button"
-              onClick={() => {
-                setDestination({});
-                setCreatingSubject(false);
-                setNewSubjectDraft("");
-              }}
-              className="self-start text-sm text-text-muted hover:text-accent"
+            <div
+              className="flex w-fit items-center gap-2.5 rounded-full border py-1.5 pl-2 pr-4"
+              style={
+                chosenSubjectColor
+                  ? { borderColor: chosenSubjectColor.border, backgroundColor: `${chosenSubjectColor.bg}1F` }
+                  : { borderColor: "var(--color-accent)", backgroundColor: "rgba(232,163,61,0.12)" }
+              }
             >
-              ← {chosenSubject?.nom ?? destination.newSubjectNom} — changer
-            </button>
+              {chosenSubjectColor && (
+                <span
+                  aria-hidden
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: chosenSubjectColor.bg }}
+                />
+              )}
+              <span className="text-sm font-semibold">
+                {chosenSubject?.nom ?? destination.newSubjectNom}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDestination({});
+                  setCreatingSubject(false);
+                  setNewSubjectDraft("");
+                }}
+                className="text-xs text-text-muted hover:text-accent"
+              >
+                changer
+              </button>
+            </div>
           ) : (
             <>
               {subjects.length > 0 && (
@@ -428,7 +455,7 @@ export function AssignFlow({
                         key={s.id}
                         type="button"
                         onClick={() => chooseExistingSubject(s.id)}
-                        className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform active:scale-[0.97]"
+                        className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform hover:-translate-y-0.5 active:scale-[0.97]"
                         style={{ backgroundColor: color.bg, borderColor: color.border, color: color.text }}
                       >
                         {s.nom}
@@ -439,21 +466,22 @@ export function AssignFlow({
               )}
 
               {creatingSubject ? (
-                <Input
-                  autoFocus
-                  placeholder="Nom de la matière"
-                  value={newSubjectDraft}
-                  onChange={(e) => setNewSubjectDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    placeholder="Nom de la matière"
+                    value={newSubjectDraft}
+                    onChange={(e) => setNewSubjectDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
+                    Valider
+                  </Button>
+                </div>
               ) : (
                 <Button variant="outline" size="sm" className="self-start" onClick={() => setCreatingSubject(true)}>
                   + Nouvelle
-                </Button>
-              )}
-              {creatingSubject && (
-                <Button size="sm" className="self-start" onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
-                  Valider
                 </Button>
               )}
             </>
@@ -461,8 +489,10 @@ export function AssignFlow({
         </div>
 
         {hasSubject && (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-text-muted">Chapitre</p>
+          <div className="flex flex-col gap-3 border-t border-border pt-7">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+              Chapitre
+            </p>
 
             {chapterOptions.length > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -471,7 +501,7 @@ export function AssignFlow({
                     key={c.id}
                     type="button"
                     onClick={() => chooseExistingChapter(c.id)}
-                    className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all active:scale-[0.97] ${
+                    className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.97] ${
                       destination.chapterId === c.id
                         ? "border-accent bg-accent text-[#191A2E]"
                         : "border-border bg-bg-elevated text-text hover:border-accent"
@@ -484,13 +514,19 @@ export function AssignFlow({
             )}
 
             {creatingChapter ? (
-              <Input
-                autoFocus
-                placeholder="Nom du chapitre"
-                value={newChapterDraft}
-                onChange={(e) => setNewChapterDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && confirmNewChapter()}
-              />
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  placeholder="Nom du chapitre"
+                  value={newChapterDraft}
+                  onChange={(e) => setNewChapterDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmNewChapter()}
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
+                  Valider
+                </Button>
+              </div>
             ) : (
               <Button
                 variant={destination.newChapterNom ? "primary" : "outline"}
@@ -499,11 +535,6 @@ export function AssignFlow({
                 onClick={() => setCreatingChapter(true)}
               >
                 {destination.newChapterNom ? `Nouveau : ${destination.newChapterNom}` : "+ Nouveau"}
-              </Button>
-            )}
-            {creatingChapter && (
-              <Button size="sm" className="self-start" onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
-                Valider
               </Button>
             )}
           </div>

@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
@@ -258,21 +259,31 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             </div>
           ))}
 
-          <div className="mx-auto flex w-full max-w-xl gap-3">
-            <Button variant="secondary" onClick={() => setStep("sources")} disabled={subscribing}>
-              Retour
-            </Button>
-            {isSubscribed ? (
-              <Button className="flex-1" onClick={handleContinue} disabled={step === "preparing"}>
-                {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
-              </Button>
-            ) : (
-              <Button className="flex-1" onClick={handleSubscribeFromOffer} disabled={subscribing}>
-                {subscribing ? "Redirection…" : "Débloquer — 9,99 €/mois"}
-              </Button>
-            )}
+          <div className="mx-auto w-full max-w-xl">
+            <button
+              type="button"
+              onClick={() => setStep("sources")}
+              disabled={subscribing}
+              className="text-sm text-text-muted hover:text-accent disabled:opacity-50"
+            >
+              ← Retour
+            </button>
           </div>
         </div>
+      )}
+
+      {isReviewing && (
+        <FloatingBottomBar>
+          {isSubscribed ? (
+            <Button className="w-full" onClick={handleContinue} disabled={step === "preparing"}>
+              {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
+            </Button>
+          ) : (
+            <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
+              {subscribing ? "Redirection…" : "Débloquer — 9,99 €/mois"}
+            </Button>
+          )}
+        </FloatingBottomBar>
       )}
     </div>
   );
