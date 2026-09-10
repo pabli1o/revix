@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { assignSubjectColors, getSubjectColor } from "@/lib/theme/subject-colors";
+import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function QuizIndexPage() {
   const supabase = await createClient();
@@ -55,11 +59,29 @@ export default async function QuizIndexPage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-heading text-3xl font-semibold">Quiz</h1>
-      <TileGrid
-        items={items}
-        emptyMessage="Aucun chapitre avec des fiches pour l'instant. Crée d'abord une fiche pour pouvoir te tester dessus."
-      />
+      <AppHeader />
+      {items.length === 0 ? (
+        <Card>
+          <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+            Se tester
+          </p>
+          <p className="mb-4 text-text-muted">
+            Choisis une matière puis un chapitre : une dizaine de questions sont préparées à partir
+            du contenu exact de tes fiches.
+          </p>
+          <EmptyState className="mb-4">
+            Crée d&apos;abord une fiche pour pouvoir te tester dessus.
+          </EmptyState>
+          <Button className="w-full" disabled>
+            Générer le quiz
+          </Button>
+        </Card>
+      ) : (
+        <TileGrid
+          items={items}
+          emptyMessage="Aucun chapitre avec des fiches pour l'instant. Crée d'abord une fiche pour pouvoir te tester dessus."
+        />
+      )}
     </div>
   );
 }

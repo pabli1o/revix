@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Importance } from "@/lib/supabase/database.types";
 
 export interface ExamView {
@@ -40,7 +41,7 @@ export function ExamList({ exams }: { exams: ExamView[] }) {
   }
 
   if (exams.length === 0) {
-    return <p className="text-text-muted">Aucun examen programmé pour l&apos;instant.</p>;
+    return <EmptyState>Aucun examen ajouté pour l&apos;instant.</EmptyState>;
   }
 
   return (

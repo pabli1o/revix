@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
+import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
 
@@ -34,20 +35,29 @@ export default async function FichesPage() {
     };
   });
 
+  const isEmpty = items.length === 0;
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-heading text-3xl font-semibold">Mes matières</h1>
-        <Link href="/fiches/new">
-          <Button>+ Nouvelle fiche</Button>
-        </Link>
-      </div>
+      <AppHeader />
+      {!isEmpty && (
+        <div className="mb-6 flex items-center justify-end">
+          <Link href="/fiches/new">
+            <Button>+ Nouvelle fiche</Button>
+          </Link>
+        </div>
+      )}
       <TileGrid
         items={items}
-        emptyMessage="Aucune matière pour l'instant. Crée ta première fiche pour commencer !"
+        emptyMessage="Aucune fiche pour l'instant. Appuie sur « + Créer une fiche » pour commencer."
         allowDelete
         deleteWarning="Supprimer la matière « {nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille)."
       />
+      {isEmpty && (
+        <Link href="/fiches/new" className="mt-6 block">
+          <Button className="w-full">+ Créer une fiche</Button>
+        </Link>
+      )}
     </div>
   );
 }

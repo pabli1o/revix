@@ -5,38 +5,59 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DurationSelector } from "@/components/ui/duration-selector";
-import { DaysPerWeekSelector } from "@/components/ui/days-per-week-selector";
+import { Select } from "@/components/ui/select";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const TUTORIAL_SLIDES = [
   {
     emoji: "📝",
-    title: "Crée une fiche",
-    text: "Dépose tes notes, photos de cours ou PDF : Revix génère une fiche de révision claire et structurée.",
+    title: "Crée une fiche à partir de tes cours",
+    text: "Ajoute une photo, un texte ou un fichier de ton cours : une fiche de révision structurée est préparée pour toi.",
+    button: "Suivant",
   },
   {
-    emoji: "🗓️",
-    title: "Planning généré",
-    text: "Ajoute tes examens, Revix te construit un planning de révision selon ton rythme.",
+    emoji: "📅",
+    title: "On te génère ton planning",
+    text: "Ajoute la date de tes examens : tes séances de révision sont réparties automatiquement jusqu'au jour J.",
+    button: "Suivant",
   },
   {
-    emoji: "🎯",
+    emoji: "🧠",
     title: "Teste-toi avec un quiz",
-    text: "Chaque chapitre a son quiz, prêt en quelques secondes, pour vérifier ce que tu maîtrises.",
+    text: "Une fois tes fiches prêtes, des questions sont préparées à partir de leur contenu pour vérifier ce que tu as retenu.",
+    button: "C'est parti",
   },
 ];
 
-const COLLEGE_NIVEAUX = ["6e", "5e", "4e", "3e"];
-const LYCEE_NIVEAUX = ["2nde", "1ère", "Terminale"];
+const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
 
-const CYCLE_OPTIONS: { value: ClasseCycle; label: string }[] = [
-  { value: "college", label: "Collège" },
-  { value: "lycee", label: "Lycée" },
-  { value: "superieur", label: "Supérieur" },
+// Fixed outline color per choice, per the validated design spec — not the
+// per-matière palette used elsewhere in the app (assignSubjectColors).
+const OUTLINE_BLUE = "#5B8DEF";
+const OUTLINE_GREEN = "#6FA88B";
+const OUTLINE_VIOLET = "#8B7FE8";
+const OUTLINE_ORANGE = "#E8664D";
+
+const CYCLE_OPTIONS: { value: ClasseCycle; label: string; color: string }[] = [
+  { value: "college", label: "Collège", color: OUTLINE_BLUE },
+  { value: "lycee", label: "Lycée", color: OUTLINE_GREEN },
+  { value: "superieur", label: "Supérieur", color: OUTLINE_VIOLET },
 ];
 
-type Step = "tutorial" | "prenom" | "classe" | "rythme";
+const COLLEGE_NIVEAUX = [
+  { value: "6e", color: OUTLINE_BLUE },
+  { value: "5e", color: OUTLINE_GREEN },
+  { value: "4e", color: OUTLINE_ORANGE },
+  { value: "3e", color: OUTLINE_VIOLET },
+];
+const LYCEE_NIVEAUX = [
+  { value: "Seconde", color: OUTLINE_BLUE },
+  { value: "Première", color: OUTLINE_ORANGE },
+  { value: "Terminale", color: OUTLINE_GREEN },
+];
+
+type Step = "tutorial" | "classe" | "niveau" | "prenom" | "rythme";
 
 export function OnboardingWizard() {
   const router = useRouter();
@@ -47,8 +68,8 @@ export function OnboardingWizard() {
   const [cycle, setCycle] = useState<ClasseCycle | null>(null);
   const [niveau, setNiveau] = useState("");
   const [superieurText, setSuperieurText] = useState("");
-  const [joursSemaine, setJoursSemaine] = useState(4);
-  const [minutesJour, setMinutesJour] = useState(30);
+  const [joursSemaine, setJoursSemaine] = useState(3);
+  const [minutesJour, setMinutesJour] = useState(45);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +78,20 @@ export function OnboardingWizard() {
     if (tutorialIndex < TUTORIAL_SLIDES.length - 1) {
       setTutorialIndex(tutorialIndex + 1);
     } else {
-      setStep("prenom");
+      setStep("classe");
     }
+  }
+
+  function chooseCycle(value: ClasseCycle) {
+    setCycle(value);
+    setNiveau("");
+    setSuperieurText("");
+    setStep("niveau");
+  }
+
+  function chooseNiveau(value: string) {
+    setNiveau(value);
+    setStep("prenom");
   }
 
   async function handleFinish() {
@@ -89,8 +122,8 @@ export function OnboardingWizard() {
     router.refresh();
   }
 
-  const canGoClasse = prenom.trim().length > 0;
-  const canGoRythme = cycle !== null && (cycle !== "superieur" ? niveau.length > 0 : superieurText.trim().length > 0);
+  const canGoPrenom = cycle !== "superieur" || superieurText.trim().length > 0;
+  const canFinish = prenom.trim().length > 0;
 
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4 py-10">
@@ -114,30 +147,7 @@ export function OnboardingWizard() {
               ))}
             </div>
             <Button onClick={nextTutorial} className="mt-8 w-full">
-              {tutorialIndex < TUTORIAL_SLIDES.length - 1 ? "Suivant" : "Commencer"}
-            </Button>
-          </div>
-        )}
-
-        {step === "prenom" && (
-          <div>
-            <h1 className="font-heading text-2xl font-semibold">Comment on t&apos;appelle ?</h1>
-            <p className="mt-2 text-sm text-text-muted">
-              On l&apos;utilisera pour personnaliser tes messages de bienvenue.
-            </p>
-            <Input
-              autoFocus
-              className="mt-6"
-              placeholder="Ton prénom ou surnom"
-              value={prenom}
-              onChange={(e) => setPrenom(e.target.value)}
-            />
-            <Button
-              className="mt-6 w-full"
-              disabled={!canGoClasse}
-              onClick={() => setStep("classe")}
-            >
-              Continuer
+              {TUTORIAL_SLIDES[tutorialIndex].button}
             </Button>
           </div>
         )}
@@ -145,78 +155,85 @@ export function OnboardingWizard() {
         {step === "classe" && (
           <div>
             <h1 className="font-heading text-2xl font-semibold">Tu es en quelle classe ?</h1>
+            <p className="mt-1 text-sm text-text-muted">Pour adapter un peu l&apos;expérience.</p>
 
-            {cycle === null ? (
-              <div className="mt-6 flex flex-col gap-2">
-                {CYCLE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setCycle(opt.value)}
-                    className="rounded-lg border border-border bg-bg-elevated px-4 py-3 text-left text-sm font-medium text-text transition-all duration-150 hover:border-accent active:scale-[0.97] active:bg-bg-card"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              {CYCLE_OPTIONS.map((opt, i, arr) => (
+                <OutlineChoice
+                  key={opt.value}
+                  label={opt.label}
+                  color={opt.color}
+                  className={i === arr.length - 1 && arr.length % 2 === 1 ? "col-span-2" : undefined}
+                  onClick={() => chooseCycle(opt.value)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === "niveau" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("classe")}
+              className="mb-4 rounded-full border border-border px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← Retour
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">Quel niveau ?</h1>
+
+            {cycle === "superieur" ? (
+              <div className="mt-6">
+                <Input
+                  autoFocus
+                  placeholder="Ex : Licence 2 Économie, BTS, prépa…"
+                  value={superieurText}
+                  onChange={(e) => setSuperieurText(e.target.value)}
+                />
+                <Button
+                  className="mt-6 w-full"
+                  disabled={!canGoPrenom}
+                  onClick={() => setStep("prenom")}
+                >
+                  Continuer
+                </Button>
               </div>
             ) : (
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCycle(null);
-                    setNiveau("");
-                    setSuperieurText("");
-                  }}
-                  className="text-sm text-text-muted underline-offset-2 hover:text-accent hover:underline"
-                >
-                  ← Changer ({CYCLE_OPTIONS.find((o) => o.value === cycle)?.label})
-                </button>
-
-                <div className="mt-4">
-                  {cycle === "college" && (
-                    <TileGroup
-                      label="Collège"
-                      options={COLLEGE_NIVEAUX}
-                      active={niveau}
-                      onSelect={setNiveau}
-                    />
-                  )}
-                  {cycle === "lycee" && (
-                    <TileGroup
-                      label="Lycée"
-                      options={LYCEE_NIVEAUX}
-                      active={niveau}
-                      onSelect={setNiveau}
-                    />
-                  )}
-                  {cycle === "superieur" && (
-                    <div>
-                      <p className="mb-2 text-sm font-medium text-text-muted">Supérieur</p>
-                      <Input
-                        autoFocus
-                        placeholder="Ex : Licence 2 Économie, BTS, prépa…"
-                        value={superieurText}
-                        onChange={(e) => setSuperieurText(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {(cycle === "college" ? COLLEGE_NIVEAUX : LYCEE_NIVEAUX).map((opt, i, arr) => (
+                  <OutlineChoice
+                    key={opt.value}
+                    label={opt.value}
+                    color={opt.color}
+                    className={i === arr.length - 1 && arr.length % 2 === 1 ? "col-span-2" : undefined}
+                    onClick={() => chooseNiveau(opt.value)}
+                  />
+                ))}
               </div>
             )}
+          </div>
+        )}
 
-            <div className="mt-6 flex gap-3">
-              <Button variant="secondary" onClick={() => setStep("prenom")}>
-                Retour
-              </Button>
-              <Button
-                className="flex-1"
-                disabled={!canGoRythme}
-                onClick={() => setStep("rythme")}
-              >
-                Continuer
-              </Button>
-            </div>
+        {step === "prenom" && (
+          <div>
+            <h1 className="font-heading text-2xl font-semibold">Comment on t&apos;appelle ?</h1>
+            <p className="mt-2 text-sm text-text-muted">
+              Ton prénom ou un pseudo, comme tu préfères.
+            </p>
+            <Input
+              autoFocus
+              className="mt-6 bg-[#2A2B52]"
+              placeholder="Ex : Léa, ou un pseudo…"
+              value={prenom}
+              onChange={(e) => setPrenom(e.target.value)}
+            />
+            <Button
+              className="mt-6 w-full"
+              disabled={!canFinish}
+              onClick={() => setStep("rythme")}
+            >
+              Continuer
+            </Button>
           </div>
         )}
 
@@ -224,27 +241,44 @@ export function OnboardingWizard() {
           <div>
             <h1 className="font-heading text-2xl font-semibold">Ton rythme de révision</h1>
             <p className="mt-2 text-sm text-text-muted">
-              Ça pré-remplira les réglages de ton planning (modifiables plus tard).
+              Ça sert à construire ton planning plus tard — modifiable à tout moment.
             </p>
             <div className="mt-6 flex flex-col gap-5">
               <div>
-                <label className="text-sm font-medium">Jours de révision par semaine</label>
-                <DaysPerWeekSelector value={joursSemaine} onChange={setJoursSemaine} className="mt-2" />
+                <label className="text-sm font-medium">
+                  Combien de jours par semaine peux-tu réviser ?
+                </label>
+                <Select
+                  className="mt-2"
+                  value={joursSemaine}
+                  onChange={(e) => setJoursSemaine(Number(e.target.value))}
+                >
+                  {DAYS_OPTIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {d} jour{d > 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Minutes par jour</label>
-                <DurationSelector value={minutesJour} onChange={setMinutesJour} className="mt-2" />
+                <label className="text-sm font-medium">Combien de temps par jour de travail ?</label>
+                <Select
+                  className="mt-2"
+                  value={minutesJour}
+                  onChange={(e) => setMinutesJour(Number(e.target.value))}
+                >
+                  {MINUTES_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m} min
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-            <div className="mt-6 flex gap-3">
-              <Button variant="secondary" onClick={() => setStep("classe")}>
-                Retour
-              </Button>
-              <Button className="flex-1" onClick={handleFinish} disabled={submitting}>
-                {submitting ? "Un instant…" : "C'est parti !"}
-              </Button>
-            </div>
+            <Button className="mt-6 w-full" onClick={handleFinish} disabled={submitting}>
+              {submitting ? "Un instant…" : "Terminer"}
+            </Button>
           </div>
         )}
       </div>
@@ -252,37 +286,28 @@ export function OnboardingWizard() {
   );
 }
 
-function TileGroup({
+function OutlineChoice({
   label,
-  options,
-  active,
-  onSelect,
+  color,
+  onClick,
+  className,
 }: {
   label: string;
-  options: string[];
-  active: string | null;
-  onSelect: (value: string) => void;
+  color: string;
+  onClick: () => void;
+  className?: string;
 }) {
   return (
-    <div>
-      <p className="mb-2 text-sm font-medium text-text-muted">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onSelect(opt)}
-            className={clsx(
-              "rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.94]",
-              active === opt
-                ? "border-accent bg-accent text-[#191A2E]"
-                : "border-border bg-bg-elevated text-text hover:border-accent active:bg-bg-card",
-            )}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ borderColor: color, color }}
+      className={clsx(
+        "rounded-xl border-2 bg-transparent px-4 py-4 text-center text-sm font-semibold transition-all duration-150 hover:bg-white/5 active:scale-[0.96]",
+        className,
+      )}
+    >
+      {label}
+    </button>
   );
 }

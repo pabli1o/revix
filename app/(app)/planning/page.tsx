@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { assignSubjectColors, SUBJECT_PALETTE } from "@/lib/theme/subject-colors";
+import { AppHeader } from "@/components/layout/app-header";
 import { PlanningView, type DayTasks } from "@/components/planning/planning-view";
-import type { ExamView } from "@/components/planning/exam-list";
 import type { PlanningTaskView } from "@/components/planning/task-row";
 
 const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -17,23 +17,9 @@ export default async function PlanningPage() {
   } = await supabase.auth.getUser();
   const userId = user!.id;
 
-  const [
-    { data: profile },
-    { data: subjects },
-    { data: chapters },
-    { data: exams },
-    { data: examChapters },
-    { data: fiches },
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("revision_jours_semaine, revision_minutes_jour")
-      .eq("id", userId)
-      .single(),
+  const [{ data: subjects }, { data: chapters }, { data: fiches }] = await Promise.all([
     supabase.from("subjects").select("id, nom").eq("user_id", userId).order("nom"),
     supabase.from("chapters").select("id, nom, subject_id").eq("user_id", userId).order("nom"),
-    supabase.from("exams").select("id, nom, date, importance").eq("user_id", userId).order("date"),
-    supabase.from("exam_chapters").select("exam_id, chapter_id"),
     supabase.from("fiches").select("id, chapter_id").eq("user_id", userId).is("deleted_at", null),
   ]);
 
@@ -46,21 +32,6 @@ export default async function PlanningPage() {
     if (!ficheIdsByChapter.has(f.chapter_id)) ficheIdsByChapter.set(f.chapter_id, []);
     ficheIdsByChapter.get(f.chapter_id)!.push(f.id);
   }
-
-  const chapterNamesByExam = new Map<string, string[]>();
-  for (const ec of examChapters ?? []) {
-    if (!chapterNamesByExam.has(ec.exam_id)) chapterNamesByExam.set(ec.exam_id, []);
-    const chapterNom = chapterById.get(ec.chapter_id)?.nom;
-    if (chapterNom) chapterNamesByExam.get(ec.exam_id)!.push(chapterNom);
-  }
-
-  const examViews: ExamView[] = (exams ?? []).map((e) => ({
-    id: e.id,
-    nom: e.nom,
-    date: e.date,
-    importance: e.importance,
-    chaptersLabel: (chapterNamesByExam.get(e.id) ?? []).join(", ") || "Aucun chapitre",
-  }));
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: tasks } = await supabase
@@ -111,16 +82,8 @@ export default async function PlanningPage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-heading text-3xl font-semibold">Planning</h1>
-      <PlanningView
-        exams={examViews}
-        subjects={subjects ?? []}
-        chapters={chapters ?? []}
-        days={days}
-        revisionJoursSemaine={profile?.revision_jours_semaine ?? 4}
-        revisionMinutesJour={profile?.revision_minutes_jour ?? 30}
-        hasAnyTasks={days.length > 0}
-      />
+      <AppHeader />
+      <PlanningView days={days} hasAnyTasks={days.length > 0} />
     </div>
   );
 }

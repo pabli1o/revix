@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
@@ -13,6 +13,11 @@ const VARIANT_CLASSES: Record<Variant, string> = {
     "bg-transparent text-text-muted hover:text-text hover:bg-bg-card active:bg-bg-elevated active:scale-[0.96]",
   danger:
     "bg-danger/90 text-white hover:bg-danger active:bg-danger active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
+  /** Just a colored outline, no fill — used for secondary calls to action
+   * that shouldn't compete visually with the main ambre "primary" button
+   * (e.g. "+ Ajouter un examen"). */
+  outline:
+    "bg-transparent border-2 border-accent text-accent hover:bg-accent/10 active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
 };
 
 const SIZE_CLASSES: Record<Size, string> = {

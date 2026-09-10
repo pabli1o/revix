@@ -6,9 +6,9 @@ import clsx from "clsx";
 
 const LINKS = [
   { href: "/fiches", label: "Fiches" },
+  { href: "/examen", label: "Examen" },
   { href: "/planning", label: "Planning" },
   { href: "/quiz", label: "Quiz" },
-  { href: "/corbeille", label: "Corbeille" },
 ];
 
 export function NavLinks({ compact = false }: { compact?: boolean }) {
@@ -17,7 +17,7 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
   return (
     <nav
       className={clsx(
-        compact ? "flex items-center gap-3 overflow-x-auto" : "flex flex-col gap-1",
+        compact ? "flex items-center gap-2 overflow-x-auto" : "flex flex-col gap-1",
       )}
     >
       {LINKS.map((link) => {
@@ -27,9 +27,9 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
             key={link.href}
             href={link.href}
             className={clsx(
-              "rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+              "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
               active
-                ? "bg-accent text-[#191A2E]"
+                ? "bg-accent font-bold text-[#191A2E]"
                 : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >

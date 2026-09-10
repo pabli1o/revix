@@ -5,7 +5,7 @@ import { useCanGoBack } from "@/components/navigation/navigation-history-provide
 
 // Root screens reachable directly from the sidebar nav — the user didn't
 // "arrive from elsewhere" to land there, so no back button on these.
-const TOP_LEVEL_PATHS = new Set(["/fiches", "/planning", "/quiz", "/corbeille", "/abonnement"]);
+const TOP_LEVEL_PATHS = new Set(["/fiches", "/examen", "/planning", "/quiz", "/corbeille", "/abonnement"]);
 
 /**
  * Small floating "✕" button, present on every screen reached by navigating

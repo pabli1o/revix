@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export interface TileItem {
   id: string;
@@ -38,7 +39,7 @@ export function TileGrid({
   deleteWarning?: string;
 }) {
   if (items.length === 0) {
-    return <p className="text-text-muted">{emptyMessage}</p>;
+    return <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { SettingsLink } from "@/components/layout/settings-link";
+import { CorbeilleLink } from "@/components/layout/corbeille-link";
 import { FloatingBackButton } from "@/components/layout/floating-back-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -33,7 +34,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <Link href="/fiches" className="font-heading text-xl font-semibold text-accent">
             Revix
           </Link>
-          <SettingsLink />
+          <div className="flex items-center gap-1">
+            <CorbeilleLink />
+            <SettingsLink />
+          </div>
         </div>
         <div className="hidden md:block">
           <NavLinks />
