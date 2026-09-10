@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors, SUBJECT_PALETTE } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
 import { PlanningView, type DayTasks } from "@/components/planning/planning-view";
@@ -12,9 +13,7 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 
 export default async function PlanningPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   const userId = user!.id;
 
   const [{ data: subjects }, { data: chapters }, { data: fiches }] = await Promise.all([

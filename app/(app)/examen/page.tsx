@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { AppHeader } from "@/components/layout/app-header";
 import { ExamenView } from "@/components/examen/examen-view";
 import type { ExamView } from "@/components/planning/exam-list";
 
 export default async function ExamenPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   const userId = user!.id;
 
   const [{ data: profile }, { data: subjects }, { data: chapters }, { data: exams }, { data: examChapters }] =

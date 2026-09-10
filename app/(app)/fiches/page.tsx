@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
@@ -7,9 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export default async function FichesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [{ data: subjects }, { data: chapters }] = await Promise.all([
     supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),

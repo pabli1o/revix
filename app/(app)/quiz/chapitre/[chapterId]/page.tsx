@@ -1,13 +1,12 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { QuizFlow } from "@/components/quiz/quiz-flow";
 
 export default async function QuizPage(props: PageProps<"/quiz/chapitre/[chapterId]">) {
   const { chapterId } = await props.params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const { data: chapter } = await supabase
     .from("chapters")

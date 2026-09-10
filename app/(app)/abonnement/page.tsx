@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { Card } from "@/components/ui/card";
 import { SubscribeButton, ManageSubscriptionButton } from "@/components/abonnement/subscribe-actions";
@@ -13,9 +14,7 @@ const FEATURES = [
 
 export default async function AbonnementPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [subscription, { data: profile }] = await Promise.all([
     getSubscriptionInfo(user!.id),

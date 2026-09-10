@@ -83,8 +83,9 @@ h1, h2, h3, h4 {
   height: 8px;
 }
 
-/* Loading animation: 3 little index cards swaying, used while a fiche is
-   being generated (see components/fiches/new/fiche-loader.tsx). */
+/* The single loading animation used everywhere in the app: 3 little index
+   cards swaying (see components/ui/fiche-loader.tsx) — fiche generation,
+   quiz generation, and every route-level loading.tsx transition. */
 @keyframes fiche-sway {
   0%,
   100% {
@@ -100,32 +101,6 @@ h1, h2, h3, h4 {
   animation-delay: var(--fiche-delay, 0s);
 }
 
-/* Loading animation: a card flipping in place with a "?" on it, its fill
-   alternating between success-green and transparent — used while a quiz
-   is being prepared (see components/quiz/quiz-loader.tsx). */
-@keyframes quiz-card-flip {
-  0%,
-  100% {
-    transform: rotateY(0deg);
-  }
-  50% {
-    transform: rotateY(180deg);
-  }
-}
-
-@keyframes quiz-card-fill {
-  0%,
-  100% {
-    background-color: transparent;
-  }
-  50% {
-    background-color: var(--color-success);
-  }
-}
-
-.quiz-loader-card {
-  animation: quiz-card-flip 1.6s ease-in-out infinite, quiz-card-fill 1.6s ease-in-out infinite;
-}
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 9999px;

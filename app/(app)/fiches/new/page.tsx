@@ -1,12 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { CreationFlow } from "@/components/fiches/new/creation-flow";
 
 export default async function NewFichePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const subscription = await getSubscriptionInfo(user!.id);
 

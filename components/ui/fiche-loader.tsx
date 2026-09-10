@@ -1,4 +1,6 @@
-/** Three little index cards swaying while a fiche is being generated. */
+/** The single loading animation used everywhere in the app (fiche
+ * generation, quiz generation, route transitions…): three little index
+ * cards swaying gently, no accompanying text. */
 export function FicheLoader() {
   const cards = [
     { tilt: -8, delay: "0s" },

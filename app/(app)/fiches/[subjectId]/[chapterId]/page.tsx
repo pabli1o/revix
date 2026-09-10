@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month:
 export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/[chapterId]">) {
   const { subjectId, chapterId } = await props.params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [{ data: subject }, { data: chapter }, { data: allSubjects }, { data: fiches }] =
     await Promise.all([

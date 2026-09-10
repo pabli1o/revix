@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { AssignFlow } from "@/components/fiches/new/assign-flow";
 
@@ -8,9 +9,7 @@ export default async function AssignFichePage(props: PageProps<"/fiches/new/assi
   const checkout = typeof searchParams.checkout === "string" ? searchParams.checkout : undefined;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [{ data: subjects }, { data: chapters }, subscription] = await Promise.all([
     supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),

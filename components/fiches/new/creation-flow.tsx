@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
-import { FicheLoader } from "./fiche-loader";
+import { FicheLoader } from "@/components/ui/fiche-loader";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
 
@@ -216,13 +216,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
       {step === "generating" && (
         <Card>
-          <div className="flex flex-col items-center gap-5 py-16 text-center">
+          <div className="flex items-center justify-center py-16">
             <FicheLoader />
-            <p className="font-heading text-lg font-semibold">Génération de ta fiche…</p>
-            <p className="max-w-sm text-sm text-text-muted">
-              Lecture de tes sources et rédaction du plan — ça prend en général quelques
-              dizaines de secondes.
-            </p>
           </div>
         </Card>
       )}

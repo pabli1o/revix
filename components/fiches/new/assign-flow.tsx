@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
-import { FicheLoader } from "./fiche-loader";
+import { FicheLoader } from "@/components/ui/fiche-loader";
 import { ProposalPreview } from "./proposal-preview";
 import type { FicheDraftResponse, SaveFichesResponse } from "@/lib/fiches/types";
 
@@ -325,11 +325,8 @@ export function AssignFlow({
   ) {
     return (
       <Card className="mx-auto max-w-md">
-        <div className="flex flex-col items-center gap-5 py-12 text-center">
+        <div className="flex items-center justify-center py-12">
           <FicheLoader />
-          <p className="font-heading text-lg font-semibold">
-            {phase === "loading-draft" ? "Récupération de ta fiche…" : "Finalisation de ton abonnement…"}
-          </p>
         </div>
       </Card>
     );

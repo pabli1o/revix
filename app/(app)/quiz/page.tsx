@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
@@ -8,9 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function QuizIndexPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [{ data: subjects }, { data: chapters }, { data: fiches }] = await Promise.all([
     supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),

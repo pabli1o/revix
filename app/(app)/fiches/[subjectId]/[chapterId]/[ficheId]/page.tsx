@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { FicheViewer } from "@/components/fiches/fiche-viewer";
@@ -9,9 +10,7 @@ export default async function FichePage(
 ) {
   const { subjectId, chapterId, ficheId } = await props.params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const [{ data: subject }, { data: fiche }, { data: allSubjects }, subscription] =
     await Promise.all([

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
-import { QuizLoader } from "./quiz-loader";
+import { FicheLoader } from "@/components/ui/fiche-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 
 const DIFFICULTIES: { value: QuizDifficulty; label: string; emoji: string }[] = [
@@ -122,9 +122,8 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
 
   if (phase === "loading") {
     return (
-      <div className="flex flex-col items-center gap-5 py-20 text-center">
-        <QuizLoader />
-        <p className="font-heading text-lg font-semibold">Préparation du quiz…</p>
+      <div className="flex items-center justify-center py-20">
+        <FicheLoader />
       </div>
     );
   }

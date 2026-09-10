@@ -1,11 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/auth";
 import { TrashList, type TrashedFiche } from "@/components/corbeille/trash-list";
 
 export default async function CorbeillePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   const { data: fiches } = await supabase
     .from("fiches")
