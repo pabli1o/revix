@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
+import { getProfile } from "@/lib/supabase/profile";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { SettingsLink } from "@/components/layout/settings-link";
@@ -9,18 +9,15 @@ import { CorbeilleLink } from "@/components/layout/corbeille-link";
 import { FloatingBackButton } from "@/components/layout/floating-back-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const supabase = await createClient();
   const user = await getAuthedUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("prenom, onboarding_completed")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Shared with <AppHeader /> via React's cache() — same request, same
+  // underlying query fires only once regardless of how many places read it.
+  const profile = await getProfile();
 
   if (!profile?.onboarding_completed) {
     redirect("/onboarding");
@@ -46,7 +43,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
         <div className="hidden md:mt-auto md:block">
           <p className="mb-2 truncate text-sm text-text-muted">
-            {profile.prenom ? `Salut, ${profile.prenom} !` : ""}
+            {profile.prenom ? `Salut ${profile.prenom} 👋` : ""}
           </p>
           <SignOutButton />
         </div>
