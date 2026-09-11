@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
-import { assignSubjectColors } from "@/lib/theme/subject-colors";
+import { assignSubjectColors, INK_ON_PALE } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 
 export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]">) {
@@ -50,13 +50,34 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
 
   return (
     <div>
-      <p className="mb-1 text-sm text-text-muted">
+      <p className="mb-6 text-sm text-text-muted">
         <Link href="/fiches" className="hover:text-accent">
           Mes matières
-        </Link>{" "}
-        / {subject.nom}
+        </Link>
+        <span className="mx-1.5">/</span>
+        <span className="text-text">{subject.nom}</span>
       </p>
-      <h1 className="mb-6 font-heading text-3xl font-semibold">{subject.nom}</h1>
+
+      <div className="mb-8 flex items-center gap-4">
+        <div
+          aria-hidden
+          className="flex size-14 shrink-0 items-center justify-center rounded-2xl border-2 font-heading text-2xl font-semibold"
+          style={{ backgroundColor: color.pale, borderColor: color.border, color: INK_ON_PALE }}
+        >
+          {subject.nom.slice(0, 2)}
+        </div>
+        <div>
+          <h1 className="font-heading text-3xl font-semibold">{subject.nom}</h1>
+          <p className="text-sm text-text-muted">
+            {items.length} chapitre{items.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      {items.length > 0 && (
+        <p className="mb-6 text-sm text-text-muted">📖 Clique sur un chapitre pour voir ses fiches.</p>
+      )}
+
       <TileGrid
         items={items}
         emptyMessage="Aucun chapitre pour cette matière pour l'instant."

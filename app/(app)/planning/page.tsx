@@ -16,10 +16,24 @@ export default async function PlanningPage() {
   const user = await getAuthedUser();
   const userId = user!.id;
 
-  const [{ data: subjects }, { data: chapters }, { data: fiches }] = await Promise.all([
+  // `tasks` doesn't actually depend on subjects/chapters/fiches (only the
+  // per-task rendering below does, to enrich each row with names/hrefs) —
+  // it was previously fetched in its own separate `await` after this
+  // Promise.all for readability, but that meant a whole extra sequential
+  // network round trip to Supabase on every visit to this page for no
+  // reason. Folded into the same batch.
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: subjects }, { data: chapters }, { data: fiches }, { data: tasks }] = await Promise.all([
     supabase.from("subjects").select("id, nom").eq("user_id", userId).order("nom"),
     supabase.from("chapters").select("id, nom, subject_id").eq("user_id", userId).order("nom"),
     supabase.from("fiches").select("id, chapter_id").eq("user_id", userId).is("deleted_at", null),
+    supabase
+      .from("planning_tasks")
+      .select("id, chapter_id, date, type, parties, duree_minutes, completed")
+      .eq("user_id", userId)
+      .gte("date", today)
+      .order("date")
+      .limit(200),
   ]);
 
   const subjectById = new Map((subjects ?? []).map((s) => [s.id, s]));
@@ -31,15 +45,6 @@ export default async function PlanningPage() {
     if (!ficheIdsByChapter.has(f.chapter_id)) ficheIdsByChapter.set(f.chapter_id, []);
     ficheIdsByChapter.get(f.chapter_id)!.push(f.id);
   }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: tasks } = await supabase
-    .from("planning_tasks")
-    .select("id, chapter_id, date, type, parties, duree_minutes, completed")
-    .eq("user_id", userId)
-    .gte("date", today)
-    .order("date")
-    .limit(200);
 
   const byDate = new Map<string, PlanningTaskView[]>();
   for (const t of tasks ?? []) {

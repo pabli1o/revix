@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
@@ -54,6 +55,24 @@ export default async function AbonnementPage() {
               <p className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
                 Abonnement actif ✅
               </p>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-sm">
+                  <span className="text-text-muted">Fiches enregistrées ce mois-ci</span>
+                  <span className={clsx("font-mono font-semibold", capReached && "text-accent")}>
+                    {subscription.fichesGeneratedPeriod} / {subscription.monthlyCap}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-bg-elevated">
+                  <div
+                    className={clsx("h-full rounded-full", capReached ? "bg-accent" : "bg-success")}
+                    style={{
+                      width: `${Math.min((subscription.fichesGeneratedPeriod / subscription.monthlyCap) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
               {capReached && (
                 <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
                   Tu as atteint la limite de {subscription.monthlyCap} fiches enregistrées ce
