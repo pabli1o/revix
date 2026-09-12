@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
 /**
  * Global, app-wide lock serializing every call made to the Anthropic API.
@@ -59,23 +60,36 @@ function sleep(ms: number): Promise<void> {
  * répondre") instead of the clean AiLockTimeoutError message below. 30s
  * still leaves headroom in the 60s budget for the actual Claude call
  * (including retries) once the lock is acquired.
+ *
+ * `label` is purely for the timing logs below — see
+ * lib/observability/timing.ts and lib/anthropic/client.ts, which tags
+ * every call with a per-generation id so lock-wait time and Claude-call
+ * time show up under the same searchable tag in Vercel's function logs.
  */
-export async function withAiLock<T>(fn: () => Promise<T>, maxWaitMs = 30_000): Promise<T> {
+export async function withAiLock<T>(
+  fn: () => Promise<T>,
+  { label = "ai-lock", maxWaitMs = 30_000 }: { label?: string; maxWaitMs?: number } = {},
+): Promise<T> {
   const holder = randomUUID();
+  const waitStarted = startTimer();
   const deadline = Date.now() + maxWaitMs;
 
   let acquired = await tryAcquire(holder);
   while (!acquired) {
     if (Date.now() > deadline) {
+      logStep(label, `lock wait TIMED OUT after ${elapsedMs(waitStarted)}ms`);
       throw new AiLockTimeoutError();
     }
     await sleep(POLL_INTERVAL_MS);
     acquired = await tryAcquire(holder);
   }
+  logStep(label, `lock acquired after ${elapsedMs(waitStarted)}ms wait`);
 
+  const runStarted = startTimer();
   try {
     return await fn();
   } finally {
+    logStep(label, `lock released after holding it ${elapsedMs(runStarted)}ms`);
     await release(holder);
   }
 }

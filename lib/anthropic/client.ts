@@ -1,8 +1,10 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { withAiLock } from "./lock";
 import { assertAiUsageBudgetAvailable, recordAiUsageCost } from "@/lib/subscription/gate";
+import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
 const MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3;
@@ -80,6 +82,9 @@ interface GenerateJsonOptions<T> {
    * incomplete structure) — the caller only ever receives a fully valid T.
    */
   validate: (value: unknown) => T | null;
+  /** Short caller-supplied name (e.g. "fiche", "quiz:facile") used only to
+   * make the timing logs below legible — see lib/observability/timing.ts. */
+  label?: string;
 }
 
 /**
@@ -106,55 +111,86 @@ export async function generateJson<T>({
   content,
   maxTokens = DEFAULT_MAX_TOKENS,
   validate,
+  label = "generate",
 }: GenerateJsonOptions<T>): Promise<T> {
-  return withAiLock(async () => {
-    await assertAiUsageBudgetAvailable(userId);
+  const tag = `${label}:${randomUUID().slice(0, 8)}`;
+  const totalStarted = startTimer();
+  logStep(tag, `start — ${content.length} content block(s): ${content.map((b) => b.type).join(", ")}`);
 
-    const anthropic = getClient();
-    let lastError: string = "Erreur inconnue";
+  try {
+    const result = await withAiLock(
+      async () => {
+        await assertAiUsageBudgetAvailable(userId);
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const response = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: "user", content: toAnthropicContent(content) }],
-      });
+        const anthropic = getClient();
+        let lastError: string = "Erreur inconnue";
 
-      await recordAiUsageCost(userId, computeCostUsd(response.usage));
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          const attemptStarted = startTimer();
+          const response = await anthropic.messages.create({
+            model: MODEL,
+            max_tokens: maxTokens,
+            system,
+            messages: [{ role: "user", content: toAnthropicContent(content) }],
+          });
+          const cost = computeCostUsd(response.usage);
+          logStep(
+            tag,
+            `attempt ${attempt}/${MAX_ATTEMPTS} — ${elapsedMs(attemptStarted)}ms, ` +
+              `stop_reason=${response.stop_reason}, in=${response.usage.input_tokens}tok, ` +
+              `out=${response.usage.output_tokens}tok, cost=$${cost.toFixed(4)}`,
+          );
 
-      const textBlock = response.content.find((block) => block.type === "text");
-      const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
+          await recordAiUsageCost(userId, cost);
 
-      if (!rawText.trim()) {
-        lastError = "Réponse vide reçue";
-        continue;
-      }
+          const textBlock = response.content.find((block) => block.type === "text");
+          const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
 
-      if (response.stop_reason === "max_tokens") {
-        lastError = "Réponse tronquée (limite de longueur atteinte)";
-        continue;
-      }
+          if (!rawText.trim()) {
+            lastError = "Réponse vide reçue";
+            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+            continue;
+          }
 
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(stripCodeFence(rawText));
-      } catch {
-        lastError = "Format de réponse invalide";
-        continue;
-      }
+          if (response.stop_reason === "max_tokens") {
+            lastError = "Réponse tronquée (limite de longueur atteinte)";
+            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+            continue;
+          }
 
-      const validated = validate(parsed);
-      if (validated === null) {
-        lastError = "Réponse incomplète reçue";
-        continue;
-      }
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(stripCodeFence(rawText));
+          } catch {
+            lastError = "Format de réponse invalide";
+            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+            continue;
+          }
 
-      return validated;
-    }
+          const validated = validate(parsed);
+          if (validated === null) {
+            lastError = "Réponse incomplète reçue";
+            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+            continue;
+          }
 
-    throw new AiGenerationError(
-      `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
+          return validated;
+        }
+
+        throw new AiGenerationError(
+          `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
+        );
+      },
+      { label: tag },
     );
-  });
+
+    logStep(tag, `done — total ${elapsedMs(totalStarted)}ms`);
+    return result;
+  } catch (err) {
+    logStep(
+      tag,
+      `FAILED after ${elapsedMs(totalStarted)}ms — ${err instanceof Error ? err.message : String(err)}`,
+    );
+    throw err;
+  }
 }
