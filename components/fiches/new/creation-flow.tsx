@@ -10,7 +10,8 @@ import { Card } from "@/components/ui/card";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
-import { estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
+import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
+import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
@@ -31,7 +32,21 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
 
+  /**
+   * Sends one /api/fiches/generate request per chunk instead of one request
+   * for every source at once — each individual call stays comfortably
+   * inside Vercel's 60s function duration regardless of how much the user
+   * uploaded in total, since chunkSources keeps every call's content small
+   * (see file-utils.ts for exactly how sources are grouped, and its
+   * documented residual limit: a single very large PDF/Word isn't split
+   * further). Invisible to the user in the common case (a single small
+   * upload is already one chunk); a progress indicator only shows up once
+   * there's more than one.
+   */
   async function handleGenerate() {
     setError(null);
 
@@ -46,37 +61,44 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       return;
     }
 
+    const payloadSources: GenerateSourceInput[] = sources.map((s) => ({
+      type: s.type,
+      nom: s.nom,
+      texte: s.texte,
+      data: s.data,
+      mediaType: s.mediaType,
+      storagePath: s.storagePath,
+    }));
+    const chunks = chunkSources(payloadSources);
+    const allProposals: FicheProposal[] = [];
+
     setStep("generating");
+    setGenerationProgress({ done: 0, total: chunks.length });
     try {
-      const { status, data } = await fetchJson<{
-        proposals?: FicheProposal[];
-        error?: string;
-        aiUsageCapExceeded?: boolean;
-      }>("/api/fiches/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sources: sources.map((s) => ({
-            type: s.type,
-            nom: s.nom,
-            texte: s.texte,
-            data: s.data,
-            mediaType: s.mediaType,
-            storagePath: s.storagePath,
-          })),
-        }),
-      });
-      if (status < 200 || status >= 300 || !data?.proposals) {
-        if (data?.aiUsageCapExceeded) {
-          router.push("/limite");
+      for (const chunk of chunks) {
+        const { status, data } = await fetchJson<{
+          proposals?: FicheProposal[];
+          error?: string;
+          aiUsageCapExceeded?: boolean;
+        }>("/api/fiches/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sources: chunk }),
+        });
+        if (status < 200 || status >= 300 || !data?.proposals) {
+          if (data?.aiUsageCapExceeded) {
+            router.push("/limite");
+            return;
+          }
+          setError(data?.error ?? "La génération a échoué.");
+          setStep("sources");
           return;
         }
-        setError(data?.error ?? "La génération a échoué.");
-        setStep("sources");
-        return;
+        allProposals.push(...data.proposals);
+        setGenerationProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
       }
       setItems(
-        data.proposals.map((proposal, i) => ({
+        allProposals.map((proposal, i) => ({
           key: `${i}-${proposal.titre}`,
           proposal,
           selected: true,
@@ -87,6 +109,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant la génération.");
       setStep("sources");
+    } finally {
+      setGenerationProgress(null);
     }
   }
 
@@ -225,6 +249,12 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
           <div className="flex flex-col items-center gap-5 py-16 text-center">
             <FicheLoader />
             <p className="font-heading text-lg font-semibold">Tes fiches prennent forme…</p>
+            {generationProgress && generationProgress.total > 1 && (
+              <p className="font-mono text-sm text-text-muted">
+                Étape {Math.min(generationProgress.done + 1, generationProgress.total)} /{" "}
+                {generationProgress.total}
+              </p>
+            )}
           </div>
         </Card>
       )}

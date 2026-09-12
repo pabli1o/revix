@@ -60,3 +60,64 @@ export const MAX_SINGLE_SOURCE_BYTES = 2_000_000;
 export function estimateBase64Bytes(base64: string): number {
   return base64.length;
 }
+
+/** Each generation call is kept well under the total per-session upload
+ * budget above, so a batch of several photos/texts still finishes
+ * comfortably inside Vercel's 60s function duration instead of risking a
+ * timeout on one giant combined call — see chunkSources below and
+ * creation-flow.tsx, which sends one /api/fiches/generate request per
+ * chunk instead of one request for every source at once. */
+export const MAX_CHUNK_PAYLOAD_BYTES = 1_000_000;
+export const MAX_CHUNK_SOURCES = 4;
+
+/**
+ * Splits sources into smaller groups, each meant to be sent as its own
+ * generation request. A pdf/word source is always isolated in its own
+ * chunk: its real size isn't known client-side (it went straight to
+ * Supabase Storage — see upload-source.ts — so only a storagePath
+ * reference exists here, not the file's bytes), and Claude's native PDF
+ * support renders every page as an image internally, so a multi-page PDF
+ * can be slow to process regardless of its file size — isolating it at
+ * least stops it from compounding with other sources in the same call.
+ * texte/photo sources (already bounded by MAX_TOTAL_PAYLOAD_BYTES /
+ * MAX_SINGLE_SOURCE_BYTES above) are batched together up to
+ * MAX_CHUNK_PAYLOAD_BYTES or MAX_CHUNK_SOURCES, whichever comes first.
+ *
+ * Known residual limit: a single pdf/word source that is itself very
+ * large (e.g. a 100-page PDF) isn't sub-divided further — doing that
+ * would mean actually splitting the file by page range, which needs a PDF
+ * library this project doesn't currently depend on.
+ */
+export function chunkSources<T extends { type: string; data?: string; texte?: string }>(
+  sources: T[],
+): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let currentBytes = 0;
+
+  function flush() {
+    if (current.length > 0) {
+      chunks.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+  }
+
+  for (const source of sources) {
+    if (source.type === "pdf" || source.type === "word") {
+      flush();
+      chunks.push([source]);
+      continue;
+    }
+
+    const size = estimateBase64Bytes(source.data ?? "") + (source.texte?.length ?? 0);
+    if (current.length >= MAX_CHUNK_SOURCES || currentBytes + size > MAX_CHUNK_PAYLOAD_BYTES) {
+      flush();
+    }
+    current.push(source);
+    currentBytes += size;
+  }
+  flush();
+
+  return chunks;
+}
