@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { INK_ON_PALE, type SubjectColor } from "@/lib/theme/subject-colors";
+import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export interface TileItem {
@@ -134,8 +134,8 @@ function Tile({
 
   return (
     <div
-      className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border-2 p-4 shadow-sm transition-transform hover:-translate-y-0.5"
-      style={{ backgroundColor: item.color.pale, borderColor: item.color.border, color: INK_ON_PALE }}
+      className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border-2 p-4 text-text shadow-sm transition-transform hover:-translate-y-0.5"
+      style={{ backgroundColor: `${item.color.bg}26`, borderColor: item.color.border }}
     >
       {!editing ? (
         <>
@@ -152,7 +152,7 @@ function Tile({
                   e.preventDefault();
                   setEditing(true);
                 }}
-                className="rounded-full bg-black/15 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/30 active:scale-90"
+                className="rounded-full bg-white/10 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-white/20 active:scale-90"
                 aria-label="Renommer"
                 title="Renommer"
               >
@@ -166,7 +166,7 @@ function Tile({
                     e.preventDefault();
                     handleDelete();
                   }}
-                  className="rounded-full bg-black/15 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/30 active:scale-90"
+                  className="rounded-full bg-white/10 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-white/20 active:scale-90"
                   aria-label="Supprimer"
                   title="Supprimer"
                 >

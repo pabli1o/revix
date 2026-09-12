@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
-import { assignSubjectColors, INK_ON_PALE } from "@/lib/theme/subject-colors";
+import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 
 export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId]">) {
@@ -68,8 +68,8 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
       <div className="mb-8 flex items-center gap-4">
         <div
           aria-hidden
-          className="flex size-14 shrink-0 items-center justify-center rounded-2xl border-2 font-heading text-2xl font-semibold"
-          style={{ backgroundColor: color.pale, borderColor: color.border, color: INK_ON_PALE }}
+          className="flex size-14 shrink-0 items-center justify-center rounded-2xl border-2 font-heading text-2xl font-semibold text-text"
+          style={{ backgroundColor: `${color.bg}26`, borderColor: color.border }}
         >
           {subject.nom.slice(0, 2)}
         </div>

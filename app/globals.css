@@ -38,7 +38,13 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  /* Subtle depth instead of a flat fill — a soft glow near the top fading
+     into a touch darker at the bottom, staying in the same navy/indigo
+     family as --color-bg so the site's identity doesn't shift. */
+  background:
+    radial-gradient(ellipse 1200px 640px at 50% -12%, #262a52 0%, transparent 60%),
+    linear-gradient(180deg, #1c1d36 0%, var(--color-bg) 45%, #131421 100%);
+  background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-body);
 }
