@@ -29,7 +29,7 @@ export default function LimitePage() {
       </div>
 
       <FloatingBottomBar>
-        <BuyCreditButton className="w-full" size="lg" label="Débloquer un supplément — 9,99 €" />
+        <BuyCreditButton className="w-full" size="lg" label="Débloquer des crédits — 9,99 €" />
       </FloatingBottomBar>
     </div>
   );
