@@ -70,7 +70,7 @@ export default async function AbonnementPage() {
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span className="text-text-muted">Utilisation IA ce mois-ci</span>
+                  <span className="text-text-muted">Crédits utilisés ce mois-ci</span>
                   <span className={clsx("font-mono font-semibold", capReached && "text-accent")}>
                     {costEur.toFixed(2)} € / {budgetEur.toFixed(2)} €
                   </span>
@@ -91,9 +91,9 @@ export default async function AbonnementPage() {
               {capReached && (
                 <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
                   <p>
-                    Tu as atteint le plafond de {budgetEur.toFixed(2)} € d&apos;utilisation IA ce
-                    mois-ci (fiches + quiz confondus). Il se réinitialise à ton prochain
-                    renouvellement, ou débloque plus de budget dès maintenant :
+                    Tu as atteint le plafond de {budgetEur.toFixed(2)} € de crédits ce mois-ci
+                    (fiches + quiz confondus). Il se réinitialise à ton prochain renouvellement,
+                    ou débloque plus de crédit dès maintenant :
                   </p>
                   <BuyCreditButton />
                 </div>

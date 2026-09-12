@@ -25,7 +25,7 @@ export function SubscribeButton() {
   );
 }
 
-export function BuyCreditButton() {
+export function BuyCreditButton({ className, size }: { className?: string; size?: "sm" | "md" | "lg" }) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -41,7 +41,7 @@ export function BuyCreditButton() {
   }
 
   return (
-    <Button onClick={handleClick} disabled={loading}>
+    <Button onClick={handleClick} disabled={loading} className={className} size={size}>
       {loading ? "Redirection…" : "Débloquer 4,99 € supplémentaires — 9,99 €"}
     </Button>
   );

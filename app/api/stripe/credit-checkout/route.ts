@@ -22,7 +22,7 @@ export async function POST() {
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscription.isActive) {
     return NextResponse.json(
-      { error: "Un abonnement actif est nécessaire pour acheter un supplément d'utilisation IA." },
+      { error: "Un abonnement actif est nécessaire pour acheter un supplément de crédit." },
       { status: 402 },
     );
   }
@@ -44,7 +44,7 @@ export async function POST() {
           currency: "eur",
           unit_amount: Math.round(EXTRA_CREDIT_PRICE_EUR * 100),
           product_data: {
-            name: `Crédit IA Revix — +${EXTRA_CREDIT_BUDGET_EUR.toFixed(2)} € ce mois-ci`,
+            name: `Crédit Revix — +${EXTRA_CREDIT_BUDGET_EUR.toFixed(2)} € ce mois-ci`,
           },
         },
         quantity: 1,

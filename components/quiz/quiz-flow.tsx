@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
@@ -26,12 +27,12 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month:
 type Phase = "select" | "loading" | "playing" | "finished";
 
 export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapterNom: string }) {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("select");
   const [difficulty, setDifficulty] = useState<QuizDifficulty | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [historyByDifficulty, setHistoryByDifficulty] = useState<Record<string, Attempt[]>>({});
   const [error, setError] = useState<string | null>(null);
-  const [capExceeded, setCapExceeded] = useState(false);
 
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -57,7 +58,6 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     setDifficulty(diff);
     setPhase("loading");
     setError(null);
-    setCapExceeded(false);
     try {
       const { status, data } = await fetchJson<{
         questions?: QuizQuestion[];
@@ -65,8 +65,11 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
         aiUsageCapExceeded?: boolean;
       }>(`/api/quiz/${chapterId}?difficulty=${diff}`);
       if (status < 200 || status >= 300 || !data?.questions) {
+        if (data?.aiUsageCapExceeded) {
+          router.push("/limite");
+          return;
+        }
         setError(data?.error ?? "Impossible de charger le quiz.");
-        setCapExceeded(data?.aiUsageCapExceeded ?? false);
         setPhase("select");
         return;
       }
@@ -138,16 +141,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       <div>
         <h1 className="mb-1 font-heading text-3xl font-semibold">Quiz — {chapterNom}</h1>
         <p className="mb-6 text-text-muted">Choisis un niveau de difficulté.</p>
-        {error && (
-          <div className="mb-4 text-sm text-danger">
-            <p>{error}</p>
-            {capExceeded && (
-              <Link href="/abonnement" className="mt-1 inline-block font-medium underline">
-                Débloquer plus de budget →
-              </Link>
-            )}
-          </div>
-        )}
+        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {DIFFICULTIES.map((d) => {
             const history = historyByDifficulty[d.value] ?? [];

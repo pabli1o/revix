@@ -2,9 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
-import { EXTRA_CREDIT_BUDGET_EUR, EXTRA_CREDIT_PRICE_EUR, MONTHLY_AI_BUDGET_EUR, MONTHLY_AI_BUDGET_USD } from "./constants";
-
-export { FREE_PREVIEW_SENTENCES, MONTHLY_AI_BUDGET_EUR, EXTRA_CREDIT_PRICE_EUR, EXTRA_CREDIT_BUDGET_EUR } from "./constants";
+import { MONTHLY_AI_BUDGET_USD } from "./constants";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
@@ -32,9 +30,13 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
 
 export class AiUsageCapExceededError extends Error {
   constructor() {
-    super(
-      `Tu as atteint le plafond de ${MONTHLY_AI_BUDGET_EUR.toFixed(2)} € d'utilisation IA ce mois-ci. Débloque ${EXTRA_CREDIT_BUDGET_EUR.toFixed(2)} € supplémentaires pour ${EXTRA_CREDIT_PRICE_EUR.toFixed(2)} € afin de continuer à générer des fiches et des quiz jusqu'à la fin du mois.`,
-    );
+    // Kept generic (no "IA" wording, no precise euro amounts) even though
+    // this message currently isn't rendered as-is anywhere: the fiche/quiz
+    // generation routes surface it only via the aiUsageCapExceeded flag,
+    // and the client redirects to a dedicated /limite screen instead of
+    // displaying this text — see that page for the exact user-facing
+    // wording rules.
+    super("Plafond de crédits mensuels atteint.");
     this.name = "AiUsageCapExceededError";
   }
 }
