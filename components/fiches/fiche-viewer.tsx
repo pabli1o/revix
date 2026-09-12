@@ -154,7 +154,13 @@ export function FicheViewer({
         <div className="flex flex-col gap-8">
           {contenu.plan.map((section, sectionIndex) => (
             <section key={section.numero}>
-              <h2 className="mb-3 font-heading text-xl font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A]/40 underline-offset-4">
+              {/* decoration-[#2D4A8A66] (alpha baked into the hex), not
+                 decoration-[#2D4A8A]/40: Tailwind v4 rewrites the "/40"
+                 opacity modifier into a lab() color, which html2canvas
+                 can't parse either — same trap as the highlighter and "À
+                 retenir" box, just easier to miss since it's on every
+                 section heading rather than a themed block. */}
+              <h2 className="mb-3 font-heading text-xl font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A66] underline-offset-4">
                 {section.numero}. {section.titre}
               </h2>
               <ul className="flex flex-col gap-2 pl-1">
