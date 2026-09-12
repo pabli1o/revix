@@ -3,6 +3,7 @@ import { AiGenerationError } from "@/lib/anthropic/client";
 import { getOrGenerateQuiz } from "@/lib/quiz/get-or-generate";
 import type { QuizDifficulty } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { AiUsageCapExceededError } from "@/lib/subscription/gate";
 
 const VALID_DIFFICULTIES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
@@ -42,6 +43,9 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[ch
     // it's hidden from the payload.
     return NextResponse.json({ questions });
   } catch (err) {
+    if (err instanceof AiUsageCapExceededError) {
+      return NextResponse.json({ error: err.message, aiUsageCapExceeded: true }, { status: 402 });
+    }
     if (err instanceof AiGenerationError) {
       return NextResponse.json({ error: err.message }, { status: 502 });
     }

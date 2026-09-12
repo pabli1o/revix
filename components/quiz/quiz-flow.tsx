@@ -31,6 +31,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [historyByDifficulty, setHistoryByDifficulty] = useState<Record<string, Attempt[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [capExceeded, setCapExceeded] = useState(false);
 
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -56,12 +57,16 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     setDifficulty(diff);
     setPhase("loading");
     setError(null);
+    setCapExceeded(false);
     try {
-      const { status, data } = await fetchJson<{ questions?: QuizQuestion[]; error?: string }>(
-        `/api/quiz/${chapterId}?difficulty=${diff}`,
-      );
+      const { status, data } = await fetchJson<{
+        questions?: QuizQuestion[];
+        error?: string;
+        aiUsageCapExceeded?: boolean;
+      }>(`/api/quiz/${chapterId}?difficulty=${diff}`);
       if (status < 200 || status >= 300 || !data?.questions) {
         setError(data?.error ?? "Impossible de charger le quiz.");
+        setCapExceeded(data?.aiUsageCapExceeded ?? false);
         setPhase("select");
         return;
       }
@@ -133,7 +138,16 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       <div>
         <h1 className="mb-1 font-heading text-3xl font-semibold">Quiz — {chapterNom}</h1>
         <p className="mb-6 text-text-muted">Choisis un niveau de difficulté.</p>
-        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+        {error && (
+          <div className="mb-4 text-sm text-danger">
+            <p>{error}</p>
+            {capExceeded && (
+              <Link href="/abonnement" className="mt-1 inline-block font-medium underline">
+                Débloquer plus de budget →
+              </Link>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {DIFFICULTIES.map((d) => {
             const history = historyByDifficulty[d.value] ?? [];

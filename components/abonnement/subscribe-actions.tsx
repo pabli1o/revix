@@ -25,6 +25,28 @@ export function SubscribeButton() {
   );
 }
 
+export function BuyCreditButton() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    const res = await fetch("/api/stripe/credit-checkout", { method: "POST" });
+    const data = (await res.json()) as { url?: string; error?: string };
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      setLoading(false);
+      window.alert(data.error ?? "Impossible de démarrer le paiement.");
+    }
+  }
+
+  return (
+    <Button onClick={handleClick} disabled={loading}>
+      {loading ? "Redirection…" : "Débloquer 4,99 € supplémentaires — 9,99 €"}
+    </Button>
+  );
+}
+
 export function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false);
 

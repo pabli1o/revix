@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scheduleQuizPreparation } from "@/lib/quiz/schedule";
-import { checkAndIncrementFicheQuota, FicheQuotaExceededError, getSubscriptionInfo } from "@/lib/subscription/gate";
+import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import type { SaveFichesRequest, SaveFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -97,9 +97,6 @@ export async function POST(request: Request) {
         break;
       }
 
-      // Cap only applies to active subscribers, decremented at save time.
-      await checkAndIncrementFicheQuota(user.id);
-
       const { error: insertError } = await supabase.from("fiches").insert({
         user_id: user.id,
         chapter_id: chapterId,
@@ -112,11 +109,7 @@ export async function POST(request: Request) {
       touchedChapterIds.add(chapterId);
       saved++;
     } catch (err) {
-      if (err instanceof FicheQuotaExceededError) {
-        stopError = err.message;
-      } else {
-        stopError = err instanceof Error ? err.message : "Erreur lors de l'enregistrement";
-      }
+      stopError = err instanceof Error ? err.message : "Erreur lors de l'enregistrement";
       break;
     }
   }

@@ -31,6 +31,7 @@ export async function generateAndStoreQuiz(
 
   try {
     const raw = await generateJson({
+      userId,
       system: buildQuizSystemPrompt(difficulty),
       content: [{ type: "text", text }],
       maxTokens: 4000,

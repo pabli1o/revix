@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
+import { EXTRA_CREDIT_BUDGET_USD } from "@/lib/subscription/constants";
 
 function mapStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   switch (status) {
@@ -42,11 +43,12 @@ async function upsertFromSubscription(subscription: Stripe.Subscription, userIdH
 
   const { data: existingRow } = await admin
     .from("subscriptions")
-    .select("period_start, fiches_generated_period")
+    .select("period_start, ai_cost_usd_period, extra_credit_usd_period")
     .eq("user_id", userId)
     .maybeSingle();
 
-  // A new billing period started: reset the monthly fiche-generation cap.
+  // A new billing period started: reset the monthly AI usage budget and any
+  // extra credit purchased last period (it never rolls over).
   const isNewPeriod = !existingRow?.period_start || existingRow.period_start !== periodStart;
 
   await admin.from("subscriptions").upsert(
@@ -57,10 +59,36 @@ async function upsertFromSubscription(subscription: Stripe.Subscription, userIdH
       status: mapStatus(subscription.status),
       current_period_end: periodEnd,
       period_start: periodStart,
-      fiches_generated_period: isNewPeriod ? 0 : (existingRow?.fiches_generated_period ?? 0),
+      ai_cost_usd_period: isNewPeriod ? 0 : (existingRow?.ai_cost_usd_period ?? 0),
+      extra_credit_usd_period: isNewPeriod ? 0 : (existingRow?.extra_credit_usd_period ?? 0),
     },
     { onConflict: "user_id" },
   );
+}
+
+/**
+ * Grants the one-time AI credit top-up for a completed one-off Checkout
+ * Session (mode: "payment", not a subscription). Idempotent against
+ * Stripe's at-least-once webhook delivery: the insert into
+ * ai_credit_topups has session.id as its primary key, so a redelivered
+ * event for the same session fails the insert and the credit is skipped
+ * rather than granted twice.
+ */
+async function grantAiCredit(session: Stripe.Checkout.Session, userId: string) {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("ai_credit_topups")
+    .insert({ session_id: session.id, user_id: userId, amount_usd: EXTRA_CREDIT_BUDGET_USD });
+  if (error) {
+    // 23505 = unique_violation on session_id: already recorded (duplicate
+    // webhook delivery) — no-op. Any other error is a real failure; throw
+    // so the route returns non-200 and Stripe retries the webhook rather
+    // than silently losing the credit the user just paid for.
+    if (error.code === "23505") return;
+    throw new Error(error.message);
+  }
+
+  await admin.rpc("increment_ai_credit", { p_user_id: userId, p_amount: EXTRA_CREDIT_BUDGET_USD });
 }
 
 export async function POST(request: Request) {
@@ -86,7 +114,9 @@ export async function POST(request: Request) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.client_reference_id ?? session.metadata?.userId ?? undefined;
-      if (userId && session.subscription) {
+      if (userId && session.mode === "payment" && session.metadata?.type === "ai_credit_topup") {
+        await grantAiCredit(session, userId);
+      } else if (userId && session.subscription) {
         const subscriptionId =
           typeof session.subscription === "string" ? session.subscription : session.subscription.id;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);

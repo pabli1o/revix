@@ -30,10 +30,12 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [sources, setSources] = useState<PendingSource[]>([]);
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [capExceeded, setCapExceeded] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
 
   async function handleGenerate() {
     setError(null);
+    setCapExceeded(false);
 
     const totalBytes = sources.reduce(
       (sum, s) => sum + estimateBase64Bytes(s.data ?? "") + (s.texte?.length ?? 0),
@@ -48,25 +50,27 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
     setStep("generating");
     try {
-      const { status, data } = await fetchJson<{ proposals?: FicheProposal[]; error?: string }>(
-        "/api/fiches/generate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sources: sources.map((s) => ({
-              type: s.type,
-              nom: s.nom,
-              texte: s.texte,
-              data: s.data,
-              mediaType: s.mediaType,
-              storagePath: s.storagePath,
-            })),
-          }),
-        },
-      );
+      const { status, data } = await fetchJson<{
+        proposals?: FicheProposal[];
+        error?: string;
+        aiUsageCapExceeded?: boolean;
+      }>("/api/fiches/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sources: sources.map((s) => ({
+            type: s.type,
+            nom: s.nom,
+            texte: s.texte,
+            data: s.data,
+            mediaType: s.mediaType,
+            storagePath: s.storagePath,
+          })),
+        }),
+      });
       if (status < 200 || status >= 300 || !data?.proposals) {
         setError(data?.error ?? "La génération a échoué.");
+        setCapExceeded(data?.aiUsageCapExceeded ?? false);
         setStep("sources");
         return;
       }
@@ -201,9 +205,14 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       </div>
 
       {error && (
-        <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          {error}
-        </p>
+        <div className="mb-4 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+          <p>{error}</p>
+          {capExceeded && (
+            <Link href="/abonnement" className="mt-1 inline-block font-medium underline">
+              Débloquer plus de budget →
+            </Link>
+          )}
+        </div>
       )}
 
       {step === "sources" && (

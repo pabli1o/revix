@@ -164,14 +164,20 @@ chapitres, contenu des fiches, réglages du profil).
 
 ### `lib/subscription/gate.ts` + `lib/subscription/preview.ts` — modèle économique
 
-- La génération de fiches est **gratuite et illimitée** pour tout le monde.
+- La génération de fiches est **gratuite et illimitée** pour un non-abonné.
 - La **lecture** (et donc l'enregistrement) est réservée aux abonnés actifs :
   `POST /api/fiches` renvoie 402 si l'utilisateur n'a pas d'abonnement actif.
-- `MONTHLY_FICHE_CAP = 20` : plafond de fiches *enregistrées* par mois,
-  appliqué uniquement aux abonnés actifs et décompté au moment de
-  l'enregistrement (jamais à la génération) via
-  `checkAndIncrementFicheQuota`. Il n'est affiché dans l'UI que s'il est
-  atteint.
+- `MONTHLY_AI_BUDGET_EUR = 3,50 €` : plafond de coût réel des appels Claude
+  (fiches + quiz confondus, calculé à partir de `response.usage` — voir
+  `lib/anthropic/client.ts`), appliqué uniquement aux abonnés actifs et
+  vérifié/décompté à chaque appel de génération (pas à l'enregistrement) via
+  `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Stripe
+  ponctuel (`mode: "payment"`, pas d'abonnement) débloque `+4,99 €` de budget
+  jusqu'à la fin de la période en cours — voir
+  `app/api/stripe/credit-checkout/route.ts` et la branche
+  `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
+  renouvellement, comme l'ancien compteur. Le plafond n'est affiché dans
+  l'UI que s'il est atteint.
 - `FREE_PREVIEW_SENTENCES = 2` : pour un non-abonné, `computePreviewCutoff`
   calcule un **pointeur** (section / sous-point / index de caractère) dans le
   contenu structuré de la fiche, jusqu'où l'affichage reste en clair — le

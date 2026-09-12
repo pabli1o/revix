@@ -2,10 +2,27 @@ import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { withAiLock } from "./lock";
+import { assertAiUsageBudgetAvailable, recordAiUsageCost } from "@/lib/subscription/gate";
 
 const MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3;
 const DEFAULT_MAX_TOKENS = 8000;
+
+/** USD per million tokens for MODEL above. Pricing isn't queryable from the
+ * API, so this must be kept in sync by hand — computeCostUsd throws rather
+ * than silently under-costing (which would quietly break the usage cap) if
+ * MODEL is ever changed without updating this. */
+const MODEL_PRICING_USD_PER_MTOK = { model: "claude-opus-5", input: 5, output: 25 } as const;
+
+function computeCostUsd(usage: Anthropic.Usage): number {
+  if (MODEL_PRICING_USD_PER_MTOK.model !== MODEL) {
+    throw new Error(`No pricing configured for model "${MODEL}" — update MODEL_PRICING_USD_PER_MTOK.`);
+  }
+  return (
+    (usage.input_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.input +
+    (usage.output_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.output
+  );
+}
 
 let client: Anthropic | null = null;
 
@@ -52,6 +69,7 @@ function stripCodeFence(text: string): string {
 }
 
 interface GenerateJsonOptions<T> {
+  userId: string;
   system: string;
   content: ClaudeContentBlock[];
   maxTokens?: number;
@@ -71,14 +89,27 @@ interface GenerateJsonOptions<T> {
  * the caller's `validate` check. Every call is serialized through the
  * app-wide AI lock so fiche generation and quiz generation never run
  * concurrently.
+ *
+ * Usage budget: checked once up front (an active subscriber already at
+ * their cap can't start a new generation) and every attempt's real cost is
+ * recorded against the user's monthly total regardless of whether that
+ * attempt succeeds — a failed/retried attempt still consumed real Claude
+ * tokens and must still count. Because the check only happens once before
+ * the retry loop, a user sitting just under the cap can overshoot it by up
+ * to MAX_ATTEMPTS-1 extra attempts' worth of cost on a single call that
+ * needs retries — bounded and acceptable, same tradeoff already accepted by
+ * the old fiche-count cap (see git history) for a simpler implementation.
  */
 export async function generateJson<T>({
+  userId,
   system,
   content,
   maxTokens = DEFAULT_MAX_TOKENS,
   validate,
 }: GenerateJsonOptions<T>): Promise<T> {
   return withAiLock(async () => {
+    await assertAiUsageBudgetAvailable(userId);
+
     const anthropic = getClient();
     let lastError: string = "Erreur inconnue";
 
@@ -89,6 +120,8 @@ export async function generateJson<T>({
         system,
         messages: [{ role: "user", content: toAnthropicContent(content) }],
       });
+
+      await recordAiUsageCost(userId, computeCostUsd(response.usage));
 
       const textBlock = response.content.find((block) => block.type === "text");
       const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";

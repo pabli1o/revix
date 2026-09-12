@@ -6,6 +6,7 @@ import { extractTextFromDocx } from "@/lib/files/docx";
 import type { GenerateFichesRequest, GenerateFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AiUsageCapExceededError } from "@/lib/subscription/gate";
 
 const MAX_SOURCES = 12;
 const SOURCE_UPLOADS_BUCKET = "source-uploads";
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
 
     try {
       const proposals = await generateJson({
+        userId: user.id,
         system: FICHE_GENERATION_SYSTEM,
         content,
         maxTokens: 8000,
@@ -107,6 +109,10 @@ export async function POST(request: Request) {
       const response: GenerateFichesResponse = { proposals };
       return NextResponse.json(response);
     } catch (err) {
+      if (err instanceof AiUsageCapExceededError) {
+        const response: GenerateFichesResponse = { error: err.message, aiUsageCapExceeded: true };
+        return NextResponse.json(response, { status: 402 });
+      }
       if (err instanceof AiGenerationError) {
         return NextResponse.json({ error: err.message }, { status: 502 });
       }
