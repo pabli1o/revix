@@ -29,6 +29,7 @@ export function FicheViewer({
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
@@ -47,13 +48,17 @@ export function FicheViewer({
 
   async function handleExport() {
     setExporting(true);
+    setExportError(null);
     try {
       const html2canvas = (await import("html2canvas")).default;
       const node = containerRef.current;
       if (!node) return;
       const canvas = await html2canvas(node, { backgroundColor: "#FFFDF6", scale: 2 });
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) return;
+      if (!blob) {
+        setExportError("Impossible de générer l'image de cette fiche.");
+        return;
+      }
 
       const file = new File([blob], `${titre.replace(/[^a-z0-9]+/gi, "-")}.png`, {
         type: "image/png",
@@ -64,18 +69,39 @@ export function FicheViewer({
         share?: (data: { files: File[]; title?: string }) => Promise<void>;
       };
 
+      // Mobile-first: the share sheet is the one path that reliably lets
+      // someone save straight to their phone's Photos/Fichiers app —
+      // covers iOS Safari and Android Chrome, the two browsers actually
+      // used to open this app on a phone.
       if (nav.canShare?.({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title: titre });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        return;
       }
+
+      // Fallback (desktop browsers, or a mobile browser without file
+      // sharing): trigger a normal download AND open the image in a new
+      // tab. The `download` attribute reliably saves on desktop; some
+      // mobile browsers silently ignore it instead, so opening the image
+      // too means there's always a long-press-to-save option available.
+      // The object URL is revoked after a delay rather than immediately —
+      // revoking it right after .click() can race with the download
+      // actually starting on some mobile browsers.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      // AbortError: the user closed the native share sheet without
+      // picking anything — not a real failure, nothing to show.
+      if (err instanceof Error && err.name === "AbortError") return;
+      setExportError(
+        "Le téléchargement a échoué. Fais une capture d'écran en attendant, ou réessaie.",
+      );
     } finally {
       setExporting(false);
     }
@@ -96,15 +122,21 @@ export function FicheViewer({
          wherever the user actually came from — e.g. back to /planning for a
          fiche opened from a planning task — instead of always landing on
          this chapter's fiche list the way a hardcoded link would. */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
-            {exporting ? "Export…" : "📤 Exporter en image"}
-          </Button>
+      <div className="mb-4 flex flex-col items-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {/* Hidden rather than disabled while blurred: html2canvas doesn't
+             render CSS filters, so an export of a paywalled fiche would
+             come out fully legible — a silent way around the paywall. */}
+          {!isBlurred && (
+            <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? "Préparation…" : "📥 Télécharger en image"}
+            </Button>
+          )}
           <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
             🗑️ Corbeille
           </Button>
         </div>
+        {exportError && <p className="text-sm text-danger">{exportError}</p>}
       </div>
 
       <div
@@ -151,7 +183,18 @@ export function FicheViewer({
           ))}
         </div>
 
-        <div className="mt-10 rounded-xl border-2 border-dashed border-accent/60 bg-accent/10 p-5">
+        {/* Literal hex-with-alpha, not border-accent/60 bg-accent/10: Tailwind
+           v4 rewrites opacity-modified named-token colors into
+           color-mix(in oklab, ...) for browsers that support it (all real
+           ones), which html2canvas's computed-style parser (used by the
+           "Télécharger en image" export below) cannot parse — the exact
+           bug that made every fiche export silently fail (see also the
+           highlighter color in rich-text.tsx for the other half of this
+           fix). */}
+        <div
+          className="mt-10 rounded-xl border-2 border-dashed p-5"
+          style={{ borderColor: "#e8a33d99", backgroundColor: "#e8a33d1a" }}
+        >
           <h3 className="mb-2 font-heading text-lg font-semibold text-accent">📌 À retenir</h3>
           {isARetenirVisible(cutoff) ? (
             <ul className="flex flex-col gap-1.5">
