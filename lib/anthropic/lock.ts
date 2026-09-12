@@ -50,8 +50,17 @@ function sleep(ms: number): Promise<void> {
  * then always releases the lock. Ensures only one Anthropic call is ever
  * in flight app-wide, whether it's a fiche generation, a quiz generation,
  * or a background prefetch triggered via `after()`.
+ *
+ * Default lowered from 90s to well under Vercel's maxDuration=60 on every
+ * route that calls this (see app/api/fiches/generate, app/api/fiches,
+ * app/api/quiz/[chapterId]): 90s could never actually elapse in practice —
+ * the platform kills the function at 60s first — so contention always
+ * surfaced as a raw platform timeout ("Le serveur a mis trop de temps à
+ * répondre") instead of the clean AiLockTimeoutError message below. 30s
+ * still leaves headroom in the 60s budget for the actual Claude call
+ * (including retries) once the lock is acquired.
  */
-export async function withAiLock<T>(fn: () => Promise<T>, maxWaitMs = 90_000): Promise<T> {
+export async function withAiLock<T>(fn: () => Promise<T>, maxWaitMs = 30_000): Promise<T> {
   const holder = randomUUID();
   const deadline = Date.now() + maxWaitMs;
 
