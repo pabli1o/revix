@@ -6,6 +6,7 @@ import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
+import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 
 export default async function FichesPage() {
   const supabase = await createClient();
@@ -39,17 +40,12 @@ export default async function FichesPage() {
   const isEmpty = items.length === 0;
 
   return (
-    <div>
+    <div className="pb-24">
       <AppHeader />
       {!isEmpty && (
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <p className="text-sm text-text-muted">
-            📚 Clique sur une matière pour voir ses chapitres.
-          </p>
-          <Link href="/fiches/new">
-            <Button>+ Nouvelle fiche</Button>
-          </Link>
-        </div>
+        <p className="mb-6 text-sm text-text-muted">
+          📚 Clique sur une matière pour voir ses chapitres.
+        </p>
       )}
       <TileGrid
         items={items}
@@ -57,18 +53,19 @@ export default async function FichesPage() {
         allowDelete
         deleteWarning="Supprimer la matière « {nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille)."
       />
-      {isEmpty && (
-        <div className="mt-6 flex flex-col gap-3">
-          {profile?.prenom && (
-            <p className="rounded-2xl border border-success bg-[#123424] px-4 py-3 text-center text-sm text-success">
-              Bienvenue, {profile.prenom} ! Crée ta première fiche pour commencer.
-            </p>
-          )}
-          <Link href="/fiches/new" className="block">
-            <Button className="w-full">+ Créer une fiche</Button>
-          </Link>
-        </div>
+      {isEmpty && profile?.prenom && (
+        <p className="mt-6 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-center text-sm text-success">
+          Bienvenue, {profile.prenom} ! Crée ta première fiche pour commencer.
+        </p>
       )}
+
+      <FloatingBottomBar>
+        <Link href="/fiches/new" className="block">
+          <Button size="lg" className="w-full">
+            + Créer une fiche
+          </Button>
+        </Link>
+      </FloatingBottomBar>
     </div>
   );
 }

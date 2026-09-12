@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { PROFILE_CACHE_TAG } from "@/lib/supabase/profile";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 interface OnboardingBody {
@@ -70,6 +72,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: describeDbError(insertError) }, { status: 500 });
     }
   }
+
+  // Both branches above just flipped onboarding_completed to true.
+  // { expire: 0 } is deliberate, not the recommended "max" profile:
+  // "max" serves stale content during background revalidation, so the
+  // very next read (the layout's redirect check, hit immediately after
+  // this by the client's router.replace("/fiches")) could still see the
+  // old "false" and bounce the user right back to /onboarding. expire: 0
+  // forces that next read to block on a genuine fresh fetch instead.
+  revalidateTag(PROFILE_CACHE_TAG, { expire: 0 });
 
   return NextResponse.json({ ok: true });
 }

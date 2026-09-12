@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
+import { PROFILE_CACHE_TAG } from "@/lib/supabase/profile";
 
 export async function GET() {
   const supabase = await createClient();
@@ -51,5 +53,11 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // { expire: 0 }, not the recommended "max" profile — see the comment in
+  // app/api/onboarding/route.ts: "max" would let the very next read (e.g.
+  // <AppHeader />'s greeting right after this save) still show the old
+  // name while revalidating in the background.
+  revalidateTag(PROFILE_CACHE_TAG, { expire: 0 });
   return NextResponse.json({ profile });
 }

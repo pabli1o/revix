@@ -12,11 +12,19 @@ const nextConfig: NextConfig = {
     // RSC payload for a route without a server round trip at all, for
     // `dynamic` seconds after leaving it — router.refresh() (already
     // called after every mutation in this app: renaming/deleting a
-    // matière or chapitre, saving fiches, updating settings, etc.)
+    // matiere or chapitre, saving fiches, updating settings, etc.)
     // explicitly clears this cache for the current route, so mutations
     // still show fresh data immediately regardless of this setting.
+    //
+    // 60s (the first value tried here) turned out too short in practice:
+    // cycling through all 4 tabs (Fiches/Examen/Planning/Quiz) at a normal
+    // reading pace easily takes longer than that, so by the time a tab
+    // was revisited its cache entry had already expired and every visit
+    // still missed. Raised well past any realistic single-session
+    // tab-switching cadence; correctness is unaffected since every
+    // mutation already busts this explicitly via router.refresh().
     staleTimes: {
-      dynamic: 60,
+      dynamic: 1800,
     },
   },
 };
