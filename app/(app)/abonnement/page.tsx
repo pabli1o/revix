@@ -35,6 +35,13 @@ export default async function AbonnementPage() {
   const budgetEur = MONTHLY_AI_BUDGET_EUR + extraCreditEur;
   const capReached = costEur >= budgetEur;
 
+  // Presentation only, from here down: every threshold/comparison above
+  // (capReached, the progress bar width) is computed in EUR exactly as
+  // before — this just relabels the same numbers as "crédits" (1 € = 100
+  // crédits) for what the user sees, per spec.
+  const EUR_TO_CREDITS = 100;
+  const toCredits = (eur: number) => Math.round(eur * EUR_TO_CREDITS);
+
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-8">
       <div>
@@ -72,7 +79,7 @@ export default async function AbonnementPage() {
                 <div className="mb-1.5 flex items-center justify-between text-sm">
                   <span className="text-text-muted">Crédits utilisés ce mois-ci</span>
                   <span className={clsx("font-mono font-semibold", capReached && "text-accent")}>
-                    {costEur.toFixed(2)} € / {budgetEur.toFixed(2)} €
+                    {toCredits(costEur)} / {toCredits(budgetEur)} crédits
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-bg-elevated">
@@ -83,7 +90,7 @@ export default async function AbonnementPage() {
                 </div>
                 {extraCreditEur > 0 && (
                   <p className="mt-1.5 text-xs text-text-muted">
-                    Dont +{extraCreditEur.toFixed(2)} € débloqués ce mois-ci
+                    Dont +{toCredits(extraCreditEur)} crédits débloqués ce mois-ci
                   </p>
                 )}
               </div>
@@ -91,7 +98,7 @@ export default async function AbonnementPage() {
               {capReached && (
                 <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
                   <p>
-                    Tu as atteint le plafond de {budgetEur.toFixed(2)} € de crédits ce mois-ci
+                    Tu as atteint le plafond de {toCredits(budgetEur)} crédits ce mois-ci
                     (fiches + quiz confondus). Il se réinitialise à ton prochain renouvellement,
                     ou débloque plus de crédit dès maintenant :
                   </p>
