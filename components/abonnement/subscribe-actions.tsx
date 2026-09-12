@@ -25,7 +25,17 @@ export function SubscribeButton() {
   );
 }
 
-export function BuyCreditButton({ className, size }: { className?: string; size?: "sm" | "md" | "lg" }) {
+export function BuyCreditButton({
+  className,
+  size,
+  label = "Débloquer 4,99 € supplémentaires — 9,99 €",
+}: {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+  /** Override the default label — e.g. the /limite screen must show only
+   * the price to pay, never the unlocked amount. */
+  label?: string;
+}) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -42,7 +52,7 @@ export function BuyCreditButton({ className, size }: { className?: string; size?
 
   return (
     <Button onClick={handleClick} disabled={loading} className={className} size={size}>
-      {loading ? "Redirection…" : "Débloquer 4,99 € supplémentaires — 9,99 €"}
+      {loading ? "Redirection…" : label}
     </Button>
   );
 }
