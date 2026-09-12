@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/client";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
-import { EXTRA_CREDIT_BUDGET_EUR, EXTRA_CREDIT_PRICE_EUR } from "@/lib/subscription/constants";
+import { EXTRA_CREDIT_PRICE_EUR } from "@/lib/subscription/constants";
 
 /**
  * One-time (not recurring) Stripe Checkout payment that unlocks extra AI
@@ -44,7 +44,7 @@ export async function POST() {
           currency: "eur",
           unit_amount: Math.round(EXTRA_CREDIT_PRICE_EUR * 100),
           product_data: {
-            name: `Crédit Revix — +${EXTRA_CREDIT_BUDGET_EUR.toFixed(2)} € ce mois-ci`,
+            name: "Crédits Revix",
           },
         },
         quantity: 1,
