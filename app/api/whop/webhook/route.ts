@@ -4,7 +4,8 @@ import type { Whop } from "@whop/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
 import { EXTRA_CREDIT_BUDGET_USD } from "@/lib/subscription/constants";
-import { whopEnv } from "@/lib/whop/client";
+import { getWhop, whopEnv } from "@/lib/whop/client";
+import { logStep } from "@/lib/observability/timing";
 
 /** Fern (Whop's SDK generator) emits no discriminated union of webhook
  * payloads — unwrapWebhook returns the raw parsed body untyped (see its
@@ -92,6 +93,53 @@ async function grantAiCredit(payment: Whop.Payment, userId: string) {
   await admin.rpc("increment_ai_credit", { p_user_id: userId, p_amount: EXTRA_CREDIT_BUDGET_USD });
 }
 
+/**
+ * A Payment's metadata should already carry `userId`/`type` — Whop copies
+ * the checkout configuration's metadata onto the resulting payment (and
+ * membership) automatically. But that's unverified for the specific case
+ * of an inline `plan: {...}` (used only by the credit top-up, not the
+ * subscription, which references an existing plan_id instead) — if it
+ * ever comes back empty, fall back to fetching the checkout configuration
+ * itself by `checkout_configuration_id` and reading its metadata directly,
+ * since that's the one place we know for certain we set it. Logged either
+ * way so a real failure here shows up in Vercel's logs instead of as a
+ * silent no-op.
+ */
+async function resolvePaymentMetadata(
+  payment: Whop.Payment,
+  tag: string,
+): Promise<{ userId?: string; type?: string }> {
+  const direct = payment.metadata as Record<string, unknown> | null;
+  if (direct?.userId) {
+    return { userId: direct.userId as string, type: direct.type as string | undefined };
+  }
+
+  logStep(
+    tag,
+    `payment ${payment.id} has no metadata.userId directly — metadata=${JSON.stringify(direct)}, ` +
+      `checkout_configuration_id=${payment.checkout_configuration_id}`,
+  );
+
+  if (!payment.checkout_configuration_id) return {};
+
+  try {
+    const whop = getWhop();
+    const config = await whop.checkoutConfigurations.retrieve({
+      id: payment.checkout_configuration_id,
+    });
+    const fallback = config.metadata as Record<string, unknown> | null;
+    logStep(tag, `fallback via checkout_configuration ${config.id} — metadata=${JSON.stringify(fallback)}`);
+    return { userId: fallback?.userId as string | undefined, type: fallback?.type as string | undefined };
+  } catch (err) {
+    logStep(
+      tag,
+      `checkout_configuration retrieve failed for ${payment.checkout_configuration_id} — ` +
+        `${err instanceof Error ? err.message : String(err)}`,
+    );
+    return {};
+  }
+}
+
 /** Resets the monthly usage budget and any extra credit purchased last
  * period (it never rolls over) — called only for a genuine renewal charge
  * (billing_reason "subscription_cycle"), never the first payment on a
@@ -126,6 +174,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Signature manquante" }, { status: 400 });
   }
 
+  // Logged unconditionally — the fastest way to answer "did Whop even send
+  // this event" / "is payment.succeeded actually selected on the endpoint"
+  // from Vercel's logs alone, instead of guessing from the dashboard.
+  const tag = `whop-webhook:${event.id}`;
+  logStep(tag, `received ${event.type}`);
+
   switch (event.type) {
     case "membership.activated": {
       await upsertFromMembership(event.data as Whop.Membership);
@@ -139,13 +193,24 @@ export async function POST(request: Request) {
 
     case "payment.succeeded": {
       const payment = event.data as Whop.Payment;
-      const userId = payment.metadata?.userId as string | undefined;
-      if (!userId) break;
+      logStep(
+        tag,
+        `payment ${payment.id} — billing_reason=${payment.billing_reason}, ` +
+          `checkout_configuration_id=${payment.checkout_configuration_id}`,
+      );
 
-      if (payment.metadata?.type === "ai_credit_topup") {
+      const { userId, type } = await resolvePaymentMetadata(payment, tag);
+      if (!userId) {
+        logStep(tag, `no userId resolved for payment ${payment.id} — skipping, nothing credited`);
+        break;
+      }
+
+      if (type === "ai_credit_topup") {
         await grantAiCredit(payment, userId);
+        logStep(tag, `credit granted to user ${userId} for payment ${payment.id}`);
       } else if (payment.billing_reason === "subscription_cycle") {
         await resetUsageOnRenewal(userId);
+        logStep(tag, `usage reset for user ${userId} (renewal payment ${payment.id})`);
       }
       break;
     }
