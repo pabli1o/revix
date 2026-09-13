@@ -28,7 +28,7 @@ export function SubscribeButton() {
 export function BuyCreditButton({
   className,
   size,
-  label = "Débloquer 499 crédits — 9,99 €",
+  label = "Débloquer 1500 crédits — 9,99 €",
 }: {
   className?: string;
   size?: "sm" | "md" | "lg";

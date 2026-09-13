@@ -37,9 +37,9 @@ export default async function AbonnementPage() {
 
   // Presentation only, from here down: every threshold/comparison above
   // (capReached, the progress bar width) is computed in EUR exactly as
-  // before — this just relabels the same numbers as "crédits" (1 € = 100
+  // before — this just relabels the same numbers as "crédits" (1 € = 1000
   // crédits) for what the user sees, per spec.
-  const EUR_TO_CREDITS = 100;
+  const EUR_TO_CREDITS = 1000;
   const toCredits = (eur: number) => Math.round(eur * EUR_TO_CREDITS);
 
   return (

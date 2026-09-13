@@ -13,13 +13,14 @@ export const USD_PER_EUR = 1.08;
  * response.usage — see lib/anthropic/client.ts), per billing period, for
  * active subscribers only. Generation is blocked once reached; unlimited
  * for non-subscribers is unchanged (this cap never applied to them). */
-export const MONTHLY_AI_BUDGET_EUR = 3.5;
+export const MONTHLY_AI_BUDGET_EUR = 2;
 export const MONTHLY_AI_BUDGET_USD = MONTHLY_AI_BUDGET_EUR * USD_PER_EUR;
 
 /** One-time Whop payment (not a subscription) that unlocks extra budget
- * for the rest of the current billing period only — it does not roll over. */
+ * for the rest of the current billing period only — it does not roll over.
+ * Takes the total cap from MONTHLY_AI_BUDGET_EUR (2 €) to 3,50 €. */
 export const EXTRA_CREDIT_PRICE_EUR = 9.99;
-export const EXTRA_CREDIT_BUDGET_EUR = 4.99;
+export const EXTRA_CREDIT_BUDGET_EUR = 1.5;
 export const EXTRA_CREDIT_BUDGET_USD = EXTRA_CREDIT_BUDGET_EUR * USD_PER_EUR;
 
 /** Sentences shown in clear before the progressive blur kicks in for

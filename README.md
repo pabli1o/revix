@@ -179,13 +179,13 @@ chapitres, contenu des fiches, réglages du profil).
 - La génération de fiches est **gratuite et illimitée** pour un non-abonné.
 - La **lecture** (et donc l'enregistrement) est réservée aux abonnés actifs :
   `POST /api/fiches` renvoie 402 si l'utilisateur n'a pas d'abonnement actif.
-- `MONTHLY_AI_BUDGET_EUR = 3,50 €` : plafond de coût réel des appels Claude
+- `MONTHLY_AI_BUDGET_EUR = 2 €` : plafond de coût réel des appels Claude
   (fiches + quiz confondus, calculé à partir de `response.usage` — voir
   `lib/anthropic/client.ts`), appliqué uniquement aux abonnés actifs et
   vérifié/décompté à chaque appel de génération (pas à l'enregistrement) via
   `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Whop
-  ponctuel (plan `one_time`, pas un abonnement) débloque `+4,99 €` de budget
-  jusqu'à la fin de la période en cours — voir
+  ponctuel (plan `one_time`, pas un abonnement) débloque `+1,50 €` de budget
+  (plafond total : 3,50 €) jusqu'à la fin de la période en cours — voir
   `app/api/whop/credit-checkout/route.ts` et la branche
   `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
   renouvellement effectif (`payment.succeeded` avec `billing_reason:
