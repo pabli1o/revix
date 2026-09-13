@@ -44,7 +44,12 @@ function mapMembershipStatus(status: Whop.MembershipStatus): SubscriptionStatus 
  * updates the columns listed here, so the existing usage counters (0 on a
  * genuinely new row, whatever they already were on a status refresh) are
  * left alone; resetting them on an actual renewal is payment.succeeded's
- * job below, which — unlike Membership — carries a billing_reason. */
+ * job below, which — unlike Membership — carries a billing_reason.
+ *
+ * Only ever called for the subscription plan's membership — an
+ * "ai_credit_topup" one is routed to grantAiCredit instead (see the
+ * membership.activated case below) precisely so this never overwrites the
+ * subscription's own whop_membership_id with a one-time purchase's. */
 async function upsertFromMembership(membership: Whop.Membership) {
   const userId = membership.metadata?.userId as string | undefined;
   if (!userId) return;
@@ -72,15 +77,21 @@ async function deactivateMembership(membership: Whop.Membership) {
 }
 
 /** Grants the one-time credit top-up for a completed "ai_credit_topup"
- * payment. Idempotent against Whop's at-least-once webhook delivery: the
- * insert into ai_credit_topups has payment.id as its primary key, so a
- * redelivered event for the same payment fails the insert and the credit
- * is skipped rather than granted twice. */
-async function grantAiCredit(payment: Whop.Payment, userId: string) {
+ * purchase. Idempotent against Whop's at-least-once webhook delivery: the
+ * insert into ai_credit_topups has `idempotencyKey` (a Payment or a
+ * Membership id — see the two call sites) as its primary key, so a
+ * redelivered event for the same purchase fails the insert and the credit
+ * is skipped rather than granted twice. A one-time plan's checkout fires
+ * "membership.activated" rather than "payment.succeeded" (confirmed via
+ * Whop's own delivery logs — unlike the recurring subscription plan, which
+ * fires payment.succeeded on every cycle), and each such purchase gets its
+ * own fresh Membership, so membership.id is just as safe a dedup key here
+ * as payment.id is on the subscription side. */
+async function grantAiCredit(idempotencyKey: string, userId: string) {
   const admin = createAdminClient();
   const { error } = await admin
     .from("ai_credit_topups")
-    .insert({ payment_id: payment.id, user_id: userId, amount_usd: EXTRA_CREDIT_BUDGET_USD });
+    .insert({ payment_id: idempotencyKey, user_id: userId, amount_usd: EXTRA_CREDIT_BUDGET_USD });
   if (error) {
     // 23505 = unique_violation on payment_id: already recorded (duplicate
     // webhook delivery) — no-op. Any other error is a real failure; throw
@@ -182,7 +193,20 @@ export async function POST(request: Request) {
 
   switch (event.type) {
     case "membership.activated": {
-      await upsertFromMembership(event.data as Whop.Membership);
+      const membership = event.data as Whop.Membership;
+      const metadata = membership.metadata as Record<string, unknown> | null;
+
+      if (metadata?.type === "ai_credit_topup") {
+        const userId = metadata.userId as string | undefined;
+        if (!userId) {
+          logStep(tag, `ai_credit_topup membership ${membership.id} has no metadata.userId — skipping`);
+          break;
+        }
+        await grantAiCredit(membership.id, userId);
+        logStep(tag, `credit granted to user ${userId} for membership ${membership.id} (one-time plan)`);
+      } else {
+        await upsertFromMembership(membership);
+      }
       break;
     }
 
@@ -206,7 +230,12 @@ export async function POST(request: Request) {
       }
 
       if (type === "ai_credit_topup") {
-        await grantAiCredit(payment, userId);
+        // Not observed in practice for the one-time plan (see
+        // grantAiCredit's doc comment) — kept as a fallback in case Whop
+        // ever does fire payment.succeeded here too, keyed by payment.id
+        // rather than membership.id so it can't collide with the credit
+        // already granted from membership.activated above.
+        await grantAiCredit(payment.id, userId);
         logStep(tag, `credit granted to user ${userId} for payment ${payment.id}`);
       } else if (payment.billing_reason === "subscription_cycle") {
         await resetUsageOnRenewal(userId);
