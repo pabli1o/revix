@@ -8,7 +8,7 @@ import { getSupabaseSecretKey, getSupabaseUrl } from "./env";
  * Service-role Supabase client. Bypasses Row Level Security entirely.
  *
  * Server-only: never import this from a Client Component. Used for the
- * AI lock table, Stripe webhook writes to `subscriptions`, and background
+ * AI lock table, Whop webhook writes to `subscriptions`, and background
  * work scheduled via `after()` (which runs outside the request's user
  * session cookies).
  */

@@ -96,7 +96,7 @@ export function AssignFlow({
     : [];
 
   // Poll /api/me until the subscription webhook has landed (it can arrive
-  // slightly after Stripe redirects the browser back here). Deliberately
+  // slightly after Whop redirects the browser back here). Deliberately
   // NOT keyed on `phase`: this loop itself calls setPhase("waiting-
   // subscription") on every tick, and phase is also this effect's guard —
   // using it as a dependency would tear the effect down (and, critically,
@@ -153,7 +153,7 @@ export function AssignFlow({
         setSources(data.sources);
         // A user who was already subscribed reviewed the fiche on the
         // previous screen already — go straight to matière. A user who
-        // just subscribed via Stripe never saw it (creation-flow shows
+        // just subscribed via Whop never saw it (creation-flow shows
         // the subscription offer instead of the fiche to a non-
         // subscriber), so show it here first.
         setPhase(checkoutStatus === "success" ? "reviewing" : "picking-subject");
@@ -180,7 +180,7 @@ export function AssignFlow({
     setError(null);
     try {
       const { status, data } = await fetchJson<{ url?: string; error?: string }>(
-        "/api/stripe/checkout",
+        "/api/whop/checkout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

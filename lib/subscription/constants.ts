@@ -16,7 +16,7 @@ export const USD_PER_EUR = 1.08;
 export const MONTHLY_AI_BUDGET_EUR = 3.5;
 export const MONTHLY_AI_BUDGET_USD = MONTHLY_AI_BUDGET_EUR * USD_PER_EUR;
 
-/** One-time Stripe payment (not a subscription) that unlocks extra budget
+/** One-time Whop payment (not a subscription) that unlocks extra budget
  * for the rest of the current billing period only — it does not roll over. */
 export const EXTRA_CREDIT_PRICE_EUR = 9.99;
 export const EXTRA_CREDIT_BUDGET_EUR = 4.99;

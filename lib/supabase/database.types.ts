@@ -139,13 +139,12 @@ export type QuizAttemptRow = {
 
 export type SubscriptionRow = {
   user_id: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
+  whop_user_id: string | null;
+  whop_membership_id: string | null;
   status: SubscriptionStatus;
   current_period_end: string | null;
   ai_cost_usd_period: number;
   extra_credit_usd_period: number;
-  period_start: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -170,7 +169,7 @@ export type FicheDraftRow = {
 };
 
 export type AiCreditTopupRow = {
-  session_id: string;
+  payment_id: string;
   user_id: string;
   amount_usd: number;
   created_at: string;
@@ -255,7 +254,7 @@ export interface Database {
       >;
       ai_credit_topups: Table<
         AiCreditTopupRow,
-        Partial<AiCreditTopupRow> & { session_id: string; user_id: string; amount_usd: number },
+        Partial<AiCreditTopupRow> & { payment_id: string; user_id: string; amount_usd: number },
         Partial<AiCreditTopupRow>
       >;
     };

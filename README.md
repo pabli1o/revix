@@ -13,7 +13,7 @@ des examens à venir, et propose un quiz par chapitre pour se tester.
   l'inscription)
 - **IA** : Anthropic (Claude), uniquement depuis des Route Handlers côté
   serveur
-- **Paiement** : Stripe (abonnement mensuel à 9,99 €)
+- **Paiement** : Whop (abonnement mensuel à 9,99 € + rachat de crédit ponctuel)
 - **Hébergement cible** : Vercel
 
 ## Mise en route
@@ -27,9 +27,10 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
 ANTHROPIC_API_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_ID=
+WHOP_API_KEY=
+WHOP_WEBHOOK_SECRET=
+WHOP_PLAN_ID=
+WHOP_ACCOUNT_ID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
@@ -86,16 +87,16 @@ npm run dev
 
 L'application est servie sur `http://localhost:3000`.
 
-### 5. Stripe (optionnel en local)
+### 5. Whop (optionnel en local)
 
-Pour tester les paiements en local, utiliser la Stripe CLI afin de relayer
-les webhooks vers `/api/stripe/webhook` :
+Whop n'a pas d'équivalent de la Stripe CLI pour relayer les webhooks vers
+`localhost`. Pour tester en local, exposer le serveur de dev via un tunnel
+(ex. `ngrok http 3000`) et configurer l'URL publique obtenue comme endpoint
+webhook (`https://<tunnel>/api/whop/webhook`) dans le dashboard Whop, avec
+au minimum les événements `membership.activated`, `membership.deactivated`
+et `payment.succeeded`.
 
-```bash
-stripe listen --forward-to localhost:3000/api/stripe/webhook
-```
-
-Sans webhook configuré, un paiement Stripe ne mettra jamais à jour la table
+Sans webhook configuré, un paiement Whop ne mettra jamais à jour la table
 `subscriptions` — l'abonnement ne passera donc jamais à `active` en local.
 
 ## Architecture — modules métier clés
@@ -171,13 +172,16 @@ chapitres, contenu des fiches, réglages du profil).
   (fiches + quiz confondus, calculé à partir de `response.usage` — voir
   `lib/anthropic/client.ts`), appliqué uniquement aux abonnés actifs et
   vérifié/décompté à chaque appel de génération (pas à l'enregistrement) via
-  `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Stripe
-  ponctuel (`mode: "payment"`, pas d'abonnement) débloque `+4,99 €` de budget
+  `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Whop
+  ponctuel (plan `one_time`, pas un abonnement) débloque `+4,99 €` de budget
   jusqu'à la fin de la période en cours — voir
-  `app/api/stripe/credit-checkout/route.ts` et la branche
+  `app/api/whop/credit-checkout/route.ts` et la branche
   `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
-  renouvellement, comme l'ancien compteur. Le plafond n'est affiché dans
-  l'UI que s'il est atteint.
+  renouvellement effectif (`payment.succeeded` avec `billing_reason:
+  "subscription_cycle"` — Whop n'expose pas de date de début de période
+  comme Stripe, donc le renouvellement se détecte par la raison de
+  facturation plutôt que par comparaison de dates). Le plafond n'est
+  affiché dans l'UI que s'il est atteint.
 - `FREE_PREVIEW_SENTENCES = 2` : pour un non-abonné, `computePreviewCutoff`
   calcule un **pointeur** (section / sous-point / index de caractère) dans le
   contenu structuré de la fiche, jusqu'où l'affichage reste en clair — le
@@ -193,17 +197,18 @@ fiche" :
 
 1. Le contenu sélectionné est stocké dans `public.fiche_drafts`
    (`POST /api/fiches/drafts`) — nécessaire car un utilisateur non abonné
-   s'apprête à quitter entièrement le site pour Stripe Checkout, ce que
+   s'apprête à quitter entièrement le site pour Whop Checkout, ce que
    l'état React de la page ne survivrait pas.
 2. Si l'utilisateur est déjà abonné (`GET /api/me`) → redirection directe
    vers `(app)/fiches/new/assign?draft=<id>`.
-3. Sinon → `POST /api/stripe/checkout` avec ce `draftId` ; la session Stripe
-   pointe son `success_url`/`cancel_url` vers cette même page `assign` (au
-   lieu de `/abonnement`), pour reprendre exactement où l'utilisateur s'est
-   arrêté une fois payé (ou annulé).
+3. Sinon → `POST /api/whop/checkout` avec ce `draftId` ; la configuration de
+   checkout pointe son `redirect_url` (Whop n'a qu'une seule URL de retour,
+   contrairement au `success_url`/`cancel_url` séparés de Stripe) vers cette
+   même page `assign` (au lieu de `/abonnement`), pour reprendre exactement
+   où l'utilisateur s'est arrêté une fois payé.
 
 `(app)/fiches/new/assign` (`components/fiches/new/assign-flow.tsx`) gère
-l'atterrissage post-Stripe : comme le webhook peut arriver légèrement après
+l'atterrissage post-Whop : comme le webhook peut arriver légèrement après
 la redirection du navigateur, la page **sonde** `/api/me` (jusqu'à 8 fois,
 1,5 s d'intervalle) avant d'afficher le choix matière/chapitre — c'est
 seulement à cet endroit que la logique "première fiche = matière automatique

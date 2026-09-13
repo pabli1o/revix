@@ -67,7 +67,7 @@ export async function assertAiUsageBudgetAvailable(userId: string): Promise<void
 /**
  * Records the real cost of one Claude API call against the user's monthly
  * total, via an atomic SQL increment (see migration 0007) — needed because
- * this can race with the Stripe webhook granting a credit top-up
+ * this can race with the Whop webhook granting a credit top-up
  * concurrently, which is a separate process from the app's own
  * AI-lock-serialized generation calls.
  *

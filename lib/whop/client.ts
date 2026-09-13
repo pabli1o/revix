@@ -1,17 +1,18 @@
 import "server-only";
 
-import Stripe from "stripe";
+import { WhopClient } from "@whop/sdk";
 
-let stripe: Stripe | null = null;
+let client: WhopClient | null = null;
 
-/** Lazily-constructed Stripe client — server-only (secret key). */
-export function getStripe(): Stripe {
-  if (!stripe) {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
-    stripe = new Stripe(key);
+/** Lazily-constructed Whop client — server-only (API key). Bearer-token
+ * auth, unlike Stripe's secret-key-in-constructor style. */
+export function getWhop(): WhopClient {
+  if (!client) {
+    const token = process.env.WHOP_API_KEY;
+    if (!token) throw new Error("Missing WHOP_API_KEY");
+    client = new WhopClient({ token });
   }
-  return stripe;
+  return client;
 }
 
 /**
@@ -22,8 +23,8 @@ export function getStripe(): Stripe {
  * guards against), fall back to VERCEL_PROJECT_PRODUCTION_URL. Unlike
  * VERCEL_URL (per-deployment, changes every deploy), Vercel sets this to
  * the project's actual stable production domain (custom domain included)
- * automatically, with zero configuration — so Stripe's success/cancel
- * redirect always lands somewhere real.
+ * automatically, with zero configuration — so the post-checkout redirect
+ * always lands somewhere real.
  */
 export function getSiteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;

@@ -4,7 +4,7 @@ import type { CreateDraftRequest, CreateDraftResponse } from "@/lib/fiches/types
 
 /**
  * Stores the reviewed-but-not-yet-assigned fiches so they survive the full
- * page navigation to Stripe Checkout and back (see
+ * page navigation to Whop Checkout and back (see
  * app/(app)/fiches/new/assign/page.tsx). Deleted once actually saved via
  * DELETE /api/fiches/drafts/[draftId].
  */

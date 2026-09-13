@@ -130,7 +130,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   }
 
   /** Stores the reviewed fiches server-side so they survive a full
-   * navigation away (to the assign step, or further out to Stripe
+   * navigation away (to the assign step, or further out to Whop
    * Checkout) — the in-memory selection here can't. */
   async function createDraft(toSave: FicheProposal[]): Promise<string | null> {
     const draftRes = await fetchJson<CreateDraftResponse & { error?: string }>(
@@ -172,7 +172,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     }
   }
 
-  /** Only this click ever leaves the site for Stripe. */
+  /** Only this click ever leaves the site for Whop. */
   async function handleSubscribeFromOffer() {
     setError(null);
     const toSave = selectedProposals();
@@ -186,7 +186,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         return;
       }
       const checkoutRes = await fetchJson<{ url?: string; error?: string }>(
-        "/api/stripe/checkout",
+        "/api/whop/checkout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
