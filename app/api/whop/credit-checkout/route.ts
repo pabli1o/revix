@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSiteUrl, getWhop } from "@/lib/whop/client";
+import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { EXTRA_CREDIT_PRICE_EUR } from "@/lib/subscription/constants";
@@ -34,7 +34,7 @@ export async function POST() {
   const siteUrl = getSiteUrl();
 
   const config = await whop.checkoutConfigurations.create({
-    account_id: process.env.WHOP_ACCOUNT_ID,
+    account_id: whopEnv("WHOP_ACCOUNT_ID"),
     plan: {
       plan_type: "one_time",
       title: "Crédits Revix",

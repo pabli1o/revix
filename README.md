@@ -99,6 +99,17 @@ et `payment.succeeded`.
 Sans webhook configuré, un paiement Whop ne mettra jamais à jour la table
 `subscriptions` — l'abonnement ne passera donc jamais à `active` en local.
 
+**Mode sandbox** : `WHOP_SANDBOX=true` fait basculer `lib/whop/client.ts`
+vers `https://sandbox-api.whop.com/api/v1` et vers les variables
+`WHOP_API_KEY_SANDBOX`/`WHOP_WEBHOOK_SECRET_SANDBOX`/`WHOP_PLAN_ID_SANDBOX`/
+`WHOP_ACCOUNT_ID_SANDBOX` au lieu des variables de production — permet de
+tester un paiement complet avec de fausses cartes sans jamais toucher aux
+identifiants ni à l'argent réel. Le webhook ne vérifie qu'un seul secret à
+la fois selon ce réglage : un événement sandbox est rejeté tant que
+`WHOP_SANDBOX=false`, et inversement — sandbox et production se testent
+l'un après l'autre, jamais simultanément. Remettre `WHOP_SANDBOX=false` (ou
+la retirer) repasse en production sans toucher au reste du code.
+
 ## Architecture — modules métier clés
 
 ### `lib/anthropic/lock.ts` — verrou IA global

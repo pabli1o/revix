@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSiteUrl, getWhop } from "@/lib/whop/client";
+import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-  const planId = process.env.WHOP_PLAN_ID;
+  const planId = whopEnv("WHOP_PLAN_ID");
   if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
 
   const body = (await request.json().catch(() => null)) as { draftId?: string } | null;
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     : `${siteUrl}/abonnement?checkout=success`;
 
   const config = await whop.checkoutConfigurations.create({
-    account_id: process.env.WHOP_ACCOUNT_ID,
+    account_id: whopEnv("WHOP_ACCOUNT_ID"),
     plan_id: planId,
     redirect_url: redirectUrl,
     // Copied by Whop onto both the resulting payment and membership (see

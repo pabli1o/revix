@@ -4,6 +4,7 @@ import type { Whop } from "@whop/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
 import { EXTRA_CREDIT_BUDGET_USD } from "@/lib/subscription/constants";
+import { whopEnv } from "@/lib/whop/client";
 
 /** Fern (Whop's SDK generator) emits no discriminated union of webhook
  * payloads — unwrapWebhook returns the raw parsed body untyped (see its
@@ -105,7 +106,13 @@ async function resetUsageOnRenewal(userId: string) {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.WHOP_WEBHOOK_SECRET;
+  // Verifies against whichever secret matches the current WHOP_SANDBOX
+  // toggle — a sandbox-signed event fails verification while
+  // WHOP_SANDBOX=false, and a production one fails while it's true. That's
+  // intentional: sandbox and production are tested serially (flip the
+  // flag, don't run both at once), matching how getWhop()/whopEnv() switch
+  // every other credential the same way — see lib/whop/client.ts.
+  const secret = whopEnv("WHOP_WEBHOOK_SECRET");
   const headers = Object.fromEntries(request.headers.entries());
   const body = await request.text();
 
