@@ -90,14 +90,19 @@ export default function LoginPage() {
           <Button type="submit" disabled={status === "sending"} className="mt-2">
             {status === "sending" ? "Connexion…" : "Se connecter"}
           </Button>
-
-          <p className="mt-1 text-center text-xs text-text-muted">
-            Pas encore de compte ?{" "}
-            <Link href="/signup" className="font-medium text-accent hover:underline">
-              Crée-en un
-            </Link>
-          </p>
         </form>
+
+        <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
+          <div className="h-px flex-1 bg-border" />
+          <span>Pas encore de compte ?</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <Link href="/signup" className="mt-4 block">
+          <Button type="button" variant="outline" className="w-full">
+            Créer un compte
+          </Button>
+        </Link>
       </div>
     </div>
   );

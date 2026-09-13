@@ -124,14 +124,23 @@ export default function SignupPage() {
             <Button type="submit" disabled={status === "sending"} className="mt-2">
               {status === "sending" ? "Création…" : "Créer mon compte"}
             </Button>
-
-            <p className="mt-1 text-center text-xs text-text-muted">
-              Déjà un compte ?{" "}
-              <Link href="/login" className="font-medium text-accent hover:underline">
-                Connecte-toi
-              </Link>
-            </p>
           </form>
+        )}
+
+        {status !== "sent" && (
+          <>
+            <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
+              <div className="h-px flex-1 bg-border" />
+              <span>Déjà un compte ?</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Link href="/login" className="mt-4 block">
+              <Button type="button" variant="outline" className="w-full">
+                Se connecter
+              </Button>
+            </Link>
+          </>
         )}
       </div>
     </div>
