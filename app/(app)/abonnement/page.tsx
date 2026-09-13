@@ -48,7 +48,11 @@ export default async function AbonnementPage() {
         <h1 className="mb-6 font-heading text-3xl font-semibold">Paramètres</h1>
         <Card>
           <h2 className="mb-4 font-heading text-lg font-semibold">Profil</h2>
-          <ProfileForm initialPrenom={profile?.prenom ?? ""} initialNom={profile?.nom ?? ""} />
+          <ProfileForm
+            initialPrenom={profile?.prenom ?? ""}
+            initialNom={profile?.nom ?? ""}
+            initialEmail={user!.email ?? ""}
+          />
         </Card>
       </div>
 

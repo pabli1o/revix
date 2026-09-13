@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -36,7 +38,7 @@ export default function SignupPage() {
       const supabase = createClient();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: `${siteUrl}/auth/callback` },
@@ -52,6 +54,19 @@ export default function SignupPage() {
         return;
       }
 
+      if (data.session) {
+        // Email confirmation is disabled for this project (Supabase
+        // Dashboard → Authentication → Sign In / Providers → Email →
+        // "Confirm email") — signUp() already returns an active session in
+        // that case, so there's no confirmation link to wait for. Go
+        // straight into the app, same destination as a normal login.
+        router.replace("/");
+        router.refresh();
+        return;
+      }
+
+      // Confirmation is still required by the project's current settings —
+      // fall back to the original "check your email" flow.
       setStatus("sent");
     } catch (err) {
       setError(
