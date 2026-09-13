@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
+import { logStep } from "@/lib/observability/timing";
 
 /**
  * One-time (not recurring) Whop Checkout that unlocks extra usage budget
@@ -41,13 +42,22 @@ export async function POST() {
 
   const whop = getWhop();
   const siteUrl = getSiteUrl();
+  const redirectUrl = `${siteUrl}/abonnement`;
 
   const config = await whop.checkoutConfigurations.create({
     account_id: whopEnv("WHOP_ACCOUNT_ID"),
     plan_id: planId,
-    redirect_url: `${siteUrl}/abonnement`,
+    redirect_url: redirectUrl,
     metadata: { userId: user.id, type: "ai_credit_topup" },
   });
+
+  // Logged unconditionally so a reported redirect issue after payment can
+  // be checked against the exact URLs actually sent to Whop, instead of
+  // assuming getSiteUrl() resolved the way this environment intends it to.
+  logStep(
+    `whop-credit-checkout:${user.id}`,
+    `siteUrl=${siteUrl} redirect_url=${redirectUrl} purchase_url=${config.purchase_url}`,
+  );
 
   if (!config.purchase_url) {
     return NextResponse.json({ error: "Impossible de créer la session de paiement" }, { status: 500 });
