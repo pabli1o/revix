@@ -2,18 +2,24 @@ import { NextResponse } from "next/server";
 import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
-import { EXTRA_CREDIT_PRICE_EUR } from "@/lib/subscription/constants";
 
 /**
  * One-time (not recurring) Whop Checkout that unlocks extra usage budget
  * for the rest of the current billing period — see
  * app/api/whop/webhook/route.ts's "ai_credit_topup" branch, which grants
- * the credit once this payment succeeds. Uses an inline `plan` (plan_type
- * "one_time") rather than a Dashboard-configured WHOP_PLAN_ID (like the
- * subscription) since this is the one fixed one-off amount — Whop reuses a
- * matching existing plan instead of creating a duplicate each time unless
- * `force_create_new_plan` is set, so this doesn't spawn a new Plan object
- * on every purchase.
+ * the credit once this payment succeeds.
+ *
+ * References a Plan pre-created in the Whop dashboard (WHOP_CREDIT_PLAN_ID)
+ * rather than creating one inline (plan: {...}, plan_type "one_time") the
+ * way this route originally did: in testing, a checkout built from an
+ * inline plan never generated ANY webhook delivery at all (confirmed empty
+ * in Whop's own "Recent deliveries"), while the subscription checkout
+ * below — which references an existing plan_id — worked immediately. The
+ * inline plan object has its own nested account_id (separate from the
+ * checkout configuration's own account_id, and never set here), which is
+ * the most likely explanation, but rather than guess at which inline-plan
+ * field Whop needs, this switches to the exact mechanism already proven to
+ * work end-to-end.
  */
 export async function POST() {
   const supabase = await createClient();
@@ -30,17 +36,15 @@ export async function POST() {
     );
   }
 
+  const planId = whopEnv("WHOP_CREDIT_PLAN_ID");
+  if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
+
   const whop = getWhop();
   const siteUrl = getSiteUrl();
 
   const config = await whop.checkoutConfigurations.create({
     account_id: whopEnv("WHOP_ACCOUNT_ID"),
-    plan: {
-      plan_type: "one_time",
-      title: "Crédits Revix",
-      currency: "eur",
-      initial_price: EXTRA_CREDIT_PRICE_EUR,
-    },
+    plan_id: planId,
     redirect_url: `${siteUrl}/abonnement`,
     metadata: { userId: user.id, type: "ai_credit_topup" },
   });

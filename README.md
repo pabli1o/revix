@@ -30,6 +30,7 @@ ANTHROPIC_API_KEY=
 WHOP_API_KEY=
 WHOP_WEBHOOK_SECRET=
 WHOP_PLAN_ID=
+WHOP_CREDIT_PLAN_ID=
 WHOP_ACCOUNT_ID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
@@ -102,7 +103,8 @@ Sans webhook configuré, un paiement Whop ne mettra jamais à jour la table
 **Mode sandbox** : `WHOP_SANDBOX=true` fait basculer `lib/whop/client.ts`
 vers `https://sandbox-api.whop.com/api/v1` et vers les variables
 `WHOP_API_KEY_SANDBOX`/`WHOP_WEBHOOK_SECRET_SANDBOX`/`WHOP_PLAN_ID_SANDBOX`/
-`WHOP_ACCOUNT_ID_SANDBOX` au lieu des variables de production — permet de
+`WHOP_CREDIT_PLAN_ID_SANDBOX`/`WHOP_ACCOUNT_ID_SANDBOX` au lieu des
+variables de production — permet de
 tester un paiement complet avec de fausses cartes sans jamais toucher aux
 identifiants ni à l'argent réel. Le webhook ne vérifie qu'un seul secret à
 la fois selon ce réglage : un événement sandbox est rejeté tant que
@@ -184,10 +186,11 @@ chapitres, contenu des fiches, réglages du profil).
   `lib/anthropic/client.ts`), appliqué uniquement aux abonnés actifs et
   vérifié/décompté à chaque appel de génération (pas à l'enregistrement) via
   `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Whop
-  ponctuel (plan `one_time`, pas un abonnement) débloque `+1,50 €` de budget
-  (plafond total : 3,50 €) jusqu'à la fin de la période en cours — voir
-  `app/api/whop/credit-checkout/route.ts` et la branche
-  `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
+  ponctuel (référence un Plan one-time pré-créé côté dashboard,
+  `WHOP_CREDIT_PLAN_ID` — pas un plan créé à la volée, ni un abonnement)
+  débloque `+1,50 €` de budget (plafond total : 3,50 €) jusqu'à la fin de la
+  période en cours — voir `app/api/whop/credit-checkout/route.ts` et la
+  branche `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
   renouvellement effectif (`payment.succeeded` avec `billing_reason:
   "subscription_cycle"` — Whop n'expose pas de date de début de période
   comme Stripe, donc le renouvellement se détecte par la raison de
