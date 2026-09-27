@@ -13,7 +13,6 @@ import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
-import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
@@ -252,9 +251,10 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       )}
 
       {/* Whether or not the user is subscribed, the fiche content itself is
-          always shown — ProposalPreview blurs it progressively past the
-          free preview when !isSubscribed. The only thing that changes with
-          subscription status is the bottom call to action. */}
+          always shown — ProposalPreview blurs it past the free preview when
+          !isSubscribed, with its own "Débloquer la fiche complète" layered
+          on the blur. The subscribed CTA below is the only thing that
+          changes with subscription status. */}
       {isReviewing && (
         <div className="flex flex-col gap-8">
           {items.map((item) => (
@@ -282,12 +282,12 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
                 </button>
               </div>
 
-              <ProposalPreview contenu={item.proposal.contenu} isSubscribed={isSubscribed} />
-              {!isSubscribed && (
-                <p className="text-center text-sm text-text-muted">
-                  Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
-                </p>
-              )}
+              <ProposalPreview
+                contenu={item.proposal.contenu}
+                isSubscribed={isSubscribed}
+                onUnlock={handleOpenPricing}
+                unlocking={subscribing}
+              />
             </div>
           ))}
 
@@ -304,17 +304,16 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         </div>
       )}
 
-      {isReviewing && (
+      {/* Only the subscribed CTA lives here — the unlock CTA for a
+          non-subscriber is layered directly on each ProposalPreview's
+          blurred region instead (see onUnlock above), so it stays right
+          next to the content it unlocks rather than at the bottom of a
+          possibly long, multi-fiche review screen. */}
+      {isReviewing && isSubscribed && (
         <FloatingBottomBar>
-          {isSubscribed ? (
-            <Button className="w-full" onClick={handleContinue} disabled={step === "preparing"}>
-              {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
-            </Button>
-          ) : (
-            <Button className="w-full" onClick={handleOpenPricing} disabled={subscribing}>
-              {subscribing ? "Préparation…" : "Débloquer la fiche complète"}
-            </Button>
-          )}
+          <Button className="w-full" onClick={handleContinue} disabled={step === "preparing"}>
+            {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
+          </Button>
         </FloatingBottomBar>
       )}
 

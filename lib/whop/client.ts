@@ -48,17 +48,25 @@ export function getWhop(): WhopClient {
 }
 
 /**
- * NEXT_PUBLIC_SITE_URL, when set, always wins — but if it's ever missing or
- * misconfigured (e.g. accidentally pointed at one immutable Vercel
- * deployment URL, which stops resolving as soon as that deployment is
- * superseded — the exact "This deployment is unavailable" failure this
- * guards against), fall back to VERCEL_PROJECT_PRODUCTION_URL. Unlike
- * VERCEL_URL (per-deployment, changes every deploy), Vercel sets this to
- * the project's actual stable production domain (custom domain included)
- * automatically, with zero configuration — so the post-checkout redirect
- * always lands somewhere real.
+ * Prefers deriving the site's own origin from the incoming request's Host
+ * header when one is given: whatever domain the browser used to call this
+ * route is guaranteed to be the domain it's already logged in on (it's the
+ * same tab, a same-origin fetch), so redirecting back there after Whop
+ * Checkout can never land the user on a domain where their Supabase auth
+ * cookies don't apply. This matters specifically because NEXT_PUBLIC_SITE_URL
+ * is easy to leave configured for production only — a Vercel Preview
+ * deployment (a different domain entirely) would otherwise send the
+ * post-payment redirect to production instead, where the user has no
+ * session, and land them on /login instead of back on their own page. Falls
+ * back to the old env-var chain when no request is available (there
+ * currently always is one, but this keeps the function usable without one).
  */
-export function getSiteUrl(): string {
+export function getSiteUrl(request?: Request): string {
+  const host = request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
+  if (host) {
+    const proto = request?.headers.get("x-forwarded-proto") ?? "https";
+    return `${proto}://${host}`;
+  }
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;

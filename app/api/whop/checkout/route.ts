@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionTier } from "@/lib/subscription/constants";
+import { logStep } from "@/lib/observability/timing";
 
 const PLAN_ENV_BY_TIER = {
   tier1: "WHOP_PLAN_ID_TIER1",
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
 
   const whop = getWhop();
-  const siteUrl = getSiteUrl();
+  const siteUrl = getSiteUrl(request);
 
   // Whop's checkout configurations take a single redirect_url — no
   // separate success/cancel URLs like Stripe Checkout Sessions. Reaching
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
   const redirectUrl = draftId
     ? `${siteUrl}/fiches/new/assign?draft=${draftId}&checkout=success`
     : `${siteUrl}/abonnement?checkout=success`;
+
+  // Logged unconditionally — confirms siteUrl was derived from this exact
+  // request's own Host header (see getSiteUrl) rather than a possibly
+  // mismatched NEXT_PUBLIC_SITE_URL/VERCEL_PROJECT_PRODUCTION_URL, the root
+  // cause of a past "redirected to /login instead of back to my page" bug.
+  logStep(`whop-checkout:${user.id}`, `siteUrl=${siteUrl} redirect_url=${redirectUrl}`);
 
   const config = await whop.checkoutConfigurations.create({
     account_id: whopEnv("WHOP_ACCOUNT_ID"),

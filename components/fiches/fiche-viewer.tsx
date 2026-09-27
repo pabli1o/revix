@@ -2,15 +2,49 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import clsx from "clsx";
-import type { FicheContenu } from "@/lib/supabase/database.types";
+import type { FicheContenu, FicheSousPoint, FichePlanSection } from "@/lib/supabase/database.types";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
-import { computePreviewCutoff, getSousPointVisibility, isARetenirVisible } from "@/lib/subscription/preview";
+import { computePreviewCutoff, isARetenirVisible } from "@/lib/subscription/preview";
 import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
 import { RichText } from "./rich-text";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "./planning-task-timer-bar";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
+
+/** The fiche's paper background is a fixed cream (#FFFDF6, see
+ * .notebook-paper-light in app/globals.css) rather than a theme token, so
+ * the blur overlay's scrim is hardcoded to match it exactly instead of
+ * fighting a mismatched fade. */
+const PAPER_BG = "#FFFDF6";
+
+function renderSousPointItem(sp: FicheSousPoint, texte: string, key: string) {
+  if (!texte) return null;
+  return (
+    <li key={key} className="leading-relaxed">
+      <span className="font-mono text-sm text-text-muted">{sp.lettre}. </span>
+      <RichText text={texte} />
+    </li>
+  );
+}
+
+function renderSection(section: FichePlanSection, items: { sp: FicheSousPoint; texte: string }[], key: string) {
+  const rendered = items.map((it, i) => renderSousPointItem(it.sp, it.texte, `${key}-${i}`)).filter(Boolean);
+  if (rendered.length === 0) return null;
+  return (
+    <section key={key}>
+      {/* decoration-[#2D4A8A66] (alpha baked into the hex), not
+         decoration-[#2D4A8A]/40: Tailwind v4 rewrites the "/40"
+         opacity modifier into a lab() color, which html2canvas
+         can't parse either — same trap as the highlighter and "À
+         retenir" box, just easier to miss since it's on every
+         section heading rather than a themed block. */}
+      <h2 className="mb-3 font-heading text-xl font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A66] underline-offset-4">
+        {section.numero}. {section.titre}
+      </h2>
+      <ul className="flex flex-col gap-2 pl-1">{rendered}</ul>
+    </section>
+  );
+}
 
 export function FicheViewer({
   ficheId,
@@ -36,17 +70,65 @@ export function FicheViewer({
 
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
-  // Blur increases the further past the cutoff a sous-point is, so the
-  // paywall reads as a gradual fade into illegibility rather than a flat
-  // on/off cut. Plain running counter (not state) — safe here since it's
-  // only ever read/written synchronously during this single render pass.
-  let blurStep = 0;
-  const BLUR_CLASSES = ["blur-[2px]", "blur-[4px]", "blur-[6px]", "blur-[8px]", "blur-[10px]"];
-  function nextBlurClass(): string {
-    const cls = BLUR_CLASSES[Math.min(blurStep, BLUR_CLASSES.length - 1)];
-    blurStep++;
-    return cls;
-  }
+
+  // Splits the fiche into a fully-visible portion and a locked portion —
+  // the locked one is rendered as one continuous blurred block (real,
+  // legible-but-blurred fiche content, not blank space) with the unlock
+  // call to action layered on top of it, rather than blurring each
+  // sous-point in isolation.
+  const clearSections: React.ReactNode[] = [];
+  const lockedSections: React.ReactNode[] = [];
+  contenu.plan.forEach((section, sectionIndex) => {
+    if (!cutoff || sectionIndex < cutoff.sectionIndex) {
+      clearSections.push(
+        renderSection(
+          section,
+          section.sousPoints.map((sp) => ({ sp, texte: sp.texte })),
+          `clear-${section.numero}`,
+        ),
+      );
+      return;
+    }
+    if (sectionIndex > cutoff.sectionIndex) {
+      lockedSections.push(
+        renderSection(
+          section,
+          section.sousPoints.map((sp) => ({ sp, texte: sp.texte })),
+          `locked-${section.numero}`,
+        ),
+      );
+      return;
+    }
+
+    // The section straddling the cutoff: its own sous-points split in two.
+    const clearItems = section.sousPoints.slice(0, cutoff.sousPointIndex).map((sp) => ({ sp, texte: sp.texte }));
+    const partialSp = section.sousPoints[cutoff.sousPointIndex];
+    clearItems.push({ sp: partialSp, texte: partialSp.texte.slice(0, cutoff.charIndex) });
+    clearSections.push(renderSection(section, clearItems, `clear-${section.numero}`));
+
+    const lockedItems = [
+      { sp: partialSp, texte: partialSp.texte.slice(cutoff.charIndex) },
+      ...section.sousPoints.slice(cutoff.sousPointIndex + 1).map((sp) => ({ sp, texte: sp.texte })),
+    ];
+    lockedSections.push(renderSection(section, lockedItems, `locked-${section.numero}`));
+  });
+
+  const aRetenirVisible = isARetenirVisible(cutoff);
+  const aRetenirBox = (
+    <div
+      className="mt-10 rounded-xl border-2 border-dashed p-5"
+      style={{ borderColor: "#e8a33d99", backgroundColor: "#e8a33d1a" }}
+    >
+      <h3 className="mb-2 font-heading text-lg font-semibold text-accent">📌 À retenir</h3>
+      <ul className="flex flex-col gap-1.5">
+        {contenu.aRetenir.map((point, i) => (
+          <li key={i} className="leading-relaxed">
+            • <RichText text={point} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   async function handleExport() {
     setExporting(true);
@@ -153,81 +235,30 @@ export function FicheViewer({
         </div>
         <h1 className="mb-8 font-heading text-3xl font-semibold">{titre}</h1>
 
-        <div className="flex flex-col gap-8">
-          {contenu.plan.map((section, sectionIndex) => (
-            <section key={section.numero}>
-              {/* decoration-[#2D4A8A66] (alpha baked into the hex), not
-                 decoration-[#2D4A8A]/40: Tailwind v4 rewrites the "/40"
-                 opacity modifier into a lab() color, which html2canvas
-                 can't parse either — same trap as the highlighter and "À
-                 retenir" box, just easier to miss since it's on every
-                 section heading rather than a themed block. */}
-              <h2 className="mb-3 font-heading text-xl font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A66] underline-offset-4">
-                {section.numero}. {section.titre}
-              </h2>
-              <ul className="flex flex-col gap-2 pl-1">
-                {section.sousPoints.map((sp, sousPointIndex) => {
-                  const visibility = getSousPointVisibility(cutoff, sectionIndex, sousPointIndex);
-                  return (
-                    <li key={sp.lettre} className="leading-relaxed">
-                      <span className="font-mono text-sm text-text-muted">{sp.lettre}. </span>
-                      {visibility === "clear" && <RichText text={sp.texte} />}
-                      {visibility === "partial" && cutoff && (
-                        <>
-                          <RichText text={sp.texte.slice(0, cutoff.charIndex)} />
-                          <span className={clsx("ml-1 select-none", nextBlurClass())}>
-                            {sp.texte.slice(cutoff.charIndex) || "texte masqué texte masqué"}
-                          </span>
-                        </>
-                      )}
-                      {visibility === "blurred" && (
-                        <span className={clsx("select-none", nextBlurClass())}>{sp.texte}</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <div className="flex flex-col gap-8">{clearSections}</div>
 
-        {/* Literal hex-with-alpha, not border-accent/60 bg-accent/10: Tailwind
-           v4 rewrites opacity-modified named-token colors into
-           color-mix(in oklab, ...) for browsers that support it (all real
-           ones), which html2canvas's computed-style parser (used by the
-           "Télécharger en image" export below) cannot parse — the exact
-           bug that made every fiche export silently fail (see also the
-           highlighter color in rich-text.tsx for the other half of this
-           fix). */}
-        <div
-          className="mt-10 rounded-xl border-2 border-dashed p-5"
-          style={{ borderColor: "#e8a33d99", backgroundColor: "#e8a33d1a" }}
-        >
-          <h3 className="mb-2 font-heading text-lg font-semibold text-accent">📌 À retenir</h3>
-          {isARetenirVisible(cutoff) ? (
-            <ul className="flex flex-col gap-1.5">
-              {contenu.aRetenir.map((point, i) => (
-                <li key={i} className="leading-relaxed">
-                  • <RichText text={point} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={clsx("select-none", nextBlurClass())}>
-              {contenu.aRetenir.join(" · ") || "Résumé masqué jusqu'à l'abonnement."}
-            </p>
-          )}
-        </div>
+        {isBlurred ? (
+          <div className="relative mt-8 max-h-[420px] overflow-hidden rounded-xl">
+            <div aria-hidden className="pointer-events-none flex select-none flex-col gap-8 blur-sm">
+              {lockedSections}
+              {!aRetenirVisible && aRetenirBox}
+            </div>
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
+              style={{ background: `linear-gradient(to bottom, transparent, ${PAPER_BG}cc 35%, ${PAPER_BG} 65%)` }}
+            >
+              <p className="font-heading text-lg font-semibold">
+                Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
+              </p>
+              <Button size="lg" onClick={() => setPricingOpen(true)}>
+                Débloquer la fiche complète
+              </Button>
+            </div>
+          </div>
+        ) : (
+          aRetenirBox
+        )}
       </div>
-
-      {isBlurred && (
-        <div className="sticky bottom-4 mt-6 flex flex-col items-center gap-2 rounded-2xl border border-accent bg-bg-card p-5 text-center shadow-xl">
-          <p className="font-medium">
-            Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
-          </p>
-          <Button onClick={() => setPricingOpen(true)}>Débloquer la fiche complète</Button>
-        </div>
-      )}
 
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>

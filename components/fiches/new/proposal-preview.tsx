@@ -1,84 +1,137 @@
 "use client";
 
-import clsx from "clsx";
-import type { FicheContenu } from "@/lib/supabase/database.types";
-import {
-  computePreviewCutoff,
-  getSousPointVisibility,
-  isARetenirVisible,
-} from "@/lib/subscription/preview";
+import type { FicheContenu, FicheSousPoint, FichePlanSection } from "@/lib/supabase/database.types";
+import { computePreviewCutoff, isARetenirVisible } from "@/lib/subscription/preview";
+import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
 import { RichText } from "@/components/fiches/rich-text";
+import { Button } from "@/components/ui/button";
 
-const BLUR_CLASSES = ["blur-[2px]", "blur-[4px]", "blur-[6px]", "blur-[8px]", "blur-[10px]"];
+/** Matches .notebook-paper-light's fixed cream background (see
+ * fiche-viewer.tsx for the same constant) — this card uses a plain
+ * border/background instead, but the blur overlay's scrim still needs to
+ * fade into whatever the card itself sits on to look like a real fade
+ * rather than a flat box, so it's kept equally light here. */
+const CARD_BG = "#FFFDF6";
+
+function renderSousPointItem(sp: FicheSousPoint, texte: string, key: string) {
+  if (!texte) return null;
+  return (
+    <li key={key}>
+      <span className="font-mono text-xs text-text-muted">{sp.lettre}. </span>
+      <RichText text={texte} />
+    </li>
+  );
+}
+
+function renderSection(section: FichePlanSection, items: { sp: FicheSousPoint; texte: string }[], key: string) {
+  const rendered = items.map((it, i) => renderSousPointItem(it.sp, it.texte, `${key}-${i}`)).filter(Boolean);
+  if (rendered.length === 0) return null;
+  return (
+    <div key={key}>
+      <p className="mb-1 font-heading font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A]/40 underline-offset-4">
+        {section.numero}. {section.titre}
+      </p>
+      <ul className="flex flex-col gap-1 pl-1">{rendered}</ul>
+    </div>
+  );
+}
 
 export function ProposalPreview({
   contenu,
   isSubscribed,
+  onUnlock,
+  unlocking,
 }: {
   contenu: FicheContenu;
   isSubscribed: boolean;
+  /** Opens the pricing popup — omitted where this preview is only ever
+   * shown to an already-subscribed user (e.g. assign-flow's "reviewing"
+   * phase), since the unlock CTA never renders there. */
+  onUnlock?: () => void;
+  unlocking?: boolean;
 }) {
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
-  // Blur increases the further past the cutoff a sous-point is, so the
-  // paywall reads as a gradual fade into illegibility rather than a flat
-  // on/off cut. Plain running counter (not state) — safe here since it's
-  // only ever read/written synchronously during this single render pass.
-  let blurStep = 0;
-  function nextBlurClass(): string {
-    const cls = BLUR_CLASSES[Math.min(blurStep, BLUR_CLASSES.length - 1)];
-    blurStep++;
-    return cls;
-  }
+  const isBlurred = cutoff !== null;
+
+  // Same split-into-one-continuous-blurred-block approach as
+  // components/fiches/fiche-viewer.tsx — see there for the reasoning.
+  const clearSections: React.ReactNode[] = [];
+  const lockedSections: React.ReactNode[] = [];
+  contenu.plan.forEach((section, sectionIndex) => {
+    if (!cutoff || sectionIndex < cutoff.sectionIndex) {
+      clearSections.push(
+        renderSection(
+          section,
+          section.sousPoints.map((sp) => ({ sp, texte: sp.texte })),
+          `clear-${section.numero}`,
+        ),
+      );
+      return;
+    }
+    if (sectionIndex > cutoff.sectionIndex) {
+      lockedSections.push(
+        renderSection(
+          section,
+          section.sousPoints.map((sp) => ({ sp, texte: sp.texte })),
+          `locked-${section.numero}`,
+        ),
+      );
+      return;
+    }
+
+    const clearItems = section.sousPoints.slice(0, cutoff.sousPointIndex).map((sp) => ({ sp, texte: sp.texte }));
+    const partialSp = section.sousPoints[cutoff.sousPointIndex];
+    clearItems.push({ sp: partialSp, texte: partialSp.texte.slice(0, cutoff.charIndex) });
+    clearSections.push(renderSection(section, clearItems, `clear-${section.numero}`));
+
+    const lockedItems = [
+      { sp: partialSp, texte: partialSp.texte.slice(cutoff.charIndex) },
+      ...section.sousPoints.slice(cutoff.sousPointIndex + 1).map((sp) => ({ sp, texte: sp.texte })),
+    ];
+    lockedSections.push(renderSection(section, lockedItems, `locked-${section.numero}`));
+  });
+
+  const aRetenirVisible = isARetenirVisible(cutoff);
+  const aRetenirBox = (
+    <div className="rounded-lg border border-dashed border-accent/60 bg-accent/10 p-3">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">À retenir</p>
+      <ul className="flex flex-col gap-1">
+        {contenu.aRetenir.map((point, i) => (
+          <li key={i}>
+            • <RichText text={point} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   return (
     <div className="notebook-paper-light mx-auto w-full max-w-xl min-h-[70vh] rounded-lg border border-border p-4 text-sm sm:p-6">
-      <div className="flex flex-col gap-4">
-        {contenu.plan.map((section, sectionIndex) => (
-          <div key={section.numero}>
-            <p className="mb-1 font-heading font-semibold text-[#2D4A8A] underline decoration-[#2D4A8A]/40 underline-offset-4">
-              {section.numero}. {section.titre}
-            </p>
-            <ul className="flex flex-col gap-1 pl-1">
-              {section.sousPoints.map((sp, sousPointIndex) => {
-                const visibility = getSousPointVisibility(cutoff, sectionIndex, sousPointIndex);
-                return (
-                  <li key={sp.lettre}>
-                    <span className="font-mono text-xs text-text-muted">{sp.lettre}. </span>
-                    {visibility === "clear" && <RichText text={sp.texte} />}
-                    {visibility === "partial" && cutoff && (
-                      <>
-                        <RichText text={sp.texte.slice(0, cutoff.charIndex)} />
-                        <span className={clsx("ml-1 select-none", nextBlurClass())}>
-                          {sp.texte.slice(cutoff.charIndex) || "texte masqué"}
-                        </span>
-                      </>
-                    )}
-                    {visibility === "blurred" && (
-                      <span className={clsx("select-none", nextBlurClass())}>{sp.texte}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+      <div className="flex flex-col gap-4">{clearSections}</div>
+
+      {isBlurred ? (
+        <div className="relative mt-4 max-h-[320px] overflow-hidden rounded-lg">
+          <div aria-hidden className="pointer-events-none flex select-none flex-col gap-4 blur-sm">
+            {lockedSections}
+            {!aRetenirVisible && aRetenirBox}
           </div>
-        ))}
-        <div className="rounded-lg border border-dashed border-accent/60 bg-accent/10 p-3">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">
-            À retenir
-          </p>
-          {isARetenirVisible(cutoff) ? (
-            <ul className="flex flex-col gap-1">
-              {contenu.aRetenir.map((point, i) => (
-                <li key={i}>
-                  • <RichText text={point} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={clsx("select-none", nextBlurClass())}>{contenu.aRetenir.join(" · ")}</p>
-          )}
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center"
+            style={{ background: `linear-gradient(to bottom, transparent, ${CARD_BG}cc 35%, ${CARD_BG} 65%)` }}
+          >
+            <p className="font-medium">
+              Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
+            </p>
+            {onUnlock && (
+              <Button onClick={onUnlock} disabled={unlocking}>
+                {unlocking ? "Préparation…" : "Débloquer la fiche complète"}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-4">{aRetenirBox}</div>
+      )}
     </div>
   );
 }

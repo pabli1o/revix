@@ -51,27 +51,6 @@ export function computePreviewCutoff(
   return null;
 }
 
-export type SousPointVisibility = "clear" | "partial" | "blurred";
-
-/** Visibility state for one sous-point, given a (possibly null) cutoff. */
-export function getSousPointVisibility(
-  cutoff: PreviewCutoff | null,
-  sectionIndex: number,
-  sousPointIndex: number,
-): SousPointVisibility {
-  if (!cutoff) return "clear";
-  if (
-    sectionIndex < cutoff.sectionIndex ||
-    (sectionIndex === cutoff.sectionIndex && sousPointIndex < cutoff.sousPointIndex)
-  ) {
-    return "clear";
-  }
-  if (sectionIndex === cutoff.sectionIndex && sousPointIndex === cutoff.sousPointIndex) {
-    return "partial";
-  }
-  return "blurred";
-}
-
 /** The "À retenir" block always comes after the whole plan in reading order. */
 export function isARetenirVisible(cutoff: PreviewCutoff | null): boolean {
   return cutoff === null;
