@@ -13,7 +13,8 @@ des examens à venir, et propose un quiz par chapitre pour se tester.
   l'inscription)
 - **IA** : Anthropic (Claude), uniquement depuis des Route Handlers côté
   serveur
-- **Paiement** : Whop (abonnement mensuel à 9,99 € + rachat de crédit ponctuel)
+- **Paiement** : Whop (3 abonnements mensuels récurrents à paliers de
+  crédits — 9,99 € / 19,99 € / 39,99 €, aucun paiement ponctuel)
 - **Hébergement cible** : Vercel
 
 ## Mise en route
@@ -29,8 +30,9 @@ SUPABASE_SECRET_KEY=
 ANTHROPIC_API_KEY=
 WHOP_API_KEY=
 WHOP_WEBHOOK_SECRET=
-WHOP_PLAN_ID=
-WHOP_CREDIT_PLAN_ID=
+WHOP_PLAN_ID_TIER1=
+WHOP_PLAN_ID_TIER2=
+WHOP_PLAN_ID_TIER3=
 WHOP_ACCOUNT_ID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
@@ -102,8 +104,9 @@ Sans webhook configuré, un paiement Whop ne mettra jamais à jour la table
 
 **Mode sandbox** : `WHOP_SANDBOX=true` fait basculer `lib/whop/client.ts`
 vers `https://sandbox-api.whop.com/api/v1` et vers les variables
-`WHOP_API_KEY_SANDBOX`/`WHOP_WEBHOOK_SECRET_SANDBOX`/`WHOP_PLAN_ID_SANDBOX`/
-`WHOP_CREDIT_PLAN_ID_SANDBOX`/`WHOP_ACCOUNT_ID_SANDBOX` au lieu des
+`WHOP_API_KEY_SANDBOX`/`WHOP_WEBHOOK_SECRET_SANDBOX`/
+`WHOP_PLAN_ID_TIER1_SANDBOX`/`WHOP_PLAN_ID_TIER2_SANDBOX`/
+`WHOP_PLAN_ID_TIER3_SANDBOX`/`WHOP_ACCOUNT_ID_SANDBOX` au lieu des
 variables de production — permet de
 tester un paiement complet avec de fausses cartes sans jamais toucher aux
 identifiants ni à l'argent réel. Le webhook ne vérifie qu'un seul secret à
@@ -176,31 +179,52 @@ jamais après la date de l'examen concerné. `lib/planning/build-plan.ts`
 fait le pont entre cette fonction pure et les données réelles (examens,
 chapitres, contenu des fiches, réglages du profil).
 
-### `lib/subscription/gate.ts` + `lib/subscription/preview.ts` — modèle économique
+### `lib/subscription/constants.ts` + `lib/subscription/gate.ts` + `lib/subscription/preview.ts` — modèle économique
+
+3 abonnements mensuels **récurrents** au choix (`TIERS` dans
+`lib/subscription/constants.ts`), aucun paiement ponctuel :
+
+| Tier    | Prix       | Crédits/mois | Fiches | Quiz | Planning |
+| ------- | ---------- | ------------ | ------ | ---- | -------- |
+| `tier1` | 9,99 €     | 1500         | ✅     | ❌   | ❌       |
+| `tier2` | 19,99 €    | 4500         | ✅     | ✅   | ✅       |
+| `tier3` | 39,99 €    | 9000         | ✅     | ✅   | ✅       |
 
 - La génération de fiches est **gratuite et illimitée** pour un non-abonné.
-- La **lecture** (et donc l'enregistrement) est réservée aux abonnés actifs :
-  `POST /api/fiches` renvoie 402 si l'utilisateur n'a pas d'abonnement actif.
-- `MONTHLY_AI_BUDGET_EUR = 2 €` : plafond de coût réel des appels Claude
-  (fiches + quiz confondus, calculé à partir de `response.usage` — voir
-  `lib/anthropic/client.ts`), appliqué uniquement aux abonnés actifs et
+- La **lecture** (et donc l'enregistrement) est réservée aux abonnés actifs,
+  quel que soit le tier : `POST /api/fiches` renvoie 402 sinon. L'accès au
+  quiz et au planning dépend en plus du tier — `hasFeatureAccess`/
+  `subscriptionHasFeature` gardent `/api/quiz/[chapterId]`,
+  `/api/planning/generate` et les pages `(app)/quiz/chapitre/[chapterId]` +
+  `(app)/planning` (`components/abonnement/feature-locked.tsx` remplace le
+  contenu par un écran "fonctionnalité verrouillée" pour un abonné `tier1`).
+  `POST /api/fiches` ne planifie pas non plus la préparation des quiz en
+  tâche de fond (`scheduleQuizPreparation`) pour un `tier1` — inutile de
+  dépenser son budget sur des quiz qu'il ne peut pas voir.
+- Chaque tier convertit son nombre de crédits en un budget de coût réel des
+  appels Claude (fiches + quiz confondus, calculé à partir de
+  `response.usage` — voir `lib/anthropic/client.ts`) via un taux de
+  conversion interne fixe (`TierConfig.budgetUsd`) — jamais affiché, les
+  crédits sont la seule unité montrée à l'utilisateur (aucun montant en euro
+  n'accompagne jamais un nombre de crédits dans l'UI). Le budget est
   vérifié/décompté à chaque appel de génération (pas à l'enregistrement) via
-  `assertAiUsageBudgetAvailable`/`recordAiUsageCost`. Un paiement Whop
-  ponctuel (référence un Plan one-time pré-créé côté dashboard,
-  `WHOP_CREDIT_PLAN_ID` — pas un plan créé à la volée, ni un abonnement)
-  débloque `+1,50 €` de budget (plafond total : 3,50 €) jusqu'à la fin de la
-  période en cours — voir `app/api/whop/credit-checkout/route.ts` et la
-  branche `ai_credit_topup` du webhook. Coût et crédit sont remis à zéro à chaque
-  renouvellement effectif (`payment.succeeded` avec `billing_reason:
+  `assertAiUsageBudgetAvailable`/`recordAiUsageCost`, et remis à zéro à
+  chaque renouvellement effectif (`payment.succeeded` avec `billing_reason:
   "subscription_cycle"` — Whop n'expose pas de date de début de période
   comme Stripe, donc le renouvellement se détecte par la raison de
   facturation plutôt que par comparaison de dates). Le plafond n'est
-  affiché dans l'UI que s'il est atteint.
-- `FREE_PREVIEW_SENTENCES = 2` : pour un non-abonné, `computePreviewCutoff`
-  calcule un **pointeur** (section / sous-point / index de caractère) dans le
-  contenu structuré de la fiche, jusqu'où l'affichage reste en clair — le
-  reste est flouté côté rendu. Le contenu n'est jamais dupliqué ni tronqué
-  côté serveur : c'est un pointeur de lecture, pas une copie du texte.
+  affiché dans l'UI que s'il est atteint (`(app)/limite`) ; il n'y a plus de
+  déblocage ponctuel en cours de période, seulement un changement de tier
+  pour la période suivante.
+- `FREE_PREVIEW_FRACTION = 0.1` : pour un non-abonné (ou un ex-abonné dont
+  les fiches sauvegardées restent en base), `computePreviewCutoff` calcule
+  un **pointeur** (section / sous-point / index de caractère) dans le
+  contenu structuré de la fiche, une fois ~10 % du contenu total affiché en
+  clair — le reste est flouté côté rendu, avec un bouton "Débloquer la
+  fiche complète" qui ouvre le popup des 3 offres
+  (`components/abonnement/pricing-modal.tsx`). Le contenu n'est jamais
+  dupliqué ni tronqué côté serveur : c'est un pointeur de lecture, pas une
+  copie du texte.
 
 ### Flux d'enregistrement d'une fiche — brouillon + Checkout différé
 
@@ -215,11 +239,13 @@ fiche" :
    l'état React de la page ne survivrait pas.
 2. Si l'utilisateur est déjà abonné (`GET /api/me`) → redirection directe
    vers `(app)/fiches/new/assign?draft=<id>`.
-3. Sinon → `POST /api/whop/checkout` avec ce `draftId` ; la configuration de
-   checkout pointe son `redirect_url` (Whop n'a qu'une seule URL de retour,
-   contrairement au `success_url`/`cancel_url` séparés de Stripe) vers cette
-   même page `assign` (au lieu de `/abonnement`), pour reprendre exactement
-   où l'utilisateur s'est arrêté une fois payé.
+3. Sinon → le popup des 3 offres s'ouvre (`components/abonnement/pricing-
+   modal.tsx`) ; le choix d'un tier déclenche `POST /api/whop/checkout` avec
+   `{ tier, draftId }`. La configuration de checkout pointe son
+   `redirect_url` (Whop n'a qu'une seule URL de retour, contrairement au
+   `success_url`/`cancel_url` séparés de Stripe) vers cette même page
+   `assign` (au lieu de `/abonnement`), pour reprendre exactement où
+   l'utilisateur s'est arrêté une fois payé.
 
 `(app)/fiches/new/assign` (`components/fiches/new/assign-flow.tsx`) gère
 l'atterrissage post-Whop : comme le webhook peut arriver légèrement après

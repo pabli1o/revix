@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
+import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import { assignSubjectColors, SUBJECT_PALETTE } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
+import { FeatureLocked } from "@/components/abonnement/feature-locked";
 import { PlanningView, type DayTasks } from "@/components/planning/planning-view";
 import type { PlanningTaskView } from "@/components/planning/task-row";
 
@@ -15,6 +17,16 @@ export default async function PlanningPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
   const userId = user!.id;
+
+  const subscription = await getSubscriptionInfo(userId);
+  if (!subscriptionHasFeature(subscription, "planning")) {
+    return (
+      <div>
+        <AppHeader />
+        <FeatureLocked feature="planning" currentTier={subscription.tier} />
+      </div>
+    );
+  }
 
   // `tasks` doesn't actually depend on subjects/chapters/fiches (only the
   // per-task rendering below does, to enrich each row with names/hrefs) —

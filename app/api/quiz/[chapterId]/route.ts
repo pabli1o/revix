@@ -3,7 +3,7 @@ import { AiGenerationError } from "@/lib/anthropic/client";
 import { getOrGenerateQuiz } from "@/lib/quiz/get-or-generate";
 import type { QuizDifficulty } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { AiUsageCapExceededError } from "@/lib/subscription/gate";
+import { AiUsageCapExceededError, getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 
 const VALID_DIFFICULTIES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
@@ -20,6 +20,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[ch
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const subscription = await getSubscriptionInfo(user.id);
+  if (!subscriptionHasFeature(subscription, "quiz")) {
+    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux quiz." }, { status: 402 });
+  }
 
   const difficulty = request.nextUrl.searchParams.get("difficulty") as QuizDifficulty | null;
   if (!difficulty || !VALID_DIFFICULTIES.includes(difficulty)) {

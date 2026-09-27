@@ -1,28 +1,87 @@
 /** Shared, import-safe constants for the subscription gate — no
- * "server-only" import here so client components (e.g. the fiche viewer's
- * progressive-blur rendering) can import `FREE_PREVIEW_SENTENCES` without
- * pulling in server-only/admin-client code transitively. */
+ * "server-only" import here so client components (the fiche viewer's
+ * progressive-blur rendering, the pricing cards) can import from this file
+ * without pulling in server-only/admin-client code transitively. */
 
-/** Anthropic bills in USD; the cap and top-up are marketed in EUR. Fixed
- * approximate rate rather than a live FX lookup — simpler, no external
- * dependency, and precise enough for a soft usage cap. Revisit
- * periodically if EUR/USD moves a lot. */
+/** Anthropic bills in USD; credits are sold in EUR. Fixed approximate rate
+ * rather than a live FX lookup — simpler, no external dependency, and
+ * precise enough for a soft usage cap. Revisit periodically if EUR/USD
+ * moves a lot. */
 export const USD_PER_EUR = 1.08;
 
-/** Real Claude API cost (fiche + quiz generation combined, computed from
- * response.usage — see lib/anthropic/client.ts), per billing period, for
- * active subscribers only. Generation is blocked once reached; unlimited
- * for non-subscribers is unchanged (this cap never applied to them). */
-export const MONTHLY_AI_BUDGET_EUR = 2;
-export const MONTHLY_AI_BUDGET_USD = MONTHLY_AI_BUDGET_EUR * USD_PER_EUR;
+/** Internal-only conversion between the credits shown to users and the
+ * real EUR/USD budget enforced against Claude's response.usage cost —
+ * never exposed in any UI copy. Per the display rules, credits are the
+ * only unit a user ever sees; no euro amount is ever shown alongside them. */
+const CREDITS_PER_EUR = 1000;
 
-/** One-time Whop payment (not a subscription) that unlocks extra budget
- * for the rest of the current billing period only — it does not roll over.
- * Takes the total cap from MONTHLY_AI_BUDGET_EUR (2 €) to 3,50 €. */
-export const EXTRA_CREDIT_PRICE_EUR = 9.99;
-export const EXTRA_CREDIT_BUDGET_EUR = 1.5;
-export const EXTRA_CREDIT_BUDGET_USD = EXTRA_CREDIT_BUDGET_EUR * USD_PER_EUR;
+import type { SubscriptionTier } from "@/lib/supabase/database.types";
+export type { SubscriptionTier };
 
-/** Sentences shown in clear before the progressive blur kicks in for
- * non-subscribers. */
-export const FREE_PREVIEW_SENTENCES = 2;
+export interface TierFeatures {
+  quiz: boolean;
+  planning: boolean;
+}
+
+export interface TierConfig {
+  label: string;
+  priceEur: number;
+  credits: number;
+  /** Real Claude API cost (fiche + quiz generation combined, computed from
+   * response.usage — see lib/anthropic/client.ts) this tier's credits
+   * convert to, per billing period. Generation is blocked once reached;
+   * it never rolls over and is reset on every renewal. */
+  budgetUsd: number;
+  features: TierFeatures;
+}
+
+export const TIERS: Record<SubscriptionTier, TierConfig> = {
+  tier1: {
+    label: "Fiches",
+    priceEur: 9.99,
+    credits: 1500,
+    budgetUsd: (1500 / CREDITS_PER_EUR) * USD_PER_EUR,
+    features: { quiz: false, planning: false },
+  },
+  tier2: {
+    label: "Complet",
+    priceEur: 19.99,
+    credits: 4500,
+    budgetUsd: (4500 / CREDITS_PER_EUR) * USD_PER_EUR,
+    features: { quiz: true, planning: true },
+  },
+  tier3: {
+    label: "Complet+",
+    priceEur: 39.99,
+    credits: 9000,
+    budgetUsd: (9000 / CREDITS_PER_EUR) * USD_PER_EUR,
+    features: { quiz: true, planning: true },
+  },
+};
+
+export const TIER_ORDER: SubscriptionTier[] = ["tier1", "tier2", "tier3"];
+
+/** Converts a real USD cost (as tracked in ai_cost_usd_period) to the
+ * number of credits it represents, for display — the only place this
+ * ratio is exposed outside this module, and only ever as a plain credit
+ * count, never alongside a euro amount. */
+export function usdToCredits(usd: number): number {
+  return Math.round((usd / USD_PER_EUR) * CREDITS_PER_EUR);
+}
+
+export function isSubscriptionTier(value: unknown): value is SubscriptionTier {
+  return typeof value === "string" && value in TIERS;
+}
+
+/** Whether an (possibly absent) tier grants a given feature — false for
+ * every feature when there's no active tier at all. Pure/no DB access, so
+ * usable from both server and client code. */
+export function hasFeatureAccess(tier: SubscriptionTier | null, feature: keyof TierFeatures): boolean {
+  if (!tier) return false;
+  return TIERS[tier].features[feature];
+}
+
+/** Fraction of a fiche's content shown in clear to a non-subscriber (or a
+ * subscriber whose access has lapsed) before the progressive blur kicks
+ * in — see lib/subscription/preview.ts. */
+export const FREE_PREVIEW_FRACTION = 0.1;

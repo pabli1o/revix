@@ -2,30 +2,37 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
-import { MONTHLY_AI_BUDGET_USD } from "./constants";
+import { TIERS, hasFeatureAccess, type SubscriptionTier, type TierFeatures } from "./constants";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
   isActive: boolean;
+  tier: SubscriptionTier | null;
   aiCostUsdPeriod: number;
-  extraCreditUsdPeriod: number;
 }
 
 export async function getSubscriptionInfo(userId: string): Promise<SubscriptionInfo> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("subscriptions")
-    .select("status, ai_cost_usd_period, extra_credit_usd_period")
+    .select("status, tier, ai_cost_usd_period")
     .eq("user_id", userId)
     .maybeSingle();
 
   const status = data?.status ?? "inactive";
+  const isActive = status === "active";
   return {
     status,
-    isActive: status === "active",
+    isActive,
+    tier: isActive ? ((data?.tier as SubscriptionTier | null) ?? null) : null,
     aiCostUsdPeriod: data?.ai_cost_usd_period ?? 0,
-    extraCreditUsdPeriod: data?.extra_credit_usd_period ?? 0,
   };
+}
+
+/** Convenience wrapper around the pure hasFeatureAccess so call sites that
+ * already have a SubscriptionInfo don't need to import both modules. */
+export function subscriptionHasFeature(subscription: SubscriptionInfo, feature: keyof TierFeatures): boolean {
+  return hasFeatureAccess(subscription.tier, feature);
 }
 
 export class AiUsageCapExceededError extends Error {
@@ -52,13 +59,13 @@ export async function assertAiUsageBudgetAvailable(userId: string): Promise<void
   const admin = createAdminClient();
   const { data } = await admin
     .from("subscriptions")
-    .select("status, ai_cost_usd_period, extra_credit_usd_period")
+    .select("status, tier, ai_cost_usd_period")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!data || data.status !== "active") return;
+  if (!data || data.status !== "active" || !data.tier) return;
 
-  const budget = MONTHLY_AI_BUDGET_USD + data.extra_credit_usd_period;
+  const budget = TIERS[data.tier as SubscriptionTier].budgetUsd;
   if (data.ai_cost_usd_period >= budget) {
     throw new AiUsageCapExceededError();
   }
@@ -67,9 +74,9 @@ export async function assertAiUsageBudgetAvailable(userId: string): Promise<void
 /**
  * Records the real cost of one Claude API call against the user's monthly
  * total, via an atomic SQL increment (see migration 0007) — needed because
- * this can race with the Whop webhook granting a credit top-up
- * concurrently, which is a separate process from the app's own
- * AI-lock-serialized generation calls.
+ * this can race with a renewal reset happening concurrently via the Whop
+ * webhook, a separate process from the app's own AI-lock-serialized
+ * generation calls.
  *
  * No-ops for a $0 cost (never happens in practice, but avoids a pointless
  * write) and silently no-ops if the user has no subscriptions row (never

@@ -1,15 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import type { FicheContenu } from "@/lib/supabase/database.types";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { computePreviewCutoff, getSousPointVisibility, isARetenirVisible } from "@/lib/subscription/preview";
+import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
 import { RichText } from "./rich-text";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "./planning-task-timer-bar";
+import { PricingModal } from "@/components/abonnement/pricing-modal";
 
 export function FicheViewer({
   ficheId,
@@ -31,6 +32,7 @@ export function FicheViewer({
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
@@ -221,13 +223,13 @@ export function FicheViewer({
       {isBlurred && (
         <div className="sticky bottom-4 mt-6 flex flex-col items-center gap-2 rounded-2xl border border-accent bg-bg-card p-5 text-center shadow-xl">
           <p className="font-medium">
-            Abonne-toi pour lire cette fiche en entier et débloquer tout Revix.
+            Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
           </p>
-          <Link href="/abonnement">
-            <Button>Voir l&apos;abonnement — 9,99 €/mois</Button>
-          </Link>
+          <Button onClick={() => setPricingOpen(true)}>Débloquer la fiche complète</Button>
         </div>
       )}
+
+      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </div>
   );
 }

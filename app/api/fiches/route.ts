@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { scheduleQuizPreparation } from "@/lib/quiz/schedule";
-import { getSubscriptionInfo } from "@/lib/subscription/gate";
+import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import type { SaveFichesRequest, SaveFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -114,8 +114,12 @@ export async function POST(request: Request) {
     }
   }
 
-  for (const chapterId of touchedChapterIds) {
-    await scheduleQuizPreparation(user.id, chapterId);
+  // Tier 1 has no quiz access at all — don't spend its (smaller) generation
+  // budget preparing quizzes it can never see.
+  if (subscriptionHasFeature(subscription, "quiz")) {
+    for (const chapterId of touchedChapterIds) {
+      await scheduleQuizPreparation(user.id, chapterId);
+    }
   }
 
   const response: SaveFichesResponse = {

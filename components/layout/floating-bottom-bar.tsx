@@ -1,6 +1,6 @@
 /** Fixed action bar pinned to the bottom of the viewport — used for a
  * primary call to action that must stay visible at all times while
- * scrolling through long content (e.g. "Débloquer — 9,99€/mois" under a
+ * scrolling through long content (e.g. "Débloquer la fiche complète" under a
  * freshly generated fiche). `md:left-64` keeps it clear of the desktop
  * sidebar (16rem wide) instead of centering across the full viewport. */
 export function FloatingBottomBar({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
+import { isSubscriptionTier } from "@/lib/subscription/constants";
+
+const PLAN_ENV_BY_TIER = {
+  tier1: "WHOP_PLAN_ID_TIER1",
+  tier2: "WHOP_PLAN_ID_TIER2",
+  tier3: "WHOP_PLAN_ID_TIER3",
+} as const;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -9,11 +16,15 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-  const planId = whopEnv("WHOP_PLAN_ID");
-  if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
-
-  const body = (await request.json().catch(() => null)) as { draftId?: string } | null;
+  const body = (await request.json().catch(() => null)) as { tier?: string; draftId?: string } | null;
+  const tier = body?.tier;
+  if (!isSubscriptionTier(tier)) {
+    return NextResponse.json({ error: "Offre invalide" }, { status: 400 });
+  }
   const draftId = body?.draftId;
+
+  const planId = whopEnv(PLAN_ENV_BY_TIER[tier]);
+  if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
 
   const whop = getWhop();
   const siteUrl = getSiteUrl();
@@ -36,8 +47,10 @@ export async function POST(request: Request) {
     redirect_url: redirectUrl,
     // Copied by Whop onto both the resulting payment and membership (see
     // app/api/whop/webhook/route.ts) — this is how a webhook event links
-    // back to our own user, since Whop has no client_reference_id concept.
-    metadata: { userId: user.id, type: "subscription", ...(draftId ? { draftId } : {}) },
+    // back to our own user and tier, since Whop has no client_reference_id
+    // concept and a Plan id alone doesn't tell the webhook which of our 3
+    // tiers it maps to (that mapping only exists in PLAN_ENV_BY_TIER above).
+    metadata: { userId: user.id, type: "subscription", tier, ...(draftId ? { draftId } : {}) },
   });
 
   if (!config.purchase_url) {

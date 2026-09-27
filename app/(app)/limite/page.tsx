@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
-import { BuyCreditButton } from "@/components/abonnement/subscribe-actions";
 
 /**
  * Shown instead of the fiche/quiz generation screen once an active
@@ -8,7 +9,9 @@ import { BuyCreditButton } from "@/components/abonnement/subscribe-actions";
  * AiUsageCapExceededError, surfaced as aiUsageCapExceeded on the fiche
  * generation and quiz API responses). Deliberately vague: no euro amounts,
  * no mention of what the cap is actually measuring — see the exact wording
- * rules that apply here.
+ * rules that apply here. No more in-period top-up (every plan is a fixed
+ * monthly credit allowance now) — the only way to get more credit before
+ * the next renewal is switching to a higher tier from /abonnement.
  */
 export default function LimitePage() {
   return (
@@ -22,14 +25,18 @@ export default function LimitePage() {
         <Card className="w-full text-left text-sm text-text-muted">
           <p>
             Tes crédits se renouvellent automatiquement à ton prochain renouvellement
-            d&apos;abonnement. En attendant, tu peux débloquer un supplément dès maintenant pour
-            continuer à créer des fiches et des quiz.
+            d&apos;abonnement. Tu peux aussi passer à une offre avec plus de crédits dès
+            maintenant.
           </p>
         </Card>
       </div>
 
       <FloatingBottomBar>
-        <BuyCreditButton className="w-full" size="lg" label="Débloquer des crédits — 9,99 €" />
+        <Link href="/abonnement" className="block w-full">
+          <Button className="w-full" size="lg">
+            Voir les abonnements
+          </Button>
+        </Link>
       </FloatingBottomBar>
     </div>
   );

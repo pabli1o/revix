@@ -1,5 +1,5 @@
 import type { FicheContenu } from "@/lib/supabase/database.types";
-import { FREE_PREVIEW_SENTENCES } from "./constants";
+import { FREE_PREVIEW_FRACTION } from "./constants";
 
 /**
  * Points at the exact position, inside a fiche's structured content, where
@@ -16,32 +16,35 @@ export interface PreviewCutoff {
   charIndex: number;
 }
 
-const SENTENCE_END_RE = /[.!?](?:\s+|$)/g;
-
 /**
  * Walks the fiche content in reading order (section by section, sous-point
- * by sous-point) and returns the cutoff after the first `freeSentences`
- * sentences. Returns null when the whole fiche is shorter than that — in
- * that case there is nothing to blur, everything is shown.
+ * by sous-point) and returns the cutoff once `freeFraction` of the fiche's
+ * total character count has been shown. Returns null when the fiche has no
+ * content at all — in that case there is nothing to blur, everything is
+ * shown (this never triggers for a real fiche with content, since the
+ * target is always strictly less than the total).
  */
 export function computePreviewCutoff(
   contenu: FicheContenu,
-  freeSentences: number = FREE_PREVIEW_SENTENCES,
+  freeFraction: number = FREE_PREVIEW_FRACTION,
 ): PreviewCutoff | null {
-  let sentencesSeen = 0;
+  let totalChars = 0;
+  for (const section of contenu.plan) {
+    for (const sp of section.sousPoints) totalChars += sp.texte.length;
+  }
+  if (totalChars === 0) return null;
+
+  const target = totalChars * freeFraction;
+  let seen = 0;
 
   for (let sectionIndex = 0; sectionIndex < contenu.plan.length; sectionIndex++) {
     const section = contenu.plan[sectionIndex];
     for (let sousPointIndex = 0; sousPointIndex < section.sousPoints.length; sousPointIndex++) {
       const texte = section.sousPoints[sousPointIndex].texte;
-      SENTENCE_END_RE.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = SENTENCE_END_RE.exec(texte)) !== null) {
-        sentencesSeen++;
-        if (sentencesSeen >= freeSentences) {
-          return { sectionIndex, sousPointIndex, charIndex: match.index + match[0].length };
-        }
+      if (seen + texte.length >= target) {
+        return { sectionIndex, sousPointIndex, charIndex: Math.max(0, Math.round(target - seen)) };
       }
+      seen += texte.length;
     }
   }
 

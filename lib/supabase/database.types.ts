@@ -9,6 +9,7 @@ export type PlanningTaskType = "decouverte" | "rappel";
 export type QuizDifficulty = "facile" | "moyen" | "difficile";
 export type QuizStatus = "pending" | "ready" | "failed";
 export type SubscriptionStatus = "inactive" | "active" | "past_due" | "canceled";
+export type SubscriptionTier = "tier1" | "tier2" | "tier3";
 
 export interface FicheSousPoint {
   lettre: string;
@@ -142,9 +143,9 @@ export type SubscriptionRow = {
   whop_user_id: string | null;
   whop_membership_id: string | null;
   status: SubscriptionStatus;
+  tier: SubscriptionTier | null;
   current_period_end: string | null;
   ai_cost_usd_period: number;
-  extra_credit_usd_period: number;
   created_at: string;
   updated_at: string;
 };
@@ -165,13 +166,6 @@ export type FicheDraftRow = {
   user_id: string;
   items: FicheDraftItem[];
   sources: FicheSource[];
-  created_at: string;
-};
-
-export type AiCreditTopupRow = {
-  payment_id: string;
-  user_id: string;
-  amount_usd: number;
   created_at: string;
 };
 
@@ -252,11 +246,6 @@ export interface Database {
         Partial<FicheDraftRow> & { user_id: string; items: FicheDraftItem[] },
         Partial<FicheDraftRow>
       >;
-      ai_credit_topups: Table<
-        AiCreditTopupRow,
-        Partial<AiCreditTopupRow> & { payment_id: string; user_id: string; amount_usd: number },
-        Partial<AiCreditTopupRow>
-      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -269,10 +258,6 @@ export interface Database {
         Returns: boolean;
       };
       increment_ai_usage_cost: {
-        Args: { p_user_id: string; p_amount: number };
-        Returns: void;
-      };
-      increment_ai_credit: {
         Args: { p_user_id: string; p_amount: number };
         Returns: void;
       };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlanningTasks } from "@/lib/planning/build-plan";
+import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 
 export async function POST() {
   const supabase = await createClient();
@@ -8,6 +9,11 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const subscription = await getSubscriptionInfo(user.id);
+  if (!subscriptionHasFeature(subscription, "planning")) {
+    return NextResponse.json({ error: "Ton abonnement ne donne pas accès au planning." }, { status: 402 });
+  }
 
   const tasks = await buildPlanningTasks(supabase, user.id);
 

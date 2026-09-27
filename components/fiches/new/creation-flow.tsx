@@ -13,6 +13,8 @@ import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
+import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
+import { PricingModal } from "@/components/abonnement/pricing-modal";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
 
@@ -32,6 +34,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
+  const [pricingDraftId, setPricingDraftId] = useState<string | null>(null);
   const [generationProgress, setGenerationProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
@@ -172,8 +176,10 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     }
   }
 
-  /** Only this click ever leaves the site for Whop. */
-  async function handleSubscribeFromOffer() {
+  /** Prepares the draft (so it survives the trip out to Whop Checkout) and
+   * only then opens the pricing popup — the popup itself starts the actual
+   * checkout once a tier is picked (see PricingCards, given this draftId). */
+  async function handleOpenPricing() {
     setError(null);
     const toSave = selectedProposals();
     if (!toSave) return;
@@ -181,26 +187,12 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     setSubscribing(true);
     try {
       const draftId = await createDraft(toSave);
-      if (!draftId) {
-        setSubscribing(false);
-        return;
-      }
-      const checkoutRes = await fetchJson<{ url?: string; error?: string }>(
-        "/api/whop/checkout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId }),
-        },
-      );
-      if (checkoutRes.status < 200 || checkoutRes.status >= 300 || !checkoutRes.data?.url) {
-        setError(checkoutRes.data?.error ?? "Impossible d'ouvrir la page de paiement.");
-        setSubscribing(false);
-        return;
-      }
-      window.location.href = checkoutRes.data.url;
+      if (!draftId) return;
+      setPricingDraftId(draftId);
+      setPricingOpen(true);
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
+    } finally {
       setSubscribing(false);
     }
   }
@@ -291,6 +283,11 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
               </div>
 
               <ProposalPreview contenu={item.proposal.contenu} isSubscribed={isSubscribed} />
+              {!isSubscribed && (
+                <p className="text-center text-sm text-text-muted">
+                  Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
+                </p>
+              )}
             </div>
           ))}
 
@@ -314,12 +311,18 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
               {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
             </Button>
           ) : (
-            <Button className="w-full" onClick={handleSubscribeFromOffer} disabled={subscribing}>
-              {subscribing ? "Redirection…" : "Débloquer — 9,99 €/mois"}
+            <Button className="w-full" onClick={handleOpenPricing} disabled={subscribing}>
+              {subscribing ? "Préparation…" : "Débloquer la fiche complète"}
             </Button>
           )}
         </FloatingBottomBar>
       )}
+
+      <PricingModal
+        open={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        draftId={pricingDraftId ?? undefined}
+      />
     </div>
   );
 }

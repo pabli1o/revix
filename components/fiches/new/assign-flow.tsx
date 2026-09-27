@@ -9,6 +9,7 @@ import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { FicheLoader } from "@/components/ui/fiche-loader";
+import { PricingCards } from "@/components/abonnement/pricing-cards";
 import { ProposalPreview } from "./proposal-preview";
 import type { FicheDraftResponse, SaveFichesResponse } from "@/lib/fiches/types";
 
@@ -85,7 +86,6 @@ export function AssignFlow({
   const [newChapterDraft, setNewChapterDraft] = useState("");
   const [creatingChapter, setCreatingChapter] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const pollCount = useRef(0);
 
@@ -173,30 +173,6 @@ export function AssignFlow({
 
   function updateItem(key: string, patch: Partial<AssignItem>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
-  }
-
-  async function startCheckout() {
-    setCheckoutLoading(true);
-    setError(null);
-    try {
-      const { status, data } = await fetchJson<{ url?: string; error?: string }>(
-        "/api/whop/checkout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId }),
-        },
-      );
-      if (status < 200 || status >= 300 || !data?.url) {
-        setError(data?.error ?? "Impossible d'ouvrir la page de paiement.");
-        setCheckoutLoading(false);
-        return;
-      }
-      window.location.href = data.url;
-    } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
-      setCheckoutLoading(false);
-    }
   }
 
   function chooseExistingSubject(subjectId: string) {
@@ -287,35 +263,37 @@ export function AssignFlow({
 
   if (phase === "checkout-cancelled") {
     return (
-      <Card className="mx-auto max-w-md text-center">
-        <p className="mb-4 text-sm">Paiement annulé — ta fiche est toujours prête à être enregistrée.</p>
-        {error && <p className="mb-3 text-sm text-danger">{error}</p>}
-        <div className="flex justify-center gap-3">
-          <Button variant="secondary" onClick={() => router.push("/fiches/new")}>
-            Retour
-          </Button>
-          <Button onClick={startCheckout} disabled={checkoutLoading}>
-            {checkoutLoading ? "Redirection…" : "Réessayer le paiement"}
-          </Button>
-        </div>
-      </Card>
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <Card className="text-center">
+          <p className="mb-2 text-sm">Paiement annulé — ta fiche est toujours prête à être enregistrée.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/fiches/new")}
+            className="text-sm text-text-muted hover:text-accent"
+          >
+            ← Recommencer une fiche
+          </button>
+        </Card>
+        {error && <p className="text-center text-sm text-danger">{error}</p>}
+        <PricingCards draftId={draftId} onCheckoutError={setError} />
+      </div>
     );
   }
 
   if (phase === "not-subscribed") {
     return (
-      <Card className="mx-auto max-w-md text-center">
-        <h1 className="mb-2 font-heading text-2xl font-semibold">
-          Profite pleinement de tes fiches
-        </h1>
-        <p className="mb-6 text-sm text-text-muted">
-          Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
-        </p>
-        {error && <p className="mb-3 text-sm text-danger">{error}</p>}
-        <Button onClick={startCheckout} disabled={checkoutLoading}>
-          {checkoutLoading ? "Redirection…" : "S'abonner — 9,99 €/mois"}
-        </Button>
-      </Card>
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
+        <div>
+          <h1 className="mb-2 font-heading text-2xl font-semibold">
+            Profite pleinement de tes fiches
+          </h1>
+          <p className="text-sm text-text-muted">
+            Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
+          </p>
+        </div>
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <PricingCards draftId={draftId} onCheckoutError={setError} />
+      </div>
     );
   }
 

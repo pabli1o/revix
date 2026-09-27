@@ -3,60 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function SubscribeButton() {
-  const [loading, setLoading] = useState(false);
-
-  async function handleClick() {
-    setLoading(true);
-    const res = await fetch("/api/whop/checkout", { method: "POST" });
-    const data = (await res.json()) as { url?: string; error?: string };
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      setLoading(false);
-      window.alert(data.error ?? "Impossible de démarrer le paiement.");
-    }
-  }
-
-  return (
-    <Button onClick={handleClick} disabled={loading} size="lg">
-      {loading ? "Redirection…" : "S'abonner — 9,99 €/mois"}
-    </Button>
-  );
-}
-
-export function BuyCreditButton({
-  className,
-  size,
-  label = "Débloquer 1500 crédits — 9,99 €",
-}: {
-  className?: string;
-  size?: "sm" | "md" | "lg";
-  /** Override the default label — e.g. the /limite screen must show only
-   * the price to pay, never the unlocked amount. */
-  label?: string;
-}) {
-  const [loading, setLoading] = useState(false);
-
-  async function handleClick() {
-    setLoading(true);
-    const res = await fetch("/api/whop/credit-checkout", { method: "POST" });
-    const data = (await res.json()) as { url?: string; error?: string };
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      setLoading(false);
-      window.alert(data.error ?? "Impossible de démarrer le paiement.");
-    }
-  }
-
-  return (
-    <Button onClick={handleClick} disabled={loading} className={className} size={size}>
-      {loading ? "Redirection…" : label}
-    </Button>
-  );
-}
-
 /**
  * Whop has no hosted self-service billing portal to redirect to like
  * Stripe's — this calls the cancellation API directly instead, so it needs
