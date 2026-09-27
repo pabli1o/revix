@@ -238,14 +238,26 @@ export function FicheViewer({
         <div className="flex flex-col gap-8">{clearSections}</div>
 
         {isBlurred ? (
-          <div className="relative mt-8 max-h-[420px] overflow-hidden rounded-xl">
+          // Full real content, unclipped — a long fiche stays visually
+          // long, just illegible past the cutoff — with the unlock CTA
+          // layered on top of only the first ~360px of it (fading to fully
+          // transparent) so the rest of the actual blurred content keeps
+          // showing through underneath, all the way to the fiche's real
+          // end, instead of a short fixed-height box hiding most of it.
+          <div className="relative mt-8">
             <div aria-hidden className="pointer-events-none flex select-none flex-col gap-8 blur-sm">
               {lockedSections}
               {!aRetenirVisible && aRetenirBox}
             </div>
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
-              style={{ background: `linear-gradient(to bottom, transparent, ${PAPER_BG}cc 35%, ${PAPER_BG} 65%)` }}
+              className="absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
+              style={{
+                // min(360px, 100%): never taller than the real blurred
+                // content behind it (a very short fiche's locked portion),
+                // so this can't spill past its actual end.
+                height: "min(360px, 100%)",
+                background: `linear-gradient(to bottom, ${PAPER_BG}f5 0%, ${PAPER_BG}f5 55%, transparent 100%)`,
+              }}
             >
               <p className="font-heading text-lg font-semibold">
                 Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.

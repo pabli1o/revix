@@ -110,14 +110,23 @@ export function ProposalPreview({
       <div className="flex flex-col gap-4">{clearSections}</div>
 
       {isBlurred ? (
-        <div className="relative mt-4 max-h-[320px] overflow-hidden rounded-lg">
+        // Full real content, unclipped — see fiche-viewer.tsx's identical
+        // approach: the CTA only covers the first ~280px, fading to fully
+        // transparent, so the rest of the actual blurred content keeps
+        // showing through beneath it for the fiche's real full length.
+        <div className="relative mt-4">
           <div aria-hidden className="pointer-events-none flex select-none flex-col gap-4 blur-sm">
             {lockedSections}
             {!aRetenirVisible && aRetenirBox}
           </div>
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center"
-            style={{ background: `linear-gradient(to bottom, transparent, ${CARD_BG}cc 35%, ${CARD_BG} 65%)` }}
+            className="absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-3 px-4 text-center"
+            style={{
+              // min(280px, 100%): never taller than the real blurred
+              // content behind it (a very short fiche's locked portion).
+              height: "min(280px, 100%)",
+              background: `linear-gradient(to bottom, ${CARD_BG}f5 0%, ${CARD_BG}f5 55%, transparent 100%)`,
+            }}
           >
             <p className="font-medium">
               Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
