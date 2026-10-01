@@ -83,6 +83,11 @@ export type FicheRow = {
   titre: string;
   contenu: FicheContenu;
   sources: FicheSource[];
+  /** Position within the batch it was saved in (see POST /api/fiches) —
+   * lets a multi-part fiche ("Partie 1", "Partie 2", ...) list in the
+   * right order even though its rows share one created_at. 0 for a fiche
+   * saved on its own. */
+  ordre: number;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;

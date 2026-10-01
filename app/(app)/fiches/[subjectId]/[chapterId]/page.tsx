@@ -30,7 +30,11 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
         .eq("chapter_id", chapterId)
         .eq("user_id", user!.id)
         .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
+        // Newest batch first, but a multi-part fiche saved together shares
+        // one created_at (see POST /api/fiches) — ordre ascending then
+        // keeps "Partie 1" before "Partie 2" within that batch.
+        .order("created_at", { ascending: false })
+        .order("ordre", { ascending: true }),
     ]);
 
   if (!subject || !chapter) notFound();

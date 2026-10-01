@@ -35,7 +35,18 @@ export async function POST(request: Request) {
   let saved = 0;
   let stopError: string | null = null;
 
-  for (const item of items) {
+  // A fiche the model split into "Partie 1", "Partie 2", ... (see
+  // lib/anthropic/prompts.ts) arrives here as consecutive items in the same
+  // request, in that exact order. Saved one row at a time below (each needs
+  // its own subject/chapter resolution), which would otherwise give each
+  // part its own created_at a few ms apart — enough for the chapter's fiche
+  // list (sorted newest-first) to show them out of order. Sharing one
+  // timestamp for the whole batch plus this explicit position keeps them
+  // grouped together and in the right order: see the `order("created_at",
+  // …).order("ordre", …)` in the chapter page.
+  const savedAt = new Date().toISOString();
+
+  for (const [index, item] of items.entries()) {
     if (!item.titre?.trim() || !item.contenu) {
       stopError = "Fiche invalide (titre ou contenu manquant)";
       break;
@@ -103,6 +114,8 @@ export async function POST(request: Request) {
         titre: item.titre.trim(),
         contenu: item.contenu,
         sources: item.sources ?? [],
+        created_at: savedAt,
+        ordre: index,
       });
       if (insertError) throw new Error(insertError.message);
 
