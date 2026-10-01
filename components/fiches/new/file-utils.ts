@@ -57,6 +57,20 @@ export const MAX_TOTAL_PAYLOAD_BYTES = 2_500_000;
  * silently adding it and failing later at submit time. */
 export const MAX_SINGLE_SOURCE_BYTES = 2_000_000;
 
+/**
+ * PDF/Word files bypass MAX_SINGLE_SOURCE_BYTES entirely — they go straight
+ * to Supabase Storage (see upload-source.ts) rather than through the
+ * base64-in-JSON path that limit was written for, and are never reduced to
+ * a `.data` field client-side, so the size check in source-picker.tsx's
+ * tryAddSources() silently saw 0 bytes for them and let anything through.
+ * This is the limit enforced instead, checked against file.size *before*
+ * uploadSourceFile() ever starts — Claude's own PDF limits are 32 MB /
+ * 600 pages, and a huge file would otherwise upload successfully (taking
+ * real time) only to fail later, deep into generation, downloading
+ * server-side or hitting that API limit.
+ */
+export const MAX_DOCUMENT_FILE_BYTES = 20_000_000;
+
 export function estimateBase64Bytes(base64: string): number {
   return base64.length;
 }

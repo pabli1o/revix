@@ -5,8 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
-import { compressImageFile, estimateBase64Bytes, MAX_SINGLE_SOURCE_BYTES, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
+import {
+  compressImageFile,
+  estimateBase64Bytes,
+  MAX_DOCUMENT_FILE_BYTES,
+  MAX_SINGLE_SOURCE_BYTES,
+  MAX_TOTAL_PAYLOAD_BYTES,
+} from "./file-utils";
 import { SOURCE_UPLOADS_BUCKET, uploadSourceFile } from "./upload-source";
+
+function formatMB(bytes: number): string {
+  return `${(bytes / 1_000_000).toFixed(0)} Mo`;
+}
 
 function totalPayloadBytes(sources: PendingSource[]): number {
   return sources.reduce(
@@ -112,15 +122,28 @@ export function SourcePicker({
    * capped at 4.5 MB by Vercel with no way to raise it, so this is what
    * lets a source file of any size work. Only the short storage path is
    * sent to the generation request, so these never count against the
-   * inline-payload budget below (still relevant to photos/text).
+   * inline-payload budget below (still relevant to photos/text) — hence
+   * the separate MAX_DOCUMENT_FILE_BYTES check on file.size itself, done
+   * *before* uploadSourceFile() starts rather than after, so an oversized
+   * file is rejected instantly instead of uploading first and only
+   * failing once generation actually tries to use it.
    */
   async function handleDocumentFiles(
     files: FileList,
     type: "pdf" | "word",
   ): Promise<PendingSource[]> {
     const failed: string[] = [];
-    const added: PendingSource[] = [];
+    const toUpload: File[] = [];
     for (const file of Array.from(files)) {
+      if (file.size > MAX_DOCUMENT_FILE_BYTES) {
+        failed.push(`${file.name} (trop lourd : max ${formatMB(MAX_DOCUMENT_FILE_BYTES)})`);
+        continue;
+      }
+      toUpload.push(file);
+    }
+
+    const added: PendingSource[] = [];
+    for (const file of toUpload) {
       try {
         const storagePath = await uploadSourceFile(file);
         added.push({ id: makeId(), type, nom: file.name, storagePath });
