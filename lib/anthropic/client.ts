@@ -10,6 +10,17 @@ const MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3;
 const DEFAULT_MAX_TOKENS = 8000;
 
+/** Claude Opus 5 runs adaptive thinking by default when `effort` is left
+ * unset, at its default of "high" — billed as output tokens ($25/Mtok)
+ * even though generateJson only ever reads the final `text` block, never
+ * the `thinking` one. Fiche/quiz generation is a structured-extraction
+ * task (turn given sources into a fixed JSON shape), not open-ended
+ * reasoning, so it's a good candidate for a lower effort level per
+ * Anthropic's own published cost/quality curves for that kind of workload.
+ * "medium" first, as the safer step down from the implicit "high" — drop
+ * to "low" only after medium is confirmed to hold fiche quality. */
+const EFFORT: Anthropic.OutputConfig = { effort: "medium" };
+
 /** USD per million tokens for MODEL above. Pricing isn't queryable from the
  * API, so this must be kept in sync by hand — computeCostUsd throws rather
  * than silently under-costing (which would quietly break the usage cap) if
@@ -132,13 +143,20 @@ export async function generateJson<T>({
             max_tokens: maxTokens,
             system,
             messages: [{ role: "user", content: toAnthropicContent(content) }],
+            output_config: EFFORT,
           });
           const cost = computeCostUsd(response.usage);
+          // thinking_tokens is logged on its own: it's the exact lever
+          // EFFORT above targets, so this line is what shows in Vercel
+          // logs whether dropping to "medium" (and later "low") actually
+          // moved it, rather than inferring that from the cost total alone.
           logStep(
             tag,
             `attempt ${attempt}/${MAX_ATTEMPTS} — ${elapsedMs(attemptStarted)}ms, ` +
               `stop_reason=${response.stop_reason}, in=${response.usage.input_tokens}tok, ` +
-              `out=${response.usage.output_tokens}tok, cost=$${cost.toFixed(4)}`,
+              `out=${response.usage.output_tokens}tok ` +
+              `(thinking=${response.usage.output_tokens_details?.thinking_tokens ?? "n/a"}tok), ` +
+              `cost=$${cost.toFixed(4)}`,
           );
 
           await recordAiUsageCost(userId, cost);
