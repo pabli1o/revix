@@ -16,7 +16,7 @@ export default function RootSegmentError({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="font-heading text-2xl font-semibold text-accent">Revix</h1>
+      <h1 className="font-heading text-2xl font-semibold text-accent">Reviix</h1>
       <p className="max-w-md text-sm text-text-muted">
         {error.message || "Une erreur inattendue s'est produite."}
       </p>

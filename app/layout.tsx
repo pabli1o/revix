@@ -23,7 +23,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Revix — Fiches de révision",
+  title: "Reviix — Fiches de révision",
   description: "Crée des fiches de révision, un planning et des quiz à partir de tes cours.",
 };
 

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-const STORAGE_KEY = "revix:session-timer";
+const STORAGE_KEY = "reviix:session-timer";
 
 interface PersistedState {
   activeTaskId: string | null;

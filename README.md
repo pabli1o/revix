@@ -1,6 +1,6 @@
-# Revix
+# Reviix
 
-Revix est une application de révision pour lycéens/étudiants : elle transforme
+Reviix est une application de révision pour lycéens/étudiants : elle transforme
 des notes de cours (texte, photos, PDF, Word) en fiches de révision
 structurées, génère un planning de révision par répétition espacée à partir
 des examens à venir, et propose un quiz par chapitre pour se tester.

@@ -30,7 +30,7 @@ export default function GlobalError({
           fontFamily: "system-ui, sans-serif",
         }}
       >
-        <h1 style={{ color: "#e8a33d", fontSize: "1.5rem", fontWeight: 600 }}>Revix</h1>
+        <h1 style={{ color: "#e8a33d", fontSize: "1.5rem", fontWeight: 600 }}>Reviix</h1>
         <p style={{ maxWidth: 420, fontSize: "0.875rem", color: "#b3b3c9" }}>
           {error.message || "Une erreur inattendue s'est produite."}
         </p>

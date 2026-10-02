@@ -1,4 +1,4 @@
--- Revix initial schema
+-- Reviix initial schema
 -- All tables use Row Level Security scoped to auth.uid() = user_id
 -- (except join tables, which check ownership through their parent).
 

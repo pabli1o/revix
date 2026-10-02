@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <aside className="flex flex-row items-center justify-between border-b border-border bg-bg-elevated px-4 py-3 md:w-64 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:px-5 md:py-6">
         <div className="flex items-center justify-between md:mb-8">
           <Link href="/fiches" className="font-heading text-xl font-semibold text-accent">
-            Revix
+            Reviix
           </Link>
           <div className="flex items-center gap-1">
             <CorbeilleLink />

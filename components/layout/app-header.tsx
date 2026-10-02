@@ -2,7 +2,7 @@ import { getProfile } from "@/lib/supabase/profile";
 
 /** Shared header shown at the top of every main tab (Fiches / Examen /
  * Planning / Quiz), per the validated design spec: an ambre pill badge,
- * a huge pale "Revix" watermark, and a one-line intro. Deliberately
+ * a huge pale "Reviix" watermark, and a one-line intro. Deliberately
  * identical across the four tabs — which tab you're on is communicated by
  * the active pill in the nav, not by a per-page title.
  *
@@ -24,7 +24,7 @@ export async function AppHeader() {
         aria-hidden
         className="select-none font-heading text-6xl font-bold leading-[0.9] text-text/[0.06] md:text-8xl"
       >
-        Revix
+        Reviix
       </h1>
       <p className="mt-2 text-text-muted">
         {prenom ? (
