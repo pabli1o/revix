@@ -27,14 +27,6 @@ const EFFORT: Anthropic.OutputConfig = { effort: "medium" };
  * MODEL is ever changed without updating this. */
 const MODEL_PRICING_USD_PER_MTOK = { model: "claude-opus-5", input: 5, output: 25 } as const;
 
-/** The Message Batches API (see submitBatch/checkBatch below) is billed at
- * a flat 50% off the standard per-token rate above, in exchange for giving
- * up synchronous delivery. */
-const BATCH_PRICING_USD_PER_MTOK = {
-  input: MODEL_PRICING_USD_PER_MTOK.input / 2,
-  output: MODEL_PRICING_USD_PER_MTOK.output / 2,
-} as const;
-
 function computeCostUsd(usage: Anthropic.Usage): number {
   if (MODEL_PRICING_USD_PER_MTOK.model !== MODEL) {
     throw new Error(`No pricing configured for model "${MODEL}" — update MODEL_PRICING_USD_PER_MTOK.`);
@@ -42,13 +34,6 @@ function computeCostUsd(usage: Anthropic.Usage): number {
   return (
     (usage.input_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.input +
     (usage.output_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.output
-  );
-}
-
-function computeBatchCostUsd(usage: Anthropic.Usage): number {
-  return (
-    (usage.input_tokens / 1_000_000) * BATCH_PRICING_USD_PER_MTOK.input +
-    (usage.output_tokens / 1_000_000) * BATCH_PRICING_USD_PER_MTOK.output
   );
 }
 
@@ -226,128 +211,4 @@ export async function generateJson<T>({
     );
     throw err;
   }
-}
-
-interface SubmitBatchOptions {
-  system: string;
-  content: ClaudeContentBlock[];
-  maxTokens?: number;
-  label?: string;
-}
-
-/**
- * Submits a single-request Message Batch and returns its id immediately —
- * unlike generateJson above, this never waits for Claude to actually
- * respond. Used for fiche generation (see app/api/fiches/generate/route.ts),
- * which needs a true zero-duration-coupling guarantee that the AI lock /
- * synchronous retry loop above can't give: a batch runs entirely on
- * Anthropic's infrastructure, so submitting it is not serialized through
- * withAiLock — there is no shared duration budget left to protect once the
- * call itself takes a few seconds instead of up to a minute.
- *
- * No automatic retry-on-malformed-output here (unlike generateJson's
- * MAX_ATTEMPTS loop) — a batch result that fails validation in checkBatch
- * below simply marks the job 'failed'. A deliberate scope simplification
- * for this first pass; revisit if bad batch outputs turn out to be common
- * enough in practice to matter.
- */
-export async function submitBatch({
-  system,
-  content,
-  maxTokens = DEFAULT_MAX_TOKENS,
-  label = "batch",
-}: SubmitBatchOptions): Promise<string> {
-  const tag = `${label}:${randomUUID().slice(0, 8)}`;
-  const started = startTimer();
-  const anthropic = getClient();
-
-  const batch = await anthropic.messages.batches.create({
-    requests: [
-      {
-        custom_id: "fiche",
-        params: {
-          model: MODEL,
-          max_tokens: maxTokens,
-          system,
-          messages: [{ role: "user", content: toAnthropicContent(content) }],
-          output_config: EFFORT,
-        },
-      },
-    ],
-  });
-
-  logStep(tag, `batch ${batch.id} submitted — ${elapsedMs(started)}ms`);
-  return batch.id;
-}
-
-export type BatchCheckResult<T> =
-  | { status: "pending" }
-  | { status: "ready"; value: T }
-  | { status: "failed"; error: string };
-
-/**
- * Polls one submitted batch's status and, once Anthropic has finished
- * processing it (`processing_status === "ended"`), fetches and validates
- * its single result — recording its real (discounted) cost against the
- * user's usage budget exactly once, the same moment generateJson would
- * have for a synchronous call. Safe to call repeatedly while still
- * `pending`: nothing is recorded or consumed until the batch has ended.
- */
-export async function checkBatch<T>(
-  batchId: string,
-  userId: string,
-  validate: (value: unknown) => T | null,
-): Promise<BatchCheckResult<T>> {
-  const anthropic = getClient();
-  const batch = await anthropic.messages.batches.retrieve(batchId);
-
-  if (batch.processing_status !== "ended") {
-    return { status: "pending" };
-  }
-
-  const stream = await anthropic.messages.batches.results(batchId);
-  for await (const entry of stream) {
-    const result = entry.result;
-
-    if (result.type === "succeeded") {
-      const message = result.message;
-      const cost = computeBatchCostUsd(message.usage);
-      await recordAiUsageCost(userId, cost);
-
-      const textBlock = message.content.find((block) => block.type === "text");
-      const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
-
-      if (!rawText.trim()) {
-        return { status: "failed", error: "Réponse vide reçue" };
-      }
-      if (message.stop_reason === "max_tokens") {
-        return { status: "failed", error: "Réponse tronquée (limite de longueur atteinte)" };
-      }
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(stripCodeFence(rawText));
-      } catch {
-        return { status: "failed", error: "Format de réponse invalide" };
-      }
-
-      const validated = validate(parsed);
-      if (validated === null) {
-        return { status: "failed", error: "Réponse incomplète reçue" };
-      }
-
-      return { status: "ready", value: validated };
-    }
-
-    if (result.type === "errored") {
-      return { status: "failed", error: result.error.error.message };
-    }
-
-    return {
-      status: "failed",
-      error: result.type === "canceled" ? "Génération annulée" : "Génération expirée",
-    };
-  }
-
-  return { status: "failed", error: "Aucun résultat reçu pour cette génération" };
 }

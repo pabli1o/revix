@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
@@ -9,11 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
-import type {
-  CreateDraftResponse,
-  FicheGenerationJobStatusResponse,
-  FicheProposal,
-} from "@/lib/fiches/types";
+import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
@@ -28,17 +24,7 @@ interface ValidationItem {
   titre: string;
 }
 
-type Step = "sources" | "waiting" | "validation" | "preparing";
-
-/** Generation now runs as an Anthropic Message Batch (no hard deadline —
- * see lib/anthropic/client.ts), so polling just keeps checking at a fixed
- * pace for as long as the component stays mounted instead of racing a
- * short timeout. */
-const JOB_POLL_INTERVAL_MS = 4000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type Step = "sources" | "generating" | "validation" | "preparing";
 
 export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const router = useRouter();
@@ -53,70 +39,16 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     null,
   );
 
-  // Set once the component unmounts (e.g. the user closes the flow while a
-  // batch is still pending) so the polling loop below stops touching state
-  // on a component that's gone, and stops making pointless network calls.
-  const cancelledRef = useRef(false);
-  useEffect(
-    () => () => {
-      cancelledRef.current = true;
-    },
-    [],
-  );
-
   /**
-   * Polls every submitted job until each is 'ready' or 'failed', with no
-   * overall deadline — a batch can legitimately take a while, and there's
-   * no longer a synchronous request to time out (see
-   * lib/anthropic/client.ts's submitBatch/checkBatch). Returns the
-   * proposals in the same order as `jobIds` (chunk order), or null if any
-   * job failed (error/step state is already set before returning null).
-   */
-  async function pollJobs(jobIds: string[]): Promise<FicheProposal[][] | null> {
-    const results: (FicheProposal[] | null)[] = jobIds.map(() => null);
-
-    while (results.some((r) => r === null)) {
-      if (cancelledRef.current) return null;
-      await sleep(JOB_POLL_INTERVAL_MS);
-      if (cancelledRef.current) return null;
-
-      for (let i = 0; i < jobIds.length; i++) {
-        if (results[i] !== null) continue;
-
-        const { status, data } = await fetchJson<FicheGenerationJobStatusResponse>(
-          `/api/fiches/generate/${jobIds[i]}`,
-        );
-        if (cancelledRef.current) return null;
-
-        if (status < 200 || status >= 300 || !data) {
-          setError("Impossible de vérifier l'état de la génération.");
-          setStep("sources");
-          return null;
-        }
-        if (data.status === "ready") {
-          results[i] = data.proposals ?? [];
-          setGenerationProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
-        } else if (data.status === "failed") {
-          setError(data.error ?? "La génération a échoué.");
-          setStep("sources");
-          return null;
-        }
-      }
-    }
-
-    return results as FicheProposal[][];
-  }
-
-  /**
-   * Sends one /api/fiches/generate submission per chunk instead of one
-   * request for every source at once — chunkSources keeps each
-   * submission's content small enough to stay under Vercel's request body
-   * ceiling regardless of how much the user uploaded in total (see
-   * file-utils.ts for exactly how sources are grouped, and its documented
-   * residual limit: a single very large PDF/Word isn't split further).
-   * Each submission returns a job id almost immediately; the actual
-   * generation then runs as an Anthropic Message Batch and is tracked by
-   * polling (see pollJobs above) while the "waiting" step is shown.
+   * Sends one /api/fiches/generate request per chunk instead of one request
+   * for every source at once — each individual call stays comfortably
+   * inside Vercel's 60s function duration regardless of how much the user
+   * uploaded in total, since chunkSources keeps every call's content small
+   * (see file-utils.ts for exactly how sources are grouped, and its
+   * documented residual limit: a single very large PDF/Word isn't split
+   * further). Invisible to the user in the common case (a single small
+   * upload is already one chunk); a progress indicator only shows up once
+   * there's more than one.
    */
   async function handleGenerate() {
     setError(null);
@@ -141,14 +73,14 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       storagePath: s.storagePath,
     }));
     const chunks = chunkSources(payloadSources);
+    const allProposals: FicheProposal[] = [];
 
-    setStep("waiting");
+    setStep("generating");
     setGenerationProgress({ done: 0, total: chunks.length });
     try {
-      const jobIds: string[] = [];
       for (const chunk of chunks) {
         const { status, data } = await fetchJson<{
-          jobId?: string;
+          proposals?: FicheProposal[];
           error?: string;
           aiUsageCapExceeded?: boolean;
         }>("/api/fiches/generate", {
@@ -156,7 +88,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sources: chunk }),
         });
-        if (status < 200 || status >= 300 || !data?.jobId) {
+        if (status < 200 || status >= 300 || !data?.proposals) {
           if (data?.aiUsageCapExceeded) {
             router.push("/limite");
             return;
@@ -165,13 +97,9 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
           setStep("sources");
           return;
         }
-        jobIds.push(data.jobId);
+        allProposals.push(...data.proposals);
+        setGenerationProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
       }
-
-      const perChunkProposals = await pollJobs(jobIds);
-      if (!perChunkProposals) return;
-
-      const allProposals = perChunkProposals.flat();
       setItems(
         allProposals.map((proposal, i) => ({
           key: `${i}-${proposal.titre}`,
@@ -185,7 +113,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant la génération.");
       setStep("sources");
     } finally {
-      if (!cancelledRef.current) setGenerationProgress(null);
+      setGenerationProgress(null);
     }
   }
 
@@ -307,17 +235,15 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         </Card>
       )}
 
-      {step === "waiting" && (
+      {step === "generating" && (
         <Card>
           <div className="flex flex-col items-center gap-5 py-16 text-center">
             <FicheLoader />
-            <p className="font-heading text-lg font-semibold">Ta fiche est en cours de préparation</p>
-            <p className="max-w-sm text-sm text-text-muted">
-              Reviens dans quelques instants : elle apparaîtra automatiquement ici une fois prête.
-            </p>
+            <p className="font-heading text-lg font-semibold">Tes fiches prennent forme…</p>
             {generationProgress && generationProgress.total > 1 && (
               <p className="font-mono text-sm text-text-muted">
-                {generationProgress.done} / {generationProgress.total} prêtes
+                Étape {Math.min(generationProgress.done + 1, generationProgress.total)} /{" "}
+                {generationProgress.total}
               </p>
             )}
           </div>

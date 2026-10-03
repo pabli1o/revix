@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { ClaudeContentBlock } from "@/lib/anthropic/client";
-import { submitBatch } from "@/lib/anthropic/client";
-import { FICHE_GENERATION_SYSTEM } from "@/lib/anthropic/prompts";
+import { generateJson, AiGenerationError } from "@/lib/anthropic/client";
+import { FICHE_GENERATION_SYSTEM, validateFicheProposals } from "@/lib/anthropic/prompts";
 import { extractTextFromDocx } from "@/lib/files/docx";
 import type { GenerateFichesRequest, GenerateFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAiUsageBudgetAvailable, AiUsageCapExceededError } from "@/lib/subscription/gate";
+import { AiUsageCapExceededError } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
 const MAX_SOURCES = 12;
@@ -32,17 +32,16 @@ async function downloadSourceFile(storagePath: string, userId: string, tag: stri
   return buffer.toString("base64");
 }
 
-/**
- * Submits one Anthropic Message Batch for this chunk of sources and
- * returns immediately with a job id — the actual generation now happens
- * fully on Anthropic's infrastructure (see lib/anthropic/client.ts's
- * submitBatch/checkBatch), polled via GET /api/fiches/generate/[jobId].
- * This route itself only reads the sources and submits the batch, both
- * fast, so it no longer needs the extended maxDuration or the AI lock the
- * old synchronous version required.
- */
+// Waiting for the AI lock plus up to 3 retried Claude calls (see
+// lib/anthropic/client.ts) can comfortably exceed a platform's default
+// serverless duration (10s on Vercel Hobby). Without this, a slow-but-
+// legitimate generation gets killed and the client receives a non-JSON
+// gateway error instead of our JSON response. 60 is the max allowed on
+// Vercel Hobby; raise it if the project is on a plan that allows more.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
-  const requestTag = `fiches-submit:${randomUUID().slice(0, 8)}`;
+  const requestTag = `fiches-route:${randomUUID().slice(0, 8)}`;
   const requestStarted = startTimer();
 
   const supabase = await createClient();
@@ -71,16 +70,6 @@ export async function POST(request: Request) {
   const uploadedPaths = sources.flatMap((s) => (s.storagePath ? [s.storagePath] : []));
 
   try {
-    try {
-      await assertAiUsageBudgetAvailable(user.id);
-    } catch (err) {
-      if (err instanceof AiUsageCapExceededError) {
-        const response: GenerateFichesResponse = { error: err.message, aiUsageCapExceeded: true };
-        return NextResponse.json(response, { status: 402 });
-      }
-      throw err;
-    }
-
     const content: ClaudeContentBlock[] = [];
 
     try {
@@ -124,35 +113,32 @@ export async function POST(request: Request) {
     }
 
     try {
-      const batchId = await submitBatch({
+      const proposals = await generateJson({
+        userId: user.id,
+        label: "fiche",
         system: FICHE_GENERATION_SYSTEM,
         content,
         maxTokens: 8000,
-        label: "fiche-batch",
+        validate: validateFicheProposals,
       });
 
-      const admin = createAdminClient();
-      const { data: job, error: insertError } = await admin
-        .from("fiche_generation_jobs")
-        .insert({ user_id: user.id, status: "pending", anthropic_batch_id: batchId })
-        .select("id")
-        .single();
-
-      if (insertError || !job) {
-        logStep(requestTag, `request FAILED (job insert) after ${elapsedMs(requestStarted)}ms`);
-        return NextResponse.json({ error: "Impossible de préparer la génération" }, { status: 500 });
-      }
-
-      logStep(requestTag, `request done — total ${elapsedMs(requestStarted)}ms, job=${job.id}`);
-      const response: GenerateFichesResponse = { jobId: job.id };
+      logStep(requestTag, `request done — total ${elapsedMs(requestStarted)}ms`);
+      const response: GenerateFichesResponse = { proposals };
       return NextResponse.json(response);
     } catch (err) {
       logStep(
         requestTag,
-        `request FAILED (batch submit) after ${elapsedMs(requestStarted)}ms — ${err instanceof Error ? err.message : String(err)}`,
+        `request FAILED (generation) after ${elapsedMs(requestStarted)}ms — ${err instanceof Error ? err.message : String(err)}`,
       );
+      if (err instanceof AiUsageCapExceededError) {
+        const response: GenerateFichesResponse = { error: err.message, aiUsageCapExceeded: true };
+        return NextResponse.json(response, { status: 402 });
+      }
+      if (err instanceof AiGenerationError) {
+        return NextResponse.json({ error: err.message }, { status: 502 });
+      }
       const message = err instanceof Error ? err.message : "Erreur inconnue";
-      return NextResponse.json({ error: message }, { status: 502 });
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   } finally {
     if (uploadedPaths.length > 0) {
