@@ -36,6 +36,71 @@ class ChunkGenerationError extends Error {
   }
 }
 
+// Matches the exact suffix FICHE_GENERATION_SYSTEM instructs the model to
+// use (see lib/anthropic/prompts.ts): "<titre de base> — Partie <n>". A
+// touch tolerant of dash style/case since it's reading model output, not
+// validating it, but anchored to "Partie <digits>" at the very end so it
+// never matches an unrelated title that happens to contain the ordinary
+// French word "partie".
+const PARTIE_SUFFIX_RE = /^(.*?)\s*[—-]\s*Partie\s+\d+\s*$/i;
+
+function stripPartieSuffix(titre: string): string {
+  const match = titre.match(PARTIE_SUFFIX_RE);
+  return match ? match[1].trim() : titre.trim();
+}
+
+/**
+ * A large PDF split into independent page-range chunks (see pdf-split.ts)
+ * sends each range to Claude with no knowledge of the others. If a range
+ * is itself long enough that the model decides to split it into "Partie
+ * N" fiches (see FICHE_GENERATION_SYSTEM), that numbering restarts from 1
+ * inside each range's own response — so two different ranges of the same
+ * subject can each come back labeled "Partie 1".
+ *
+ * This renumbers fiches that share both the same split-PDF source
+ * (groupId) and the same base title into one continuous sequence, in the
+ * real order those chunks were submitted in (tagged's own order —
+ * Promise.allSettled already preserves it regardless of which chunk
+ * actually finished first, see handleGenerate below). Deliberately only
+ * touches titles the model itself already suffixed with "— Partie N":
+ * two standalone fiches that happen to share an identical title (e.g.
+ * both titled "Exercices" in different chapters of the same PDF) are
+ * never merged into a fake sequence just because the text matches —
+ * only an actual local "Partie N" claim is ever renumbered. A lone
+ * "Partie N" that ends up with no sibling anywhere in the document (the
+ * model thought it needed splitting but no other chunk continues it)
+ * has its suffix stripped instead, since a single part doesn't need
+ * part-numbering.
+ */
+function renumberSplitPdfParts(
+  tagged: { proposal: FicheProposal; groupId: string | null }[],
+): FicheProposal[] {
+  const groups = new Map<string, number[]>();
+  tagged.forEach(({ proposal, groupId }, index) => {
+    if (groupId === null || !PARTIE_SUFFIX_RE.test(proposal.titre)) return;
+    const key = `${groupId}::${stripPartieSuffix(proposal.titre)}`;
+    const indices = groups.get(key);
+    if (indices) {
+      indices.push(index);
+    } else {
+      groups.set(key, [index]);
+    }
+  });
+
+  const retitled = new Map<number, string>();
+  for (const indices of groups.values()) {
+    const baseTitle = stripPartieSuffix(tagged[indices[0]].proposal.titre);
+    indices.forEach((index, i) => {
+      retitled.set(index, indices.length > 1 ? `${baseTitle} — Partie ${i + 1}` : baseTitle);
+    });
+  }
+
+  return tagged.map(({ proposal }, index) => {
+    const titre = retitled.get(index);
+    return titre !== undefined ? { ...proposal, titre } : proposal;
+  });
+}
+
 export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("sources");
@@ -96,14 +161,23 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     // A split PDF (see pdf-split.ts) carries several storage paths instead
     // of one — expand it into one independent GenerateSourceInput per
     // part here, right before chunking, so each part becomes its own
-    // chunk/request below.
+    // chunk/request below. Each part's storagePath is recorded against
+    // the original source's id, so the resulting chunks can later be
+    // traced back to "which split PDF did this come from" for
+    // renumberSplitPdfParts below — GenerateSourceInput itself (the wire
+    // type the server reads) carries nothing extra for this; it's tracked
+    // purely client-side.
+    const splitPdfGroupByPath = new Map<string, string>();
     const payloadSources: GenerateSourceInput[] = sources.flatMap((s): GenerateSourceInput[] => {
       if (s.storagePaths && s.storagePaths.length > 0) {
-        return s.storagePaths.map((storagePath, i) => ({
-          type: s.type,
-          nom: `${s.nom} (partie ${i + 1}/${s.storagePaths!.length})`,
-          storagePath,
-        }));
+        return s.storagePaths.map((storagePath, i) => {
+          splitPdfGroupByPath.set(storagePath, s.id);
+          return {
+            type: s.type,
+            nom: `${s.nom} (partie ${i + 1}/${s.storagePaths!.length})`,
+            storagePath,
+          };
+        });
       }
       return [
         {
@@ -117,6 +191,14 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       ];
     });
     const chunks = chunkSources(payloadSources);
+    // chunkSources always isolates a pdf/word source into its own
+    // single-source chunk, so a chunk belongs to a split-PDF group iff
+    // it has exactly one source and that source's storagePath was
+    // recorded above.
+    const chunkGroupIds: (string | null)[] = chunks.map((chunk) => {
+      const storagePath = chunk.length === 1 ? chunk[0].storagePath : undefined;
+      return (storagePath && splitPdfGroupByPath.get(storagePath)) || null;
+    });
 
     setStep("generating");
     setGenerationProgress({ done: 0, total: chunks.length });
@@ -144,9 +226,11 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         return;
       }
 
-      const allProposals = (settled as PromiseFulfilledResult<FicheProposal[]>[]).flatMap(
-        (r) => r.value,
+      const fulfilled = settled as PromiseFulfilledResult<FicheProposal[]>[];
+      const tagged = fulfilled.flatMap((r, i) =>
+        r.value.map((proposal) => ({ proposal, groupId: chunkGroupIds[i] })),
       );
+      const allProposals = renumberSplitPdfParts(tagged);
       setItems(
         allProposals.map((proposal, i) => ({
           key: `${i}-${proposal.titre}`,
