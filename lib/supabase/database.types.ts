@@ -155,12 +155,6 @@ export type SubscriptionRow = {
   updated_at: string;
 };
 
-export type AiLockRow = {
-  id: boolean;
-  locked_at: string | null;
-  locked_by: string | null;
-};
-
 export interface FicheDraftItem {
   titre: string;
   contenu: FicheContenu;
@@ -245,7 +239,6 @@ export interface Database {
         Partial<SubscriptionRow> & { user_id: string },
         Partial<SubscriptionRow>
       >;
-      ai_lock: Table<AiLockRow, Partial<AiLockRow>, Partial<AiLockRow>>;
       fiche_drafts: Table<
         FicheDraftRow,
         Partial<FicheDraftRow> & { user_id: string; items: FicheDraftItem[] },
@@ -254,14 +247,6 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      try_acquire_ai_lock: {
-        Args: { holder: string; stale_after_seconds?: number };
-        Returns: boolean;
-      };
-      release_ai_lock: {
-        Args: { holder: string };
-        Returns: boolean;
-      };
       increment_ai_usage_cost: {
         Args: { p_user_id: string; p_amount: number };
         Returns: void;

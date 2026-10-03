@@ -2,7 +2,6 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import { withAiLock } from "./lock";
 import { assertAiUsageBudgetAvailable, recordAiUsageCost } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
@@ -119,9 +118,19 @@ interface GenerateJsonOptions<T> {
  * Calls Claude expecting a strict JSON response, validates completeness,
  * and automatically retries (up to MAX_ATTEMPTS) when the response is
  * empty, truncated (stop_reason === "max_tokens"), not valid JSON, or fails
- * the caller's `validate` check. Every call is serialized through the
- * app-wide AI lock so fiche generation and quiz generation never run
- * concurrently.
+ * the caller's `validate` check.
+ *
+ * No longer serialized through a global app-wide lock (removed — see git
+ * history for `lib/anthropic/lock.ts`): that lock existed to keep fiche
+ * and quiz generation from ever running concurrently, but once fiche
+ * generation started deliberately firing several chunks of the same
+ * upload in parallel (see creation-flow.tsx), the lock just queued those
+ * parallel calls back into a single-file line and started timing out the
+ * ones stuck waiting behind it — the exact opposite of what
+ * parallelization was for. Multiple concurrent Claude calls don't corrupt
+ * any shared state here (usage cost is recorded via an atomic SQL
+ * increment, see recordAiUsageCost below), so nothing but that now-
+ * obsolete sequencing depended on the lock.
  *
  * Usage budget: checked once up front (an active subscriber already at
  * their cap can't start a new generation) and every attempt's real cost is
@@ -132,6 +141,12 @@ interface GenerateJsonOptions<T> {
  * to MAX_ATTEMPTS-1 extra attempts' worth of cost on a single call that
  * needs retries — bounded and acceptable, same tradeoff already accepted by
  * the old fiche-count cap (see git history) for a simpler implementation.
+ * Without the lock, several parallel chunks of one upload can now also all
+ * pass this check before any of them has recorded its own cost, so the
+ * same user could in theory overshoot by a few concurrent chunks' worth of
+ * cost in one generation — still bounded (by how many chunks one upload
+ * produces, typically a handful) and, for a monthly soft budget rather
+ * than a hard security limit, an acceptable trade for real parallelism.
  */
 export async function generateJson<T>({
   userId,
@@ -146,91 +161,90 @@ export async function generateJson<T>({
   logStep(tag, `start — ${content.length} content block(s): ${content.map((b) => b.type).join(", ")}`);
 
   try {
-    const result = await withAiLock(
-      async () => {
-        await assertAiUsageBudgetAvailable(userId);
+    await assertAiUsageBudgetAvailable(userId);
 
-        const anthropic = getClient();
-        let lastError: string = "Erreur inconnue";
+    const anthropic = getClient();
+    let lastError: string = "Erreur inconnue";
+    let result: T | null = null;
 
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-          const attemptStarted = startTimer();
-          const response = await anthropic.messages.create({
-            model: MODEL,
-            max_tokens: maxTokens,
-            // Cached (ephemeral, 5-minute TTL): every fiche/quiz call under
-            // one `label` sends this exact same static string, so after the
-            // first call warms the cache, every other call within the TTL —
-            // including concurrent parallel chunks of the same upload, and
-            // any other user's calls shortly after — reads it at 0.1x
-            // instead of paying full input price for it again. Below the
-            // model's minimum cacheable prefix (~512 tokens on this model)
-            // this silently just doesn't cache — harmless, not an error.
-            system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-            messages: [{ role: "user", content: toAnthropicContent(content) }],
-            output_config: EFFORT,
-          });
-          const cost = computeCostUsd(response.usage);
-          // thinking_tokens is logged on its own: it's the exact lever
-          // EFFORT above targets, so this line is what shows in Vercel
-          // logs whether dropping to "medium" (and later "low") actually
-          // moved it, rather than inferring that from the cost total alone.
-          // cache_write/cache_read are logged for the same reason, to
-          // verify in Vercel logs that prompt caching is actually hitting
-          // rather than silently no-op'ing (see the comment above).
-          logStep(
-            tag,
-            `attempt ${attempt}/${MAX_ATTEMPTS} — ${elapsedMs(attemptStarted)}ms, ` +
-              `stop_reason=${response.stop_reason}, in=${response.usage.input_tokens}tok, ` +
-              `cache_write=${response.usage.cache_creation_input_tokens ?? 0}tok, ` +
-              `cache_read=${response.usage.cache_read_input_tokens ?? 0}tok, ` +
-              `out=${response.usage.output_tokens}tok ` +
-              `(thinking=${response.usage.output_tokens_details?.thinking_tokens ?? "n/a"}tok), ` +
-              `cost=$${cost.toFixed(4)}`,
-          );
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const attemptStarted = startTimer();
+      const response = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: maxTokens,
+        // Cached (ephemeral, 5-minute TTL): every fiche/quiz call under
+        // one `label` sends this exact same static string, so after the
+        // first call warms the cache, every other call within the TTL —
+        // including concurrent parallel chunks of the same upload, and
+        // any other user's calls shortly after — reads it at 0.1x
+        // instead of paying full input price for it again. Below the
+        // model's minimum cacheable prefix (~512 tokens on this model)
+        // this silently just doesn't cache — harmless, not an error.
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: toAnthropicContent(content) }],
+        output_config: EFFORT,
+      });
+      const cost = computeCostUsd(response.usage);
+      // thinking_tokens is logged on its own: it's the exact lever
+      // EFFORT above targets, so this line is what shows in Vercel
+      // logs whether dropping to "medium" (and later "low") actually
+      // moved it, rather than inferring that from the cost total alone.
+      // cache_write/cache_read are logged for the same reason, to
+      // verify in Vercel logs that prompt caching is actually hitting
+      // rather than silently no-op'ing (see the comment above).
+      logStep(
+        tag,
+        `attempt ${attempt}/${MAX_ATTEMPTS} — ${elapsedMs(attemptStarted)}ms, ` +
+          `stop_reason=${response.stop_reason}, in=${response.usage.input_tokens}tok, ` +
+          `cache_write=${response.usage.cache_creation_input_tokens ?? 0}tok, ` +
+          `cache_read=${response.usage.cache_read_input_tokens ?? 0}tok, ` +
+          `out=${response.usage.output_tokens}tok ` +
+          `(thinking=${response.usage.output_tokens_details?.thinking_tokens ?? "n/a"}tok), ` +
+          `cost=$${cost.toFixed(4)}`,
+      );
 
-          await recordAiUsageCost(userId, cost);
+      await recordAiUsageCost(userId, cost);
 
-          const textBlock = response.content.find((block) => block.type === "text");
-          const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
+      const textBlock = response.content.find((block) => block.type === "text");
+      const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
 
-          if (!rawText.trim()) {
-            lastError = "Réponse vide reçue";
-            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
-            continue;
-          }
+      if (!rawText.trim()) {
+        lastError = "Réponse vide reçue";
+        logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+        continue;
+      }
 
-          if (response.stop_reason === "max_tokens") {
-            lastError = "Réponse tronquée (limite de longueur atteinte)";
-            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
-            continue;
-          }
+      if (response.stop_reason === "max_tokens") {
+        lastError = "Réponse tronquée (limite de longueur atteinte)";
+        logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+        continue;
+      }
 
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(stripCodeFence(rawText));
-          } catch {
-            lastError = "Format de réponse invalide";
-            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
-            continue;
-          }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(stripCodeFence(rawText));
+      } catch {
+        lastError = "Format de réponse invalide";
+        logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+        continue;
+      }
 
-          const validated = validate(parsed);
-          if (validated === null) {
-            lastError = "Réponse incomplète reçue";
-            logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
-            continue;
-          }
+      const validated = validate(parsed);
+      if (validated === null) {
+        lastError = "Réponse incomplète reçue";
+        logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
+        continue;
+      }
 
-          return validated;
-        }
+      result = validated;
+      break;
+    }
 
-        throw new AiGenerationError(
-          `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
-        );
-      },
-      { label: tag },
-    );
+    if (result === null) {
+      throw new AiGenerationError(
+        `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
+      );
+    }
 
     logStep(tag, `done — total ${elapsedMs(totalStarted)}ms`);
     return result;

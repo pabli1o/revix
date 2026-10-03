@@ -64,9 +64,10 @@ Les migrations vivent dans `supabase/migrations/` :
   exams, exam_chapters, planning_tasks, quizzes, quiz_attempts,
   subscriptions), RLS `auth.uid() = user_id` sur chaque table, trigger
   `handle_new_user` qui crée la ligne `profiles` à l'inscription.
-- `0002_ai_lock.sql` : table `ai_lock` (1 seule ligne) + fonctions
-  `try_acquire_ai_lock` / `release_ai_lock`, le verrou global qui sérialise
-  tous les appels à Claude (voir plus bas).
+- `0002_ai_lock.sql` : table `ai_lock` + fonctions `try_acquire_ai_lock` /
+  `release_ai_lock`, un verrou global qui sérialisait tous les appels à
+  Claude — supprimé par `0012_drop_ai_lock.sql` une fois la génération de
+  fiches parallélisée (voir plus bas).
 - `0003_fiche_drafts.sql` : table `fiche_drafts`, stockage temporaire entre
   la génération d'une fiche et son assignation matière/chapitre — voir
   "Flux d'enregistrement d'une fiche" plus bas.
@@ -117,21 +118,6 @@ la retirer) repasse en production sans toucher au reste du code.
 
 ## Architecture — modules métier clés
 
-### `lib/anthropic/lock.ts` — verrou IA global
-
-Toutes les générations IA de l'application (fiches ET quiz, en avant-plan ou
-en tâche de fond) passent par `withAiLock()`, qui s'appuie sur la table
-`ai_lock` et ses deux fonctions SQL. Une seule ligne, mise à jour par un
-`UPDATE ... WHERE` conditionnel : ça fonctionne avec un pooler Postgres en
-mode transaction (Supavisor/pgbouncer), contrairement à
-`pg_advisory_lock` qui exige une connexion de niveau session. Le verrou a un
-timeout de staleness (120s) pour ne jamais rester bloqué après un crash, et
-`withAiLock` fait un polling (toutes les 500ms, jusqu'à 90s) en attendant sa
-libération. **Aucun appel à Claude n'est fait ailleurs que dans
-`lib/anthropic/client.ts`, qui appelle systématiquement `withAiLock`** — donc
-il est structurellement impossible qu'un second appel IA s'exécute en
-parallèle, quelle que soit la fonctionnalité qui le déclenche.
-
 ### `lib/anthropic/client.ts` — appel Claude avec validation stricte
 
 `generateJson()` encapsule l'appel à l'API Messages de Claude (modèle
@@ -141,6 +127,25 @@ peut être un succès HTTP (200) tout en étant vide ou tronquée
 invalide ou de structure incomplète (le paramètre `validate` fourni par
 l'appelant), la fonction relance automatiquement l'appel (jusqu'à 3
 tentatives) avant d'abandonner avec une erreur explicite.
+
+Le system prompt (identique à chaque appel pour un même `label`) est envoyé
+avec `cache_control: { type: "ephemeral" }`, pour que les appels fiche/quiz
+qui se suivent ou tournent en parallèle le lisent en cache plutôt que de le
+repayer au prix plein.
+
+**Pas de verrou global** : jusqu'à récemment, tous les appels à Claude
+passaient par un verrou applicatif (`lib/anthropic/lock.ts`, table
+`ai_lock` — voir `0002_ai_lock.sql` / `0012_drop_ai_lock.sql`) qui
+empêchait structurellement deux générations de tourner en même temps. Ce
+verrou a été supprimé une fois la génération de fiches volontairement
+parallélisée (plusieurs chunks d'un même upload envoyés en même temps
+depuis `creation-flow.tsx`, voir plus bas) : il se contentait de remettre
+ces appels parallèles en file d'attente et de faire échouer ceux qui
+restaient coincés trop longtemps derrière les autres. Rien d'autre ne
+dépendait de cette sérialisation (le coût d'usage est enregistré via un
+incrément SQL atomique, indépendant du verrou), donc plusieurs appels à
+Claude peuvent désormais tourner simultanément, pour un même utilisateur
+comme entre utilisateurs différents.
 
 ### `lib/anthropic/prompts.ts` — prompts fiches & quiz
 
