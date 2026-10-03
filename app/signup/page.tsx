@@ -55,18 +55,21 @@ export default function SignupPage() {
       }
 
       if (data.session) {
-        // Email confirmation is disabled for this project (Supabase
-        // Dashboard → Authentication → Sign In / Providers → Email →
-        // "Confirm email") — signUp() already returns an active session in
-        // that case, so there's no confirmation link to wait for. Go
-        // straight into the app, same destination as a normal login.
+        // Whether signUp() returns an active session or not depends
+        // entirely on the Supabase Dashboard's Authentication → Sign In /
+        // Providers → Email → "Confirm email" setting — on with "Confirm
+        // email", off without it — not on anything in this code, so both
+        // branches are kept rather than assuming one. A session here means
+        // confirmation is off: go straight into the app, same destination
+        // as a normal login.
         router.replace("/");
         router.refresh();
         return;
       }
 
-      // Confirmation is still required by the project's current settings —
-      // fall back to the original "check your email" flow.
+      // No session: confirmation is required by the project's current
+      // Supabase settings — show the "check your email" screen below and
+      // wait for the link click to land on /auth/callback.
       setStatus("sent");
     } catch (err) {
       setError(
