@@ -71,6 +71,21 @@ export const MAX_SINGLE_SOURCE_BYTES = 2_000_000;
  */
 export const MAX_DOCUMENT_FILE_BYTES = 20_000_000;
 
+/**
+ * A large PDF is split client-side into independent page-range sub-files
+ * (see pdf-split.ts), each sent and generated in parallel instead of one
+ * long sequential call for the whole document — this is what keeps a
+ * big PDF both fast (parallel, not sequential) and safe from a function
+ * duration timeout (every sub-call is small) without waiting on it as a
+ * single slow unit. PDF_PAGES_PER_CHUNK is the target size per sub-file;
+ * MAX_PDF_PAGES is a hard upfront guard that rejects a truly extreme PDF
+ * with a clear message instead of silently firing dozens of parallel
+ * calls (cost, Anthropic rate limits) for what's very unlikely to be a
+ * normal "cours" document at that length.
+ */
+export const PDF_PAGES_PER_CHUNK = 8;
+export const MAX_PDF_PAGES = 150;
+
 export function estimateBase64Bytes(base64: string): number {
   return base64.length;
 }
@@ -97,10 +112,13 @@ export const MAX_CHUNK_SOURCES = 4;
  * MAX_SINGLE_SOURCE_BYTES above) are batched together up to
  * MAX_CHUNK_PAYLOAD_BYTES or MAX_CHUNK_SOURCES, whichever comes first.
  *
- * Known residual limit: a single pdf/word source that is itself very
- * large (e.g. a 100-page PDF) isn't sub-divided further — doing that
- * would mean actually splitting the file by page range, which needs a PDF
- * library this project doesn't currently depend on.
+ * A large PDF is no longer a single opaque chunk by the time it reaches
+ * here: source-picker.tsx already split it into page-range sub-files (see
+ * pdf-split.ts), each arriving as its own "pdf" source — so what looks
+ * like one very large PDF is already several independent, isolated
+ * chunks below. Word documents aren't split (their text is extracted
+ * server-side after download, cheaply, regardless of length), so a single
+ * very large Word file is still one opaque chunk here.
  */
 export function chunkSources<T extends { type: string; data?: string; texte?: string }>(
   sources: T[],

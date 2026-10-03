@@ -27,13 +27,30 @@ const EFFORT: Anthropic.OutputConfig = { effort: "medium" };
  * MODEL is ever changed without updating this. */
 const MODEL_PRICING_USD_PER_MTOK = { model: "claude-opus-5", input: 5, output: 25 } as const;
 
+/** Prompt-caching billing multipliers off the base input price, for the
+ * default 5-minute ephemeral cache_control TTL used on the system prompt
+ * below (see toAnthropicSystem) — writing to the cache costs 1.25x a
+ * normal input token, reading from it costs 0.1x. Fiche/quiz generation
+ * calls share the exact same (short, static) system prompt per label
+ * across every user, so once any call has warmed the cache, every other
+ * call within the TTL — including concurrent parallel chunks of the same
+ * fiche upload, and any other user's calls shortly after — reads it
+ * cheaply instead of paying full input price for it again. */
+const CACHE_WRITE_MULTIPLIER = 1.25;
+const CACHE_READ_MULTIPLIER = 0.1;
+
 function computeCostUsd(usage: Anthropic.Usage): number {
   if (MODEL_PRICING_USD_PER_MTOK.model !== MODEL) {
     throw new Error(`No pricing configured for model "${MODEL}" — update MODEL_PRICING_USD_PER_MTOK.`);
   }
+  const { input, output } = MODEL_PRICING_USD_PER_MTOK;
+  const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
   return (
-    (usage.input_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.input +
-    (usage.output_tokens / 1_000_000) * MODEL_PRICING_USD_PER_MTOK.output
+    (usage.input_tokens / 1_000_000) * input +
+    (cacheWriteTokens / 1_000_000) * input * CACHE_WRITE_MULTIPLIER +
+    (cacheReadTokens / 1_000_000) * input * CACHE_READ_MULTIPLIER +
+    (usage.output_tokens / 1_000_000) * output
   );
 }
 
@@ -141,7 +158,15 @@ export async function generateJson<T>({
           const response = await anthropic.messages.create({
             model: MODEL,
             max_tokens: maxTokens,
-            system,
+            // Cached (ephemeral, 5-minute TTL): every fiche/quiz call under
+            // one `label` sends this exact same static string, so after the
+            // first call warms the cache, every other call within the TTL —
+            // including concurrent parallel chunks of the same upload, and
+            // any other user's calls shortly after — reads it at 0.1x
+            // instead of paying full input price for it again. Below the
+            // model's minimum cacheable prefix (~512 tokens on this model)
+            // this silently just doesn't cache — harmless, not an error.
+            system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
             messages: [{ role: "user", content: toAnthropicContent(content) }],
             output_config: EFFORT,
           });
@@ -150,10 +175,15 @@ export async function generateJson<T>({
           // EFFORT above targets, so this line is what shows in Vercel
           // logs whether dropping to "medium" (and later "low") actually
           // moved it, rather than inferring that from the cost total alone.
+          // cache_write/cache_read are logged for the same reason, to
+          // verify in Vercel logs that prompt caching is actually hitting
+          // rather than silently no-op'ing (see the comment above).
           logStep(
             tag,
             `attempt ${attempt}/${MAX_ATTEMPTS} — ${elapsedMs(attemptStarted)}ms, ` +
               `stop_reason=${response.stop_reason}, in=${response.usage.input_tokens}tok, ` +
+              `cache_write=${response.usage.cache_creation_input_tokens ?? 0}tok, ` +
+              `cache_read=${response.usage.cache_read_input_tokens ?? 0}tok, ` +
               `out=${response.usage.output_tokens}tok ` +
               `(thinking=${response.usage.output_tokens_details?.thinking_tokens ?? "n/a"}tok), ` +
               `cost=$${cost.toFixed(4)}`,

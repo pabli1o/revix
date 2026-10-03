@@ -26,6 +26,16 @@ interface ValidationItem {
 
 type Step = "sources" | "generating" | "validation" | "preparing";
 
+/** Thrown by submitChunk so a failed chunk's reason (including whether it
+ * was an AI usage cap) survives Promise.allSettled as a rejection. */
+class ChunkGenerationError extends Error {
+  aiUsageCapExceeded?: boolean;
+  constructor(message: string, aiUsageCapExceeded?: boolean) {
+    super(message);
+    this.aiUsageCapExceeded = aiUsageCapExceeded;
+  }
+}
+
 export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("sources");
@@ -39,16 +49,35 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     null,
   );
 
+  async function submitChunk(chunk: GenerateSourceInput[]): Promise<FicheProposal[]> {
+    const { status, data } = await fetchJson<{
+      proposals?: FicheProposal[];
+      error?: string;
+      aiUsageCapExceeded?: boolean;
+    }>("/api/fiches/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sources: chunk }),
+    });
+    if (status < 200 || status >= 300 || !data?.proposals) {
+      throw new ChunkGenerationError(data?.error ?? "La génération a échoué.", data?.aiUsageCapExceeded);
+    }
+    return data.proposals;
+  }
+
   /**
-   * Sends one /api/fiches/generate request per chunk instead of one request
-   * for every source at once — each individual call stays comfortably
-   * inside Vercel's 60s function duration regardless of how much the user
-   * uploaded in total, since chunkSources keeps every call's content small
-   * (see file-utils.ts for exactly how sources are grouped, and its
-   * documented residual limit: a single very large PDF/Word isn't split
-   * further). Invisible to the user in the common case (a single small
-   * upload is already one chunk); a progress indicator only shows up once
-   * there's more than one.
+   * Sends one /api/fiches/generate request per chunk, all at once
+   * (Promise.allSettled) instead of one after another — each individual
+   * call still stays comfortably inside Vercel's 60s function duration
+   * regardless of how much the user uploaded in total (chunkSources keeps
+   * every call's content small, and a large PDF is already split into
+   * independent page-range sub-sources before it ever gets here — see
+   * file-utils.ts and pdf-split.ts), but running them in parallel means
+   * the total wait is roughly the slowest single chunk instead of the sum
+   * of all of them. Promise.allSettled (rather than Promise.all) so every
+   * chunk's outcome is collected even if one fails early — and so results
+   * can be reassembled in the original chunk order regardless of which
+   * one actually finished first.
    */
   async function handleGenerate() {
     setError(null);
@@ -64,42 +93,60 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
       return;
     }
 
-    const payloadSources: GenerateSourceInput[] = sources.map((s) => ({
-      type: s.type,
-      nom: s.nom,
-      texte: s.texte,
-      data: s.data,
-      mediaType: s.mediaType,
-      storagePath: s.storagePath,
-    }));
+    // A split PDF (see pdf-split.ts) carries several storage paths instead
+    // of one — expand it into one independent GenerateSourceInput per
+    // part here, right before chunking, so each part becomes its own
+    // chunk/request below.
+    const payloadSources: GenerateSourceInput[] = sources.flatMap((s): GenerateSourceInput[] => {
+      if (s.storagePaths && s.storagePaths.length > 0) {
+        return s.storagePaths.map((storagePath, i) => ({
+          type: s.type,
+          nom: `${s.nom} (partie ${i + 1}/${s.storagePaths!.length})`,
+          storagePath,
+        }));
+      }
+      return [
+        {
+          type: s.type,
+          nom: s.nom,
+          texte: s.texte,
+          data: s.data,
+          mediaType: s.mediaType,
+          storagePath: s.storagePath,
+        },
+      ];
+    });
     const chunks = chunkSources(payloadSources);
-    const allProposals: FicheProposal[] = [];
 
     setStep("generating");
     setGenerationProgress({ done: 0, total: chunks.length });
     try {
-      for (const chunk of chunks) {
-        const { status, data } = await fetchJson<{
-          proposals?: FicheProposal[];
-          error?: string;
-          aiUsageCapExceeded?: boolean;
-        }>("/api/fiches/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sources: chunk }),
-        });
-        if (status < 200 || status >= 300 || !data?.proposals) {
-          if (data?.aiUsageCapExceeded) {
-            router.push("/limite");
-            return;
-          }
-          setError(data?.error ?? "La génération a échoué.");
-          setStep("sources");
+      const settled = await Promise.allSettled(
+        chunks.map((chunk) =>
+          submitChunk(chunk).then((proposals) => {
+            setGenerationProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
+            return proposals;
+          }),
+        ),
+      );
+
+      const failure = settled.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      if (failure) {
+        const reason = failure.reason;
+        if (reason instanceof ChunkGenerationError && reason.aiUsageCapExceeded) {
+          router.push("/limite");
           return;
         }
-        allProposals.push(...data.proposals);
-        setGenerationProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
+        setError(reason instanceof Error ? reason.message : "La génération a échoué.");
+        setStep("sources");
+        return;
       }
+
+      const allProposals = (settled as PromiseFulfilledResult<FicheProposal[]>[]).flatMap(
+        (r) => r.value,
+      );
       setItems(
         allProposals.map((proposal, i) => ({
           key: `${i}-${proposal.titre}`,
@@ -242,8 +289,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             <p className="font-heading text-lg font-semibold">Tes fiches prennent forme…</p>
             {generationProgress && generationProgress.total > 1 && (
               <p className="font-mono text-sm text-text-muted">
-                Étape {Math.min(generationProgress.done + 1, generationProgress.total)} /{" "}
-                {generationProgress.total}
+                {generationProgress.done} / {generationProgress.total} prêtes
               </p>
             )}
           </div>

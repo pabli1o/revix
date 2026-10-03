@@ -9,9 +9,12 @@ import {
   compressImageFile,
   estimateBase64Bytes,
   MAX_DOCUMENT_FILE_BYTES,
+  MAX_PDF_PAGES,
   MAX_SINGLE_SOURCE_BYTES,
   MAX_TOTAL_PAYLOAD_BYTES,
+  PDF_PAGES_PER_CHUNK,
 } from "./file-utils";
+import { getPdfPageCount, splitPdfByPages } from "./pdf-split";
 import { SOURCE_UPLOADS_BUCKET, uploadSourceFile } from "./upload-source";
 
 function formatMB(bytes: number): string {
@@ -28,6 +31,11 @@ function totalPayloadBytes(sources: PendingSource[]): number {
 export interface PendingSource extends GenerateSourceInput {
   id: string;
   previewUrl?: string;
+  /** Set instead of storagePath when a large PDF was split client-side
+   * into page-range sub-files (see pdf-split.ts) — one storage path per
+   * part, each expanded into its own source at submission time (see
+   * creation-flow.tsx) so the parts are generated in parallel. */
+  storagePaths?: string[];
 }
 
 function makeId() {
@@ -127,6 +135,14 @@ export function SourcePicker({
    * *before* uploadSourceFile() starts rather than after, so an oversized
    * file is rejected instantly instead of uploading first and only
    * failing once generation actually tries to use it.
+   *
+   * A PDF with more than PDF_PAGES_PER_CHUNK pages is additionally split
+   * into page-range sub-files first (see pdf-split.ts) — each part is
+   * uploaded and, later, generated independently in parallel instead of
+   * one long call for the whole document (see creation-flow.tsx). A PDF
+   * over MAX_PDF_PAGES is rejected upfront with a clear message instead
+   * of silently firing dozens of parallel calls for what's unlikely to be
+   * a normal "cours" document at that length.
    */
   async function handleDocumentFiles(
     files: FileList,
@@ -145,6 +161,21 @@ export function SourcePicker({
     const added: PendingSource[] = [];
     for (const file of toUpload) {
       try {
+        if (type === "pdf") {
+          const pageCount = await getPdfPageCount(file);
+          if (pageCount !== null && pageCount > MAX_PDF_PAGES) {
+            failed.push(`${file.name} (trop de pages : ${pageCount}, max ${MAX_PDF_PAGES})`);
+            continue;
+          }
+
+          const parts = await splitPdfByPages(file, PDF_PAGES_PER_CHUNK);
+          if (parts) {
+            const storagePaths = await Promise.all(parts.map((part) => uploadSourceFile(part.file)));
+            added.push({ id: makeId(), type, nom: file.name, storagePaths });
+            continue;
+          }
+        }
+
         const storagePath = await uploadSourceFile(file);
         added.push({ id: makeId(), type, nom: file.name, storagePath });
       } catch {
@@ -178,12 +209,13 @@ export function SourcePicker({
 
   function removeSource(id: string) {
     const removed = sources.find((s) => s.id === id);
-    if (removed?.storagePath) {
+    const paths = removed?.storagePaths ?? (removed?.storagePath ? [removed.storagePath] : []);
+    if (paths.length > 0) {
       // Best-effort: an orphaned upload is harmless clutter, not worth
       // blocking or erroring the UI over.
       createClient()
         .storage.from(SOURCE_UPLOADS_BUCKET)
-        .remove([removed.storagePath])
+        .remove(paths)
         .catch(() => {});
     }
     onChange(sources.filter((s) => s.id !== id));
