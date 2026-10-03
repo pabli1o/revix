@@ -8,6 +8,7 @@ export type Importance = "normale" | "importante" | "tres_importante";
 export type PlanningTaskType = "decouverte" | "rappel";
 export type QuizDifficulty = "facile" | "moyen" | "difficile";
 export type QuizStatus = "pending" | "ready" | "failed";
+export type FicheGenerationJobStatus = "pending" | "ready" | "failed";
 export type SubscriptionStatus = "inactive" | "active" | "past_due" | "canceled";
 export type SubscriptionTier = "tier1" | "tier2" | "tier3";
 
@@ -174,6 +175,21 @@ export type FicheDraftRow = {
   created_at: string;
 };
 
+/** Tracks one Anthropic Message Batch submitted for fiche generation (see
+ * lib/anthropic/client.ts's submitBatch/checkBatch) — one row per chunk
+ * sent from creation-flow.tsx, polled by GET
+ * /api/fiches/generate/[jobId] until `status` leaves 'pending'. */
+export type FicheGenerationJobRow = {
+  id: string;
+  user_id: string;
+  status: FicheGenerationJobStatus;
+  anthropic_batch_id: string | null;
+  proposals: FicheDraftItem[] | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // ---------------------------------------------------------------------------
 // Supabase generic-client scaffolding
 // ---------------------------------------------------------------------------
@@ -250,6 +266,11 @@ export interface Database {
         FicheDraftRow,
         Partial<FicheDraftRow> & { user_id: string; items: FicheDraftItem[] },
         Partial<FicheDraftRow>
+      >;
+      fiche_generation_jobs: Table<
+        FicheGenerationJobRow,
+        Partial<FicheGenerationJobRow> & { user_id: string },
+        Partial<FicheGenerationJobRow>
       >;
     };
     Views: Record<string, never>;

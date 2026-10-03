@@ -1,4 +1,8 @@
-import type { FicheContenu, FicheSource } from "@/lib/supabase/database.types";
+import type {
+  FicheContenu,
+  FicheGenerationJobStatus,
+  FicheSource,
+} from "@/lib/supabase/database.types";
 
 /** One fiche proposed by the AI, before the user validates/edits it and
  * chooses where to save it. Shared between server (generation route) and
@@ -35,13 +39,28 @@ export interface GenerateFichesRequest {
   sources: GenerateSourceInput[];
 }
 
+/**
+ * Submitting a chunk no longer returns its proposals directly — generation
+ * now runs as an Anthropic Message Batch, fully decoupled from this
+ * request's own duration (see app/api/fiches/generate/route.ts). `jobId`
+ * is what the client then polls via GET /api/fiches/generate/[jobId] (see
+ * FicheGenerationJobStatusResponse below) until it's ready or failed.
+ */
 export interface GenerateFichesResponse {
-  proposals?: FicheProposal[];
+  jobId?: string;
   error?: string;
   /** Set (with a 402 status) when an active subscriber has hit their
    * monthly AI usage budget — the client uses this to offer the credit
    * top-up instead of treating it as a generic error. */
   aiUsageCapExceeded?: boolean;
+}
+
+/** Response shape for GET /api/fiches/generate/[jobId], polled by
+ * creation-flow.tsx while a submitted batch is still 'pending'. */
+export interface FicheGenerationJobStatusResponse {
+  status: FicheGenerationJobStatus;
+  proposals?: FicheProposal[];
+  error?: string;
 }
 
 /** One fiche the user has validated and is ready to save, with its

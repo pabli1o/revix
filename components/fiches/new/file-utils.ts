@@ -75,12 +75,15 @@ export function estimateBase64Bytes(base64: string): number {
   return base64.length;
 }
 
-/** Each generation call is kept well under the total per-session upload
- * budget above, so a batch of several photos/texts still finishes
- * comfortably inside Vercel's 60s function duration instead of risking a
- * timeout on one giant combined call — see chunkSources below and
- * creation-flow.tsx, which sends one /api/fiches/generate request per
- * chunk instead of one request for every source at once. */
+/** Each submission call is kept well under the total per-session upload
+ * budget above so it stays comfortably clear of Vercel's 4.5 MB request
+ * body ceiling (see MAX_TOTAL_PAYLOAD_BYTES above) regardless of how many
+ * sources the user uploaded — see chunkSources below and
+ * creation-flow.tsx, which sends one /api/fiches/generate submission per
+ * chunk instead of one request for every source at once. Generation itself
+ * now runs as an Anthropic Message Batch (see lib/anthropic/client.ts), so
+ * this chunking is no longer about staying inside a function's duration
+ * budget — only about the request body size. */
 export const MAX_CHUNK_PAYLOAD_BYTES = 1_000_000;
 export const MAX_CHUNK_SOURCES = 4;
 
