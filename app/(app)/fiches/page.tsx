@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
+import { FicheSavedToast } from "@/components/fiches/fiche-saved-toast";
 
 export default async function FichesPage() {
   const supabase = await createClient();
@@ -41,6 +42,7 @@ export default async function FichesPage() {
 
   return (
     <div className="pb-24">
+      <FicheSavedToast />
       <AppHeader />
       {!isEmpty && (
         <p className="mb-6 text-sm text-text-muted">

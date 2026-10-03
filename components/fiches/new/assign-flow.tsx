@@ -50,8 +50,7 @@ type Phase =
   | "reviewing"
   | "picking-subject"
   | "picking-chapter"
-  | "saving"
-  | "done";
+  | "saving";
 
 export function AssignFlow({
   draftId,
@@ -230,26 +229,15 @@ export function AssignFlow({
       }
 
       fetch(`/api/fiches/drafts/${draftId}`, { method: "DELETE" }).catch(() => {});
-      setPhase("done");
-      setTimeout(() => {
-        router.push("/fiches");
-        router.refresh();
-      }, 900);
+      // Straight back to the fiches list instead of an inline confirmation
+      // screen — ?saved=1 triggers the ephemeral toast there (see
+      // FicheSavedToast) instead.
+      router.push("/fiches?saved=1");
+      router.refresh();
     } catch (err) {
       setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant l'enregistrement.");
       setPhase("picking-chapter");
     }
-  }
-
-  if (phase === "done") {
-    return (
-      <div className="flex flex-col items-center gap-3 py-20 text-center">
-        <div className="text-4xl">🎉</div>
-        <p className="text-lg font-medium">
-          Fiche{items.length > 1 ? "s" : ""} enregistrée{items.length > 1 ? "s" : ""} !
-        </p>
-      </div>
-    );
   }
 
   if (phase === "draft-error") {
