@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #191a2e;
-  --color-bg-elevated: #21223b;
-  --color-bg-card: #262845;
-  --color-border: #383a5c;
+  --color-bg: #1a1a1a;
+  --color-bg-elevated: #242424;
+  --color-bg-card: #2c2c2c;
+  --color-border: #414141;
   --color-text: #f2f1ea;
   --color-text-muted: #b3b3c9;
   --color-accent: #e8a33d;
@@ -39,11 +39,11 @@ html {
 
 body {
   /* Subtle depth instead of a flat fill — a soft glow near the top fading
-     into a touch darker at the bottom, staying in the same navy/indigo
+     into a touch darker at the bottom, staying in the same anthracite/gray
      family as --color-bg so the site's identity doesn't shift. */
   background:
-    radial-gradient(ellipse 1200px 640px at 50% -12%, #262a52 0%, transparent 60%),
-    linear-gradient(180deg, #1c1d36 0%, var(--color-bg) 45%, #131421 100%);
+    radial-gradient(ellipse 1200px 640px at 50% -12%, #323232 0%, transparent 60%),
+    linear-gradient(180deg, #202020 0%, var(--color-bg) 45%, #111111 100%);
   background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-body);
@@ -55,12 +55,12 @@ h1, h2, h3, h4 {
 
 ::selection {
   background: var(--color-accent);
-  color: #191a2e;
+  color: #1a1a1a;
 }
 
 /* Grid-paper "cahier" texture used behind fiche content */
 .notebook-paper {
-  background-color: #21223b;
+  background-color: #242424;
   background-image:
     linear-gradient(rgba(232, 163, 61, 0.09) 1px, transparent 1px),
     linear-gradient(90deg, rgba(232, 163, 61, 0.09) 1px, transparent 1px);

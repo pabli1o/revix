@@ -192,7 +192,7 @@ function Tile({
                 setValue(item.nom);
               }
             }}
-            className="w-full rounded-md border border-black/20 bg-white/90 px-2 py-1 text-sm text-[#191A2E]"
+            className="w-full rounded-md border border-black/20 bg-white/90 px-2 py-1 text-sm text-[#1A1A1A]"
           />
           <div className="flex gap-2">
             <button

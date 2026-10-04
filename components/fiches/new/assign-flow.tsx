@@ -469,7 +469,7 @@ export function AssignFlow({
                     onClick={() => chooseExistingChapter(c.id)}
                     className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.97] ${
                       destination.chapterId === c.id
-                        ? "border-accent bg-accent text-[#191A2E]"
+                        ? "border-accent bg-accent text-[#1A1A1A]"
                         : "border-border bg-bg-elevated text-text hover:border-accent"
                     }`}
                   >

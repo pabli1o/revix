@@ -107,7 +107,7 @@ export function CalendarPicker({
               className={clsx(
                 "rounded-md py-1.5 text-sm transition-colors",
                 selected
-                  ? "bg-accent font-semibold text-[#191A2E]"
+                  ? "bg-accent font-semibold text-[#1A1A1A]"
                   : isToday
                     ? "border border-accent/60 text-text"
                     : "text-text hover:bg-bg-card",

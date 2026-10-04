@@ -70,7 +70,7 @@ export function PricingCards({
             )}
           >
             {badge && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-bold whitespace-nowrap uppercase tracking-wide text-[#191A2E]">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-bold whitespace-nowrap uppercase tracking-wide text-[#1A1A1A]">
                 {badge}
               </span>
             )}

@@ -17,7 +17,7 @@ export default function GlobalError({
     <html lang="fr">
       <body
         style={{
-          background: "#191a2e",
+          background: "#1a1a1a",
           color: "#f2f1ea",
           minHeight: "100vh",
           display: "flex",
@@ -43,7 +43,7 @@ export default function GlobalError({
           onClick={() => reset()}
           style={{
             background: "#e8a33d",
-            color: "#191a2e",
+            color: "#1a1a1a",
             border: "none",
             borderRadius: "0.75rem",
             padding: "0.625rem 1.25rem",

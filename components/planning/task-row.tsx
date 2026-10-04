@@ -73,7 +73,7 @@ export function TaskRow({ task }: { task: PlanningTaskView }) {
         <span
           className={clsx(
             "rounded-md px-2 py-0.5 font-mono text-xs font-semibold uppercase",
-            task.type === "decouverte" && "bg-accent text-[#191A2E]",
+            task.type === "decouverte" && "bg-accent text-[#1A1A1A]",
           )}
           style={
             task.type === "rappel"

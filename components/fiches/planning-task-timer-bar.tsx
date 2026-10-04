@@ -61,7 +61,7 @@ export function PlanningTaskTimerBar() {
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base transition-transform active:scale-90",
           running
             ? "border-2 border-accent bg-bg-elevated text-accent"
-            : "bg-accent text-[#191A2E] hover:bg-accent-strong",
+            : "bg-accent text-[#1A1A1A] hover:bg-accent-strong",
         )}
       >
         {running ? "⏸" : "▶"}

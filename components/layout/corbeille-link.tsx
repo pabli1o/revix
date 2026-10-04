@@ -18,7 +18,7 @@ export function CorbeilleLink() {
       title="Corbeille"
       className={clsx(
         "flex size-9 shrink-0 items-center justify-center rounded-lg text-lg transition-colors",
-        active ? "bg-accent text-[#191A2E]" : "text-text-muted hover:bg-bg-card hover:text-text",
+        active ? "bg-accent text-[#1A1A1A]" : "text-text-muted hover:bg-bg-card hover:text-text",
       )}
     >
       🗑️

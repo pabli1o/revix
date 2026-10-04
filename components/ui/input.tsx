@@ -1,9 +1,9 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
 
-// Blue-violet field background — distinct from the surrounding card so
-// text fields read as clearly interactive, per the design spec.
-const FIELD_BG = "bg-[#2A2B52]";
+// Field background a shade lighter than the surrounding card so text
+// fields read as clearly interactive, per the design spec.
+const FIELD_BG = "bg-[#353535]";
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (

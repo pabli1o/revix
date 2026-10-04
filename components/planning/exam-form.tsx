@@ -104,7 +104,7 @@ export function ExamForm({
               className={clsx(
                 "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                 importance === opt.value
-                  ? "border-accent bg-accent text-[#191A2E]"
+                  ? "border-accent bg-accent text-[#1A1A1A]"
                   : "border-border bg-bg-elevated hover:border-accent",
               )}
             >
