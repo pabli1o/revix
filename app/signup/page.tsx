@@ -42,7 +42,11 @@ export default function SignupPage() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+        // next=/login: the confirmation link proves the email address but
+        // shouldn't auto-sign the user in — see /auth/callback, which signs
+        // the session back out before redirecting here precisely because
+        // the destination is /login.
+        options: { emailRedirectTo: `${siteUrl}/auth/callback?next=/login` },
       });
 
       if (signUpError) {
@@ -145,12 +149,19 @@ export default function SignupPage() {
         )}
 
         {status !== "sent" && (
-          <p className="mt-6 text-center text-xs text-text-muted">
-            Déjà un compte ?{" "}
-            <Link href="/login" prefetch={true} className="font-medium text-accent hover:underline">
-              Connecte-toi
+          <>
+            <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
+              <div className="h-px flex-1 bg-border" />
+              <span>Déjà un compte ?</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Link href="/login" prefetch={true} className="mt-4 block">
+              <Button type="button" variant="outline" className="w-full">
+                Se connecter
+              </Button>
             </Link>
-          </p>
+          </>
         )}
       </div>
     </div>

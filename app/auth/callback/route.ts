@@ -49,18 +49,30 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // Verifying the link necessarily establishes a session (that's how
+  // verifyOtp/exchangeCodeForSession work) — but landing on /login means
+  // this was a signup confirmation, where the point is only to prove the
+  // email address, not to skip the manual login step. Sign back out before
+  // redirecting there so the user still has to enter their credentials.
+  async function redirectTo(destination: string) {
+    if (destination === "/login") {
+      await supabase.auth.signOut();
+    }
+    return NextResponse.redirect(`${origin}${destination}`);
+  }
+
   if (tokenHash && isOtpType(type)) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) {
       logStep(tag, "verifyOtp succeeded");
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      return redirectTo(safeNext);
     }
     logStep(tag, `verifyOtp FAILED — ${error.message}`);
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       logStep(tag, "exchangeCodeForSession succeeded");
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      return redirectTo(safeNext);
     }
     // Most common real-world cause: the link was opened in a different
     // browser/device than the one that requested it, so the matching
