@@ -18,16 +18,46 @@ export default function ResetPasswordPage() {
   const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  // The /auth/callback redirect already exchanged the email link's code
-  // for a (recovery) session before landing here — this just confirms it
-  // actually took, so a stale/already-used/expired link shows a clear
-  // message instead of a form that would fail on submit.
+  // Two ways a session can end up established by the time this page is
+  // visible: /auth/callback already verified the link server-side before
+  // redirecting here (token_hash or code shape — see that route), caught
+  // directly by getUser() below; or the email link used the older
+  // #access_token=...&type=recovery hash-fragment shape, which never
+  // reaches the server at all and is only parsed client-side by the SDK
+  // itself on mount (detectSessionInUrl) — caught via onAuthStateChange
+  // instead of racing that parsing with a single getUser() call. Neither
+  // happening within the timeout means the link is genuinely stale,
+  // already used, or was never valid — shows a clear message instead of
+  // a form that would fail on submit.
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setHasSession(Boolean(data.user));
+    let resolved = false;
+
+    function resolve(found: boolean) {
+      if (resolved) return;
+      resolved = true;
+      setHasSession(found);
       setChecking(false);
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        resolve(true);
+      }
     });
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) resolve(true);
+    });
+
+    const timeout = setTimeout(() => resolve(false), 2000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSubmit(e: FormEvent) {
