@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import clsx from "clsx";
 import type { PlanningTaskPartie, PlanningTaskType } from "@/lib/supabase/database.types";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
+import { IntentLink } from "@/components/ui/intent-link";
 
 export interface PlanningTaskView {
   id: string;
@@ -57,7 +57,7 @@ export function TaskRow({ task }: { task: PlanningTaskView }) {
   }
 
   return (
-    <Link
+    <IntentLink
       href={task.href}
       className="flex flex-col gap-3 rounded-xl border border-border bg-bg-card p-4 transition-transform hover:-translate-y-0.5"
       style={{ borderLeftColor: task.color.bg, borderLeftWidth: 4 }}
@@ -92,6 +92,6 @@ export function TaskRow({ task }: { task: PlanningTaskView }) {
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 text-sm font-medium text-accent">
         Cliquer ici pour commencer à réviser →
       </span>
-    </Link>
+    </IntentLink>
   );
 }

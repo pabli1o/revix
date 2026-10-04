@@ -58,7 +58,7 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
   return (
     <div>
       <p className="mb-6 text-sm text-text-muted">
-        <Link href="/quiz" className="hover:text-accent">
+        <Link href="/quiz" prefetch={true} className="hover:text-accent">
           Se tester
         </Link>
         <span className="mx-1.5">/</span>

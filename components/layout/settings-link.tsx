@@ -13,6 +13,7 @@ export function SettingsLink() {
   return (
     <Link
       href="/abonnement"
+      prefetch={true}
       aria-label="Paramètres"
       title="Paramètres"
       className={clsx(

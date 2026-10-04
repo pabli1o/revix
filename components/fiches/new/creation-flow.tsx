@@ -344,6 +344,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
         </div>
         <Link
           href="/fiches"
+          prefetch={true}
           aria-label="Fermer"
           className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
         >

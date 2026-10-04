@@ -268,7 +268,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
         </Button>
         {difficulty && <Button onClick={() => startQuiz(difficulty)}>🔁 Refaire</Button>}
       </div>
-      <Link href={`/fiches`} className="mt-2 text-sm text-text-muted hover:text-accent">
+      <Link href={`/fiches`} prefetch={true} className="mt-2 text-sm text-text-muted hover:text-accent">
         Retour à mes fiches
       </Link>
     </div>

@@ -98,7 +98,7 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <Link href="/signup" className="mt-4 block">
+        <Link href="/signup" prefetch={true} className="mt-4 block">
           <Button type="button" variant="outline" className="w-full">
             Créer un compte
           </Button>

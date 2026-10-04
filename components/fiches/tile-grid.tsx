@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IntentLink } from "@/components/ui/intent-link";
 
 export interface TileItem {
   id: string;
@@ -139,7 +139,7 @@ function Tile({
     >
       {!editing ? (
         <>
-          <Link href={href} className="absolute inset-0" aria-label={item.nom} />
+          <IntentLink href={href} className="absolute inset-0" aria-label={item.nom} />
           <div className="flex items-start justify-between gap-1">
             <span className="font-heading text-xl font-semibold leading-tight">{item.nom}</span>
             {/* Always visible (not hover-gated): hover has no equivalent on

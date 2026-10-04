@@ -14,6 +14,7 @@ export function CorbeilleLink() {
   return (
     <Link
       href="/corbeille"
+      prefetch={true}
       aria-label="Corbeille"
       title="Corbeille"
       className={clsx(

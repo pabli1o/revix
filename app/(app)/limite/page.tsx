@@ -32,7 +32,7 @@ export default function LimitePage() {
       </div>
 
       <FloatingBottomBar>
-        <Link href="/abonnement" className="block w-full">
+        <Link href="/abonnement" prefetch={true} className="block w-full">
           <Button className="w-full" size="lg">
             Voir les abonnements
           </Button>

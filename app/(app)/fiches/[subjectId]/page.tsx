@@ -51,7 +51,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
   return (
     <div>
       <p className="mb-6 text-sm text-text-muted">
-        <Link href="/fiches" className="hover:text-accent">
+        <Link href="/fiches" prefetch={true} className="hover:text-accent">
           Mes matières
         </Link>
         <span className="mx-1.5">/</span>

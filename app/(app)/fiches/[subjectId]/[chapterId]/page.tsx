@@ -55,18 +55,18 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
     <div>
       <PlanningTaskTimerBar />
       <p className="mb-1 text-sm text-text-muted">
-        <Link href="/fiches" className="hover:text-accent">
+        <Link href="/fiches" prefetch={true} className="hover:text-accent">
           Mes matières
         </Link>{" "}
         /{" "}
-        <Link href={`/fiches/${subjectId}`} className="hover:text-accent">
+        <Link href={`/fiches/${subjectId}`} prefetch={true} className="hover:text-accent">
           {subject.nom}
         </Link>{" "}
         / {chapter.nom}
       </p>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-3xl font-semibold">{chapter.nom}</h1>
-        <Link href="/fiches/new">
+        <Link href="/fiches/new" prefetch={true}>
           <Button>+ Nouvelle fiche</Button>
         </Link>
       </div>

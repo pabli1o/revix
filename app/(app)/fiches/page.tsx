@@ -62,7 +62,7 @@ export default async function FichesPage() {
       )}
 
       <FloatingBottomBar>
-        <Link href="/fiches/new" className="block">
+        <Link href="/fiches/new" prefetch={true} className="block">
           <Button size="lg" className="w-full">
             + Créer une fiche
           </Button>

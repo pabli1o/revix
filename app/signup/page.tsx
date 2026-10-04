@@ -153,7 +153,7 @@ export default function SignupPage() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <Link href="/login" className="mt-4 block">
+            <Link href="/login" prefetch={true} className="mt-4 block">
               <Button type="button" variant="outline" className="w-full">
                 Se connecter
               </Button>
