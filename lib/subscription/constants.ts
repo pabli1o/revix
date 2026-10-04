@@ -33,6 +33,13 @@ export interface TierConfig {
    * it never rolls over and is reset on every renewal. */
   budgetUsd: number;
   features: TierFeatures;
+  /** Rough "how much does this get me" range shown next to the credit
+   * count on the pricing cards, counting a fiche + its 3 automatic quiz
+   * as one unit. Indicative only — real cost per fiche varies a lot with
+   * source type (photo vs. PDF) and length — never update this without
+   * re-deriving it from lib/anthropic/client.ts's live pricing/effort/cache
+   * constants, since it isn't computed from them automatically. */
+  estimatedFiches: { min: number; max: number };
 }
 
 export const TIERS: Record<SubscriptionTier, TierConfig> = {
@@ -42,6 +49,7 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
     credits: 1500,
     budgetUsd: (1500 / CREDITS_PER_EUR) * USD_PER_EUR,
     features: { quiz: false, planning: false },
+    estimatedFiches: { min: 5, max: 8 },
   },
   tier2: {
     label: "Complet",
@@ -49,6 +57,7 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
     credits: 4000,
     budgetUsd: (4000 / CREDITS_PER_EUR) * USD_PER_EUR,
     features: { quiz: true, planning: true },
+    estimatedFiches: { min: 15, max: 20 },
   },
   tier3: {
     label: "Complet+",
@@ -56,6 +65,7 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
     credits: 9000,
     budgetUsd: (9000 / CREDITS_PER_EUR) * USD_PER_EUR,
     features: { quiz: true, planning: true },
+    estimatedFiches: { min: 35, max: 45 },
   },
 };
 

@@ -84,6 +84,9 @@ export function PricingCards({
                 <span className="text-sm text-text-muted">/mois</span>
               </p>
               <p className="mt-1 font-mono text-sm text-text-muted">{tier.credits} crédits / mois</p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                ≈ {tier.estimatedFiches.min}-{tier.estimatedFiches.max} fiches générées*
+              </p>
             </div>
 
             <ul className="flex flex-col gap-1.5 text-sm">
@@ -112,6 +115,11 @@ export function PricingCards({
           </div>
         );
       })}
+
+      <p className="col-span-full text-xs text-text-muted">
+        * Estimation indicative, pas une garantie : le nombre réel de fiches dépend du type de
+        contenu (photos, PDF courts ou longs) et de l&apos;usage du quiz.
+      </p>
     </div>
   );
 }
