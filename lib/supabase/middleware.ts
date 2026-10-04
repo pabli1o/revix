@@ -43,7 +43,7 @@ export async function updateSession(request: NextRequest) {
   // /login would hand a fetch() caller an HTML page instead of JSON.
   if (!user && pathname !== "/" && !pathname.startsWith("/api/") && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/signup";
     return NextResponse.redirect(url);
   }
 

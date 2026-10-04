@@ -145,19 +145,12 @@ export default function SignupPage() {
         )}
 
         {status !== "sent" && (
-          <>
-            <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
-              <div className="h-px flex-1 bg-border" />
-              <span>Déjà un compte ?</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <Link href="/login" prefetch={true} className="mt-4 block">
-              <Button type="button" variant="outline" className="w-full">
-                Se connecter
-              </Button>
+          <p className="mt-6 text-center text-xs text-text-muted">
+            Déjà un compte ?{" "}
+            <Link href="/login" prefetch={true} className="font-medium text-accent hover:underline">
+              Connecte-toi
             </Link>
-          </>
+          </p>
         )}
       </div>
     </div>
