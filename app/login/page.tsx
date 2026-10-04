@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -72,12 +73,16 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <label className="mt-1 text-sm font-medium" htmlFor="password">
-            Mot de passe
-          </label>
-          <Input
+          <div className="mt-1 flex items-center justify-between">
+            <label className="text-sm font-medium" htmlFor="password">
+              Mot de passe
+            </label>
+            <Link href="/forgot-password" prefetch={true} className="text-xs text-text-muted hover:text-accent">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+          <PasswordInput
             id="password"
-            type="password"
             required
             autoComplete="current-password"
             placeholder="••••••••"

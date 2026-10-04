@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -113,9 +114,8 @@ export default function SignupPage() {
             <label className="mt-1 text-sm font-medium" htmlFor="password">
               Mot de passe
             </label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               autoComplete="new-password"
               minLength={MIN_PASSWORD_LENGTH}
@@ -127,9 +127,8 @@ export default function SignupPage() {
             <label className="mt-1 text-sm font-medium" htmlFor="password-confirm">
               Confirme le mot de passe
             </label>
-            <Input
+            <PasswordInput
               id="password-confirm"
-              type="password"
               required
               autoComplete="new-password"
               placeholder="••••••••"
