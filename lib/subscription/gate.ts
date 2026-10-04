@@ -9,13 +9,14 @@ export interface SubscriptionInfo {
   isActive: boolean;
   tier: SubscriptionTier | null;
   aiCostUsdPeriod: number;
+  extraCreditUsdPeriod: number;
 }
 
 export async function getSubscriptionInfo(userId: string): Promise<SubscriptionInfo> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("subscriptions")
-    .select("status, tier, ai_cost_usd_period")
+    .select("status, tier, ai_cost_usd_period, extra_credit_usd_period")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -26,6 +27,7 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
     isActive,
     tier: isActive ? ((data?.tier as SubscriptionTier | null) ?? null) : null,
     aiCostUsdPeriod: data?.ai_cost_usd_period ?? 0,
+    extraCreditUsdPeriod: data?.extra_credit_usd_period ?? 0,
   };
 }
 
@@ -59,13 +61,13 @@ export async function assertAiUsageBudgetAvailable(userId: string): Promise<void
   const admin = createAdminClient();
   const { data } = await admin
     .from("subscriptions")
-    .select("status, tier, ai_cost_usd_period")
+    .select("status, tier, ai_cost_usd_period, extra_credit_usd_period")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (!data || data.status !== "active" || !data.tier) return;
 
-  const budget = TIERS[data.tier as SubscriptionTier].budgetUsd;
+  const budget = TIERS[data.tier as SubscriptionTier].budgetUsd + (data.extra_credit_usd_period ?? 0);
   if (data.ai_cost_usd_period >= budget) {
     throw new AiUsageCapExceededError();
   }

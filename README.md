@@ -14,7 +14,8 @@ des examens à venir, et propose un quiz par chapitre pour se tester.
 - **IA** : Anthropic (Claude), uniquement depuis des Route Handlers côté
   serveur
 - **Paiement** : Whop (3 abonnements mensuels récurrents à paliers de
-  crédits — 9,99 € / 19,99 € / 39,99 €, aucun paiement ponctuel)
+  crédits — 9,99 € / 19,99 € / 39,99 € — + un supplément ponctuel de 1500
+  crédits à 9,99 €, disponible sur tous les paliers)
 - **Hébergement cible** : Vercel
 
 ## Mise en route
@@ -187,13 +188,26 @@ chapitres, contenu des fiches, réglages du profil).
 ### `lib/subscription/constants.ts` + `lib/subscription/gate.ts` + `lib/subscription/preview.ts` — modèle économique
 
 3 abonnements mensuels **récurrents** au choix (`TIERS` dans
-`lib/subscription/constants.ts`), aucun paiement ponctuel :
+`lib/subscription/constants.ts`), plus un supplément ponctuel :
 
 | Tier    | Prix       | Crédits/mois | Fiches | Quiz | Planning |
 | ------- | ---------- | ------------ | ------ | ---- | -------- |
 | `tier1` | 9,99 €     | 1500         | ✅     | ❌   | ❌       |
 | `tier2` | 19,99 €    | 4000         | ✅     | ✅   | ✅       |
 | `tier3` | 39,99 €    | 9000         | ✅     | ✅   | ✅       |
+
+- **Supplément de crédits** (`EXTRA_CREDIT_*` dans `constants.ts`) : paiement
+  unique de 9,99 € qui ajoute 1500 crédits au plafond de la période en
+  cours, pour un abonné actif sur n'importe quel tier — ne se renouvelle
+  pas, remis à zéro (`extra_credit_usd_period`) au prochain renouvellement
+  comme `ai_cost_usd_period`. Bouton séparé des 3 offres sur `/abonnement`
+  (`components/abonnement/subscribe-actions.tsx` → `BuyCreditButton`),
+  déclenchant `POST /api/whop/credit-checkout` (plan Whop dédié,
+  `WHOP_CREDIT_PLAN_ID`). Le webhook route ce paiement via
+  `metadata.type === "ai_credit_topup"` sur `membership.activated` plutôt
+  que `payment.succeeded` (seul événement observé en pratique pour un plan
+  one-time côté Whop) vers `grantAiCredit`, idempotent grâce à la clé
+  primaire de `ai_credit_topups`.
 
 - La génération de fiches est **gratuite et illimitée** pour un non-abonné.
 - La **lecture** (et donc l'enregistrement) est réservée aux abonnés actifs,
@@ -217,10 +231,12 @@ chapitres, contenu des fiches, réglages du profil).
   chaque renouvellement effectif (`payment.succeeded` avec `billing_reason:
   "subscription_cycle"` — Whop n'expose pas de date de début de période
   comme Stripe, donc le renouvellement se détecte par la raison de
-  facturation plutôt que par comparaison de dates). Le plafond n'est
-  affiché dans l'UI que s'il est atteint (`(app)/limite`) ; il n'y a plus de
-  déblocage ponctuel en cours de période, seulement un changement de tier
-  pour la période suivante.
+  facturation plutôt que par comparaison de dates). Le plafond effectif
+  comparé à `ai_cost_usd_period` est `TierConfig.budgetUsd` +
+  `extra_credit_usd_period` (le supplément ponctuel ci-dessus) ; le plafond
+  n'est affiché dans l'UI que s'il est atteint (`(app)/limite`), qui
+  renvoie aussi vers `/abonnement` pour ajouter des crédits ou changer de
+  tier sans attendre le renouvellement.
 - `FREE_PREVIEW_FRACTION = 0.1` : pour un non-abonné (ou un ex-abonné dont
   les fiches sauvegardées restent en base), `computePreviewCutoff` calcule
   un **pointeur** (section / sous-point / index de caractère) dans le

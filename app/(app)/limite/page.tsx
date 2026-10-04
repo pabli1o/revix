@@ -9,9 +9,8 @@ import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
  * AiUsageCapExceededError, surfaced as aiUsageCapExceeded on the fiche
  * generation and quiz API responses). Deliberately vague: no euro amounts,
  * no mention of what the cap is actually measuring — see the exact wording
- * rules that apply here. No more in-period top-up (every plan is a fixed
- * monthly credit allowance now) — the only way to get more credit before
- * the next renewal is switching to a higher tier from /abonnement.
+ * rules that apply here. Before the next renewal, /abonnement offers both
+ * the one-time credit top-up and switching to a higher tier.
  */
 export default function LimitePage() {
   return (
@@ -25,8 +24,8 @@ export default function LimitePage() {
         <Card className="w-full text-left text-sm text-text-muted">
           <p>
             Tes crédits se renouvellent automatiquement à ton prochain renouvellement
-            d&apos;abonnement. Tu peux aussi passer à une offre avec plus de crédits dès
-            maintenant.
+            d&apos;abonnement. Tu peux aussi en ajouter ou passer à une offre avec plus de
+            crédits dès maintenant.
           </p>
         </Card>
       </div>

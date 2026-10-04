@@ -71,6 +71,14 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
 
 export const TIER_ORDER: SubscriptionTier[] = ["tier1", "tier2", "tier3"];
 
+/** One-time (non-recurring) credit top-up, on top of whichever tier the
+ * subscriber is already on — unlike a tier, it's a single Whop purchase,
+ * not a plan, and it never rolls over (reset to 0 on the next renewal
+ * alongside ai_cost_usd_period — see app/api/whop/webhook/route.ts). */
+export const EXTRA_CREDIT_PRICE_EUR = 9.99;
+export const EXTRA_CREDIT_CREDITS = 1500;
+export const EXTRA_CREDIT_BUDGET_USD = (EXTRA_CREDIT_CREDITS / CREDITS_PER_EUR) * USD_PER_EUR;
+
 /** Converts a real USD cost (as tracked in ai_cost_usd_period) to the
  * number of credits it represents, for display — the only place this
  * ratio is exposed outside this module, and only ever as a plain credit

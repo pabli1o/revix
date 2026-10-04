@@ -3,6 +3,34 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+export function BuyCreditButton({
+  className,
+  size,
+}: {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+}) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    const res = await fetch("/api/whop/credit-checkout", { method: "POST" });
+    const data = (await res.json()) as { url?: string; error?: string };
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      setLoading(false);
+      window.alert(data.error ?? "Impossible de démarrer le paiement.");
+    }
+  }
+
+  return (
+    <Button onClick={handleClick} disabled={loading} className={className} size={size}>
+      {loading ? "Redirection…" : "Ajouter des crédits"}
+    </Button>
+  );
+}
+
 /**
  * Whop has no hosted self-service billing portal to redirect to like
  * Stripe's — this calls the cancellation API directly instead, so it needs

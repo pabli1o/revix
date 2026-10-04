@@ -151,8 +151,16 @@ export type SubscriptionRow = {
   tier: SubscriptionTier | null;
   current_period_end: string | null;
   ai_cost_usd_period: number;
+  extra_credit_usd_period: number;
   created_at: string;
   updated_at: string;
+};
+
+export type AiCreditTopupRow = {
+  payment_id: string;
+  user_id: string;
+  amount_usd: number;
+  created_at: string;
 };
 
 export interface FicheDraftItem {
@@ -244,10 +252,19 @@ export interface Database {
         Partial<FicheDraftRow> & { user_id: string; items: FicheDraftItem[] },
         Partial<FicheDraftRow>
       >;
+      ai_credit_topups: Table<
+        AiCreditTopupRow,
+        Partial<AiCreditTopupRow> & { payment_id: string; user_id: string; amount_usd: number },
+        Partial<AiCreditTopupRow>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
       increment_ai_usage_cost: {
+        Args: { p_user_id: string; p_amount: number };
+        Returns: void;
+      };
+      increment_ai_credit: {
         Args: { p_user_id: string; p_amount: number };
         Returns: void;
       };
