@@ -192,7 +192,7 @@ chapitres, contenu des fiches, réglages du profil).
 | Tier    | Prix       | Crédits/mois | Fiches | Quiz | Planning |
 | ------- | ---------- | ------------ | ------ | ---- | -------- |
 | `tier1` | 9,99 €     | 1500         | ✅     | ❌   | ❌       |
-| `tier2` | 19,99 €    | 4500         | ✅     | ✅   | ✅       |
+| `tier2` | 19,99 €    | 4000         | ✅     | ✅   | ✅       |
 | `tier3` | 39,99 €    | 9000         | ✅     | ✅   | ✅       |
 
 - La génération de fiches est **gratuite et illimitée** pour un non-abonné.

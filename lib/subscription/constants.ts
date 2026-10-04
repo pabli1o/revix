@@ -46,8 +46,8 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
   tier2: {
     label: "Complet",
     priceEur: 19.99,
-    credits: 4500,
-    budgetUsd: (4500 / CREDITS_PER_EUR) * USD_PER_EUR,
+    credits: 4000,
+    budgetUsd: (4000 / CREDITS_PER_EUR) * USD_PER_EUR,
     features: { quiz: true, planning: true },
   },
   tier3: {
