@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
@@ -73,7 +74,11 @@ export function OnboardingWizard() {
       return;
     }
 
-    router.replace("/fiches");
+    // Resumes the anonymous "Nouvelle fiche" draft (see creation-flow.tsx)
+    // if this is a brand-new account that came from the public creation
+    // screen — otherwise the normal destination.
+    const resume = consumeResumeFicheCreation();
+    router.replace(resume ? "/fiches/new?resume=1" : "/fiches");
     router.refresh();
   }
 

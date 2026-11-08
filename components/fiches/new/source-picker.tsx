@@ -36,6 +36,15 @@ export interface PendingSource extends GenerateSourceInput {
    * part, each expanded into its own source at submission time (see
    * creation-flow.tsx) so the parts are generated in parallel. */
   storagePaths?: string[];
+  /** Anonymous visitor only (see `deferUpload` below): the raw file,
+   * kept client-side instead of uploaded, because uploadSourceFile()
+   * requires an authenticated session. Resolved into a real storagePath
+   * by creation-flow.tsx right before generation, once the user has
+   * signed in. Mirrors storagePath/storagePaths one level removed —
+   * never both set on the same source, and never sent to the server
+   * as-is (stripped once resolved). */
+  file?: File;
+  files?: File[];
 }
 
 function makeId() {
@@ -45,9 +54,15 @@ function makeId() {
 export function SourcePicker({
   sources,
   onChange,
+  deferUpload = false,
 }: {
   sources: PendingSource[];
   onChange: (sources: PendingSource[]) => void;
+  /** True for an anonymous visitor: uploadSourceFile() requires a signed-
+   * in user, so a PDF/Word file is kept as a raw File (file/files on
+   * PendingSource) instead of uploaded immediately — creation-flow.tsx
+   * uploads it for real right before generation, once authenticated. */
+  deferUpload?: boolean;
 }) {
   const [textDraft, setTextDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -170,14 +185,22 @@ export function SourcePicker({
 
           const parts = await splitPdfByPages(file, PDF_PAGES_PER_CHUNK);
           if (parts) {
-            const storagePaths = await Promise.all(parts.map((part) => uploadSourceFile(part.file)));
-            added.push({ id: makeId(), type, nom: file.name, storagePaths });
+            if (deferUpload) {
+              added.push({ id: makeId(), type, nom: file.name, files: parts.map((p) => p.file) });
+            } else {
+              const storagePaths = await Promise.all(parts.map((part) => uploadSourceFile(part.file)));
+              added.push({ id: makeId(), type, nom: file.name, storagePaths });
+            }
             continue;
           }
         }
 
-        const storagePath = await uploadSourceFile(file);
-        added.push({ id: makeId(), type, nom: file.name, storagePath });
+        if (deferUpload) {
+          added.push({ id: makeId(), type, nom: file.name, file });
+        } else {
+          const storagePath = await uploadSourceFile(file);
+          added.push({ id: makeId(), type, nom: file.name, storagePath });
+        }
       } catch {
         failed.push(`${file.name} (échec de l'envoi)`);
       }

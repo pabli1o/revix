@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
@@ -16,6 +16,9 @@ import { FicheLoader } from "@/components/ui/fiche-loader";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
 import { SourcePicker, type PendingSource } from "./source-picker";
+import { uploadSourceFile } from "./upload-source";
+import { loadDraftSources, saveDraftSources, clearDraftSources } from "./local-draft";
+import { markResumeFicheCreation } from "./resume-flag";
 import { ProposalPreview } from "./proposal-preview";
 
 interface ValidationItem {
@@ -107,7 +110,28 @@ function renumberSplitPdfParts(
   });
 }
 
-export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
+export function CreationFlow({
+  isSubscribed,
+  isAuthenticated = true,
+  resumeFromDraft = false,
+}: {
+  isSubscribed: boolean;
+  /** False only for the public, unauthenticated entry point on "/" — see
+   * app/page.tsx. Gates 3 things: clicking "Générer" opens /signup instead
+   * of calling the API (the server would 401 it anyway — see
+   * /api/fiches/generate — this is purely so the anonymous visitor gets a
+   * clear next step instead of a failed request), sources are persisted
+   * to/restored from IndexedDB (lib: local-draft.ts) so they survive the
+   * round trip through signup/login, and the "✕ Fermer" link is hidden
+   * (there's no /fiches to go back to yet). */
+  isAuthenticated?: boolean;
+  /** True only on the one authenticated landing right after signup/login/
+   * onboarding when an anonymous draft was pending (see app/(app)/fiches/
+   * new/page.tsx's ?resume=1 and the 3 call sites that set it). Loads the
+   * draft once on mount and immediately calls handleGenerate() with it —
+   * "sans qu'il ait à recliquer" — then clears it, success or not. */
+  resumeFromDraft?: boolean;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("sources");
   const [sources, setSources] = useState<PendingSource[]>([]);
@@ -119,6 +143,81 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
   const [generationProgress, setGenerationProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
+
+  // Anonymous visitor: restore whatever was typed/added before (e.g. they
+  // navigated back from /signup without finishing). Resumed-after-auth
+  // visitor: load the pending draft once and kick off generation right
+  // away — no state is carried over through the full-page redirect chain
+  // (signup/login → maybe /onboarding → here), so IndexedDB is the only
+  // thing bridging it. Either way, a missing/unreadable draft is a clear
+  // message, never a crash — see local-draft.ts's doc comment.
+  useEffect(() => {
+    if (resumeFromDraft) {
+      (async () => {
+        let draft: PendingSource[] | null = null;
+        try {
+          draft = await loadDraftSources();
+        } catch {
+          draft = null;
+        }
+        if (!draft) {
+          setError(
+            "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
+          );
+          return;
+        }
+        setSources(draft);
+        await handleGenerate(draft);
+        clearDraftSources().catch(() => {});
+      })();
+      return;
+    }
+    if (!isAuthenticated) {
+      loadDraftSources()
+        .then((draft) => {
+          if (draft) setSources(draft);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Wraps setSources so an anonymous visitor's draft is persisted on
+   * every change — never for an authenticated user (no IndexedDB writes
+   * at all for the normal, unchanged logged-in flow). A write failure
+   * (quota, private browsing) surfaces as a clear message but keeps the
+   * in-memory sources exactly as they are — nothing is lost from the
+   * screen, only the "survives a redirect" guarantee is what's at risk. */
+  function updateSources(next: PendingSource[]) {
+    setSources(next);
+    if (!isAuthenticated) {
+      saveDraftSources(next).catch(() => {
+        setError(
+          "Ton brouillon ne peut pas être conservé dans ce navigateur (stockage plein ou bloqué) — connecte-toi avant d'ajouter d'autres fichiers, au risque de les perdre en changeant de page.",
+        );
+      });
+    }
+  }
+
+  /** Anonymous visitor only: a PDF/Word source picked before signing in
+   * carries a raw File (see source-picker.tsx's deferUpload) instead of a
+   * storagePath, because uploadSourceFile() needs an authenticated
+   * session. Resolved for real right here, now that one exists. */
+  async function resolvePendingUploads(list: PendingSource[]): Promise<PendingSource[]> {
+    return Promise.all(
+      list.map(async (s) => {
+        if (s.file) {
+          const storagePath = await uploadSourceFile(s.file);
+          return { ...s, storagePath, file: undefined };
+        }
+        if (s.files && s.files.length > 0) {
+          const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
+          return { ...s, storagePaths, files: undefined };
+        }
+        return s;
+      }),
+    );
+  }
 
   async function submitChunk(chunk: GenerateSourceInput[]): Promise<FicheProposal[]> {
     const { status, data } = await fetchJson<{
@@ -150,10 +249,20 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
    * can be reassembled in the original chunk order regardless of which
    * one actually finished first.
    */
-  async function handleGenerate() {
+  async function handleGenerate(overrideSources?: PendingSource[]) {
     setError(null);
 
-    const totalBytes = sources.reduce(
+    let resolvedSources: PendingSource[];
+    try {
+      resolvedSources = await resolvePendingUploads(overrideSources ?? sources);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Échec de l'envoi d'un fichier — réessaie.",
+      );
+      return;
+    }
+
+    const totalBytes = resolvedSources.reduce(
       (sum, s) => sum + estimateBase64Bytes(s.data ?? "") + (s.texte?.length ?? 0),
       0,
     );
@@ -174,7 +283,7 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
     // type the server reads) carries nothing extra for this; it's tracked
     // purely client-side.
     const splitPdfGroupByPath = new Map<string, string>();
-    const payloadSources: GenerateSourceInput[] = sources.flatMap((s): GenerateSourceInput[] => {
+    const payloadSources: GenerateSourceInput[] = resolvedSources.flatMap((s): GenerateSourceInput[] => {
       if (s.storagePaths && s.storagePaths.length > 0) {
         return s.storagePaths.map((storagePath, i) => {
           splitPdfGroupByPath.set(storagePath, s.id);
@@ -335,6 +444,30 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
   const isReviewing = (step === "validation" || step === "preparing") && items.length > 0;
 
+  /** The button's actual onClick for an anonymous visitor: never calls
+   * handleGenerate() directly (the server would 401 it anyway — see
+   * /api/fiches/generate — this is about UX, not the security boundary,
+   * which is already enforced server-side). Persists the draft first and
+   * only navigates to /signup if that succeeds, so a storage failure
+   * doesn't silently strand the user's work mid-redirect. */
+  async function handleGenerateClick() {
+    if (!isAuthenticated) {
+      setError(null);
+      try {
+        await saveDraftSources(sources);
+      } catch {
+        setError(
+          "Impossible d'enregistrer ton brouillon dans ce navigateur (stockage plein ou bloqué). Réessaie avec moins de fichiers, ou connecte-toi d'abord.",
+        );
+        return;
+      }
+      markResumeFicheCreation();
+      router.push("/signup?intent=fiche");
+      return;
+    }
+    await handleGenerate();
+  }
+
   return (
     <div className={clsx(isReviewing && "pb-24")}>
       <ProgressBar step={isReviewing ? 2 : 1} total={CREATION_FLOW_TOTAL_STEPS} />
@@ -350,14 +483,16 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
             </p>
           )}
         </div>
-        <Link
-          href="/fiches"
-          prefetch={true}
-          aria-label="Fermer"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
-        >
-          ✕
-        </Link>
+        {isAuthenticated && (
+          <Link
+            href="/fiches"
+            prefetch={true}
+            aria-label="Fermer"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            ✕
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -368,8 +503,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
       {step === "sources" && (
         <Card>
-          <SourcePicker sources={sources} onChange={setSources} />
-          <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerate}>
+          <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
+          <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
             Générer la fiche ✨
           </Button>
         </Card>
