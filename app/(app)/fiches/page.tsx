@@ -45,7 +45,7 @@ export default async function FichesPage() {
   return (
     <div className="pb-24">
       <FicheSavedToast />
-      <AppHeader />
+      <AppHeader variant="hero" />
       {!isEmpty && (
         <p className="mb-6 text-sm text-text-muted">
           📚 Clique sur une matière pour voir ses chapitres.

@@ -1,57 +1,60 @@
 import { getProfile } from "@/lib/supabase/profile";
 
-/** Shared header shown at the top of every main tab (Fiches / Examen /
- * Planning / Quiz), per the validated design spec: a big ambre badge, a
- * huge pale Reviix logo watermark, and a one-line intro. Deliberately
- * identical across the four tabs — which tab you're on is communicated by
- * the active pill in the nav, not by a per-page title.
+/**
+ * Shown at the top of every main tab (Fiches / Examen / Planning / Quiz).
+ * Two variants:
  *
- * The badge itself is sized to read as a real headline, not a small tag —
- * `rounded-2xl` (not `rounded-full`, which stops looking like a badge once
- * its content wraps) and no `whitespace-nowrap` on the outer text, so a
- * narrow phone wraps it to 2 lines instead of shrinking or overflowing;
- * "moins de 2 min" alone stays on one line (its own `whitespace-nowrap`)
- * so the number is never split across the wrap. `max-w-full` on the badge
- * keeps it inside the viewport on a small phone. It stays in normal block
- * flow (no absolute positioning) so a taller, wrapped badge simply pushes
- * the logo watermark and intro line below it down — never overlaps them.
+ * - `"hero"` (Fiches only — the app's actual home screen, and the future
+ *   public homepage once it exists) reads as a real page headline: two
+ *   bold lines ("Tes fiches de révision" in off-white, "en moins de 2
+ *   min." in ambre), a short gray explanation line, then the pale logo
+ *   watermark. Sized with explicit breakpoints (not open-ended padding)
+ *   so it stays well short of the viewport height on a small phone —
+ *   the "+ Créer une fiche" button is a `fixed` bottom bar regardless
+ *   (see floating-bottom-bar.tsx) and is never actually hidden by page
+ *   height, but a hero that eats the whole first screen would still
+ *   feel wrong before any real content shows.
+ * - `"compact"` (Examen/Planning/Quiz) drops the big headline entirely —
+ *   just the existing small one-line reminder, so the tab's own content
+ *   starts right away instead of repeating the home screen's title on
+ *   every tab.
  *
- * Once the user's prenom is known (set during onboarding), the intro line
- * is personalized as "Salut [Prénom] 👋 — …", exactly per spec — this is
+ * Once the user's prenom is known (set during onboarding), the small
+ * line is personalized as "Salut [Prénom] 👋 — …", exactly per spec —
  * the app's one canonical greeting pattern, reused wherever it addresses
- * the user directly. */
-export async function AppHeader() {
+ * the user directly.
+ */
+export async function AppHeader({ variant = "compact" }: { variant?: "hero" | "compact" }) {
   const profile = await getProfile();
   const prenom = profile?.prenom?.trim();
 
+  const intro = prenom ? (
+    <>Salut {prenom} 👋 — tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.</>
+  ) : (
+    <>Tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.</>
+  );
+
+  if (variant === "compact") {
+    return (
+      <div className="mb-6">
+        <p className="text-sm text-text-muted">{intro}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-8">
-      <div className="mb-3 inline-flex max-w-full items-start gap-2.5 rounded-2xl bg-accent px-4 py-3 text-[#1A1A1A] sm:px-5 sm:py-3.5">
-        <span aria-hidden className="text-2xl leading-tight">
-          🎓
-        </span>
-        <span className="font-heading text-xl font-bold leading-snug sm:text-2xl">
-          Tes fiches de révision en{" "}
-          <span className="whitespace-nowrap underline decoration-[3px] decoration-[#1A1A1A]/50">
-            moins de 2 min
-          </span>
-        </span>
-      </div>
+      <h1 className="text-[2.5rem] leading-[1.08] font-extrabold tracking-tight sm:text-6xl">
+        <span className="block text-text">Tes fiches de révision</span>
+        <span className="block text-accent">en moins de 2 min.</span>
+      </h1>
+      <p className="mt-3 text-base text-text-muted">Colle ton cours, ta fiche est prête.</p>
       <img
         src="/reviix-wordmark.png"
         alt=""
         aria-hidden
-        className="h-12 w-auto opacity-[0.06] md:h-20"
+        className="mt-4 h-10 w-auto opacity-[0.06] md:h-16"
       />
-      <p className="mt-2 text-text-muted">
-        {prenom ? (
-          <>
-            Salut {prenom} 👋 — tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.
-          </>
-        ) : (
-          <>Tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.</>
-        )}
-      </p>
     </div>
   );
 }
