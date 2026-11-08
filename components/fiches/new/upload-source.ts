@@ -31,6 +31,18 @@ export async function uploadSourceFile(file: File): Promise<string> {
     );
   }
 
+  if (file.size === 0) {
+    // The actual Safari/WebKit failure mode this whole chain guards
+    // against (local-draft.ts's round-trip check should already have
+    // caught and dropped this earlier — this is the last line of
+    // defense, checked before spending a network round trip on a file
+    // that Storage would refuse anyway with a much less legible "No
+    // content provided").
+    throw new Error(
+      `« ${file.name} » est vide (0 octet) — il n'a pas survécu au stockage local de ce navigateur. Retire-le et rajoute-le.`,
+    );
+  }
+
   const supabase = createClient();
   const {
     data: { user },

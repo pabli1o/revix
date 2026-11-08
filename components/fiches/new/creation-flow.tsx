@@ -61,6 +61,18 @@ function stripPartieSuffix(titre: string): string {
   return match ? match[1].trim() : titre.trim();
 }
 
+/** Shared wording for a source dropped because it came back empty/
+ * unreadable from the browser's local storage (the confirmed Safari/
+ * WebKit IndexedDB bug — see local-draft.ts) — used wherever that can
+ * happen: loading a draft, saving one, or resolving an upload right
+ * before generation. */
+function droppedSourcesMessage(names: string[]): string {
+  const list = names.map((n) => `« ${n} »`).join(", ");
+  return names.length > 1
+    ? `${list} n'ont pas pu être conservés (vides ou illisibles dans ce navigateur) — retire-les et rajoute-les.`
+    : `${list} n'a pas pu être conservé (vide ou illisible dans ce navigateur) — retire-le et rajoute-le.`;
+}
+
 /**
  * A large PDF split into independent page-range chunks (see pdf-split.ts)
  * sends each range to Claude with no knowledge of the others. If a range
@@ -166,15 +178,20 @@ export function CreationFlow({
   useEffect(() => {
     if (resumeFromDraft) {
       loadDraftSources()
-        .then((draft) => {
-          if (!draft) {
-            console.error("[creation-flow] resumeFromDraft: loadDraftSources() returned no draft");
+        .then((result) => {
+          if (!result || result.sources.length === 0) {
+            console.error("[creation-flow] resumeFromDraft: loadDraftSources() returned no usable source", result);
             setError(
-              "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
+              result && result.dropped.length > 0
+                ? droppedSourcesMessage(result.dropped.map((d) => d.nom))
+                : "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
             );
             return;
           }
-          setSources(draft);
+          setSources(result.sources);
+          if (result.dropped.length > 0) {
+            setError(droppedSourcesMessage(result.dropped.map((d) => d.nom)));
+          }
           clearDraftSources().catch((err) => {
             console.error("[creation-flow] clearDraftSources() failed after resume:", err);
           });
@@ -189,8 +206,10 @@ export function CreationFlow({
     }
     if (!isAuthenticated) {
       loadDraftSources()
-        .then((draft) => {
-          if (draft) setSources(draft);
+        .then((result) => {
+          if (!result) return;
+          if (result.sources.length > 0) setSources(result.sources);
+          if (result.dropped.length > 0) setError(droppedSourcesMessage(result.dropped.map((d) => d.nom)));
         })
         .catch((err) => {
           console.error("[creation-flow] anonymous loadDraftSources() threw:", err);
@@ -208,11 +227,23 @@ export function CreationFlow({
   function updateSources(next: PendingSource[]) {
     setSources(next);
     if (!isAuthenticated) {
-      saveDraftSources(next).catch(() => {
-        setError(
-          "Ton brouillon ne peut pas être conservé dans ce navigateur (stockage plein ou bloqué) — connecte-toi avant d'ajouter d'autres fichiers, au risque de les perdre en changeant de page.",
-        );
-      });
+      saveDraftSources(next)
+        .then(({ dropped }) => {
+          if (dropped.length === 0) return;
+          // Dropped at the storage layer itself (failed the immediate
+          // read-back check — see local-draft.ts) — reflect that in the
+          // visible list too, instead of leaving a source on screen that
+          // silently won't survive the trip through signup.
+          const droppedIds = new Set(dropped.map((d) => d.id));
+          setSources((prev) => prev.filter((s) => !droppedIds.has(s.id)));
+          setError(droppedSourcesMessage(dropped.map((d) => d.nom)));
+        })
+        .catch((err) => {
+          console.error("[creation-flow] updateSources: saveDraftSources() failed:", err);
+          setError(
+            "Ton brouillon ne peut pas être conservé dans ce navigateur (stockage plein ou bloqué) — connecte-toi avant d'ajouter d'autres fichiers, au risque de les perdre en changeant de page.",
+          );
+        });
     }
   }
 
@@ -221,31 +252,42 @@ export function CreationFlow({
    * storagePath, because uploadSourceFile() needs an authenticated
    * session. Resolved for real right here, now that one exists.
    *
-   * Each source is wrapped individually so a failure names exactly which
-   * one caused it ("Mon cours.pdf" vs "une source") instead of a single
-   * generic message for the whole batch — the point of this function
-   * existing at all is the exact "ajoute un cours → inscription → retour
-   * → Générer → échec" path, so being vague here defeats the purpose. */
-  async function resolvePendingUploads(list: PendingSource[]): Promise<PendingSource[]> {
-    return Promise.all(
-      list.map(async (s) => {
-        try {
-          if (s.file) {
-            const storagePath = await uploadSourceFile(s.file);
-            return { ...s, storagePath, file: undefined };
-          }
-          if (s.files && s.files.length > 0) {
-            const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
-            return { ...s, storagePaths, files: undefined };
-          }
-          return s;
-        } catch (err) {
-          const detail = err instanceof Error ? err.message : String(err);
-          console.error(`[creation-flow] resolvePendingUploads failed for "${s.nom}":`, err);
-          throw new Error(`« ${s.nom} » : ${detail}`);
+   * Settled individually (not Promise.all, which would fail the whole
+   * batch over one bad file) so one corrupted source — the exact "ajoute
+   * un cours → inscription → retour → Générer → échec" bug report this
+   * guards against — doesn't block everything else the visitor added:
+   * texte and any other working file still go through, and the broken
+   * one is named explicitly in `failures` instead of silently vanishing. */
+  async function resolvePendingUploads(
+    list: PendingSource[],
+  ): Promise<{ resolved: PendingSource[]; failures: { id: string; nom: string; message: string }[] }> {
+    const settled = await Promise.allSettled(
+      list.map(async (s): Promise<PendingSource> => {
+        if (s.file) {
+          const storagePath = await uploadSourceFile(s.file);
+          return { ...s, storagePath, file: undefined };
         }
+        if (s.files && s.files.length > 0) {
+          const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
+          return { ...s, storagePaths, files: undefined };
+        }
+        return s;
       }),
     );
+
+    const resolved: PendingSource[] = [];
+    const failures: { id: string; nom: string; message: string }[] = [];
+    settled.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        resolved.push(r.value);
+        return;
+      }
+      const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      console.error(`[creation-flow] resolvePendingUploads failed for "${list[i].nom}":`, r.reason);
+      failures.push({ id: list[i].id, nom: list[i].nom, message });
+    });
+
+    return { resolved, failures };
   }
 
   async function submitChunk(chunk: GenerateSourceInput[]): Promise<FicheProposal[]> {
@@ -287,15 +329,17 @@ export function CreationFlow({
     setError(null);
     setFreeTrialExhausted(false);
 
-    let resolvedSources: PendingSource[];
-    try {
-      resolvedSources = await resolvePendingUploads(sources);
-    } catch (err) {
-      console.error("[creation-flow] handleGenerate: resolvePendingUploads() failed:", err);
-      setError(
-        err instanceof Error ? err.message : "Échec de l'envoi d'un fichier — réessaie.",
-      );
-      return;
+    const { resolved: resolvedSources, failures } = await resolvePendingUploads(sources);
+    if (failures.length > 0) {
+      // Drop exactly the sources that failed from the visible list and
+      // say so, but keep going with whatever did resolve: one bad PDF
+      // shouldn't also take down the texte/photos that were fine.
+      const failedIds = new Set(failures.map((f) => f.id));
+      setSources((prev) => prev.filter((s) => !failedIds.has(s.id)));
+      setError(failures.map((f) => `« ${f.nom} » : ${f.message}`).join(" "));
+      if (resolvedSources.length === 0) {
+        return;
+      }
     }
 
     const totalBytes = resolvedSources.reduce(
@@ -500,8 +544,9 @@ export function CreationFlow({
   async function handleGenerateClick() {
     if (!isAuthenticated) {
       setError(null);
+      let dropped: { id: string; nom: string }[];
       try {
-        await saveDraftSources(sources);
+        ({ dropped } = await saveDraftSources(sources));
       } catch (err) {
         console.error("[creation-flow] handleGenerateClick: saveDraftSources() failed:", err);
         setError(
@@ -509,6 +554,21 @@ export function CreationFlow({
         );
         return;
       }
+
+      const remaining =
+        dropped.length > 0
+          ? sources.filter((s) => !dropped.some((d) => d.id === s.id))
+          : sources;
+      if (dropped.length > 0) {
+        setSources(remaining);
+        setError(droppedSourcesMessage(dropped.map((d) => d.nom)));
+      }
+      if (remaining.length === 0) {
+        // Nothing left to generate — don't send the visitor to signup
+        // over an empty draft; let them re-add the dropped file(s) first.
+        return;
+      }
+
       markResumeFicheCreation();
       router.push("/signup?intent=fiche");
       return;
