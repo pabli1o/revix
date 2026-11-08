@@ -168,15 +168,19 @@ export function CreationFlow({
       loadDraftSources()
         .then((draft) => {
           if (!draft) {
+            console.error("[creation-flow] resumeFromDraft: loadDraftSources() returned no draft");
             setError(
               "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
             );
             return;
           }
           setSources(draft);
-          clearDraftSources().catch(() => {});
+          clearDraftSources().catch((err) => {
+            console.error("[creation-flow] clearDraftSources() failed after resume:", err);
+          });
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("[creation-flow] resumeFromDraft: loadDraftSources() threw:", err);
           setError(
             "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
           );
@@ -188,7 +192,9 @@ export function CreationFlow({
         .then((draft) => {
           if (draft) setSources(draft);
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error("[creation-flow] anonymous loadDraftSources() threw:", err);
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -213,19 +219,31 @@ export function CreationFlow({
   /** Anonymous visitor only: a PDF/Word source picked before signing in
    * carries a raw File (see source-picker.tsx's deferUpload) instead of a
    * storagePath, because uploadSourceFile() needs an authenticated
-   * session. Resolved for real right here, now that one exists. */
+   * session. Resolved for real right here, now that one exists.
+   *
+   * Each source is wrapped individually so a failure names exactly which
+   * one caused it ("Mon cours.pdf" vs "une source") instead of a single
+   * generic message for the whole batch — the point of this function
+   * existing at all is the exact "ajoute un cours → inscription → retour
+   * → Générer → échec" path, so being vague here defeats the purpose. */
   async function resolvePendingUploads(list: PendingSource[]): Promise<PendingSource[]> {
     return Promise.all(
       list.map(async (s) => {
-        if (s.file) {
-          const storagePath = await uploadSourceFile(s.file);
-          return { ...s, storagePath, file: undefined };
+        try {
+          if (s.file) {
+            const storagePath = await uploadSourceFile(s.file);
+            return { ...s, storagePath, file: undefined };
+          }
+          if (s.files && s.files.length > 0) {
+            const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
+            return { ...s, storagePaths, files: undefined };
+          }
+          return s;
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err);
+          console.error(`[creation-flow] resolvePendingUploads failed for "${s.nom}":`, err);
+          throw new Error(`« ${s.nom} » : ${detail}`);
         }
-        if (s.files && s.files.length > 0) {
-          const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
-          return { ...s, storagePaths, files: undefined };
-        }
-        return s;
       }),
     );
   }
@@ -273,6 +291,7 @@ export function CreationFlow({
     try {
       resolvedSources = await resolvePendingUploads(sources);
     } catch (err) {
+      console.error("[creation-flow] handleGenerate: resolvePendingUploads() failed:", err);
       setError(
         err instanceof Error ? err.message : "Échec de l'envoi d'un fichier — réessaie.",
       );
@@ -349,6 +368,7 @@ export function CreationFlow({
       );
       if (failure) {
         const reason = failure.reason;
+        console.error("[creation-flow] handleGenerate: a chunk request failed:", reason);
         if (reason instanceof ChunkGenerationError && reason.aiUsageCapExceeded) {
           router.push("/limite");
           return;
@@ -378,7 +398,12 @@ export function CreationFlow({
       );
       setStep("validation");
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant la génération.");
+      // Reached only if something other than a chunk's own HTTP request
+      // threw — e.g. renumberSplitPdfParts()/the proposal mapping below
+      // choking on an unexpected shape. Logged with the raw error since
+      // "Erreur réseau" would be misleading for a non-network failure.
+      console.error("[creation-flow] handleGenerate: unexpected failure after chunks settled:", err);
+      setError(err instanceof RequestFailedError ? err.message : "Une erreur inattendue est survenue pendant la génération.");
       setStep("sources");
     } finally {
       setGenerationProgress(null);
@@ -477,7 +502,8 @@ export function CreationFlow({
       setError(null);
       try {
         await saveDraftSources(sources);
-      } catch {
+      } catch (err) {
+        console.error("[creation-flow] handleGenerateClick: saveDraftSources() failed:", err);
         setError(
           "Impossible d'enregistrer ton brouillon dans ce navigateur (stockage plein ou bloqué). Réessaie avec moins de fichiers, ou connecte-toi d'abord.",
         );

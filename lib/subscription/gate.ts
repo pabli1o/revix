@@ -3,6 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/lib/supabase/database.types";
 import { TIERS, hasFeatureAccess, type SubscriptionTier, type TierFeatures } from "./constants";
+import { logStep } from "@/lib/observability/timing";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
@@ -123,13 +124,41 @@ export class FreeFicheTrialExhaustedError extends Error {
  */
 export async function assertFreeFicheTrialAvailable(userId: string): Promise<void> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("profiles")
     .select("free_fiche_generated")
     .eq("id", userId)
     .maybeSingle();
 
-  if (data?.free_fiche_generated) {
+  if (error) {
+    // Logged loudly rather than silently ignored — the most likely real
+    // cause is migration 0014 (profiles.free_fiche_generated) not having
+    // been applied yet to this Supabase project (undefined_column, code
+    // 42703), which would otherwise look like "the free-trial cap just
+    // never does anything" with no clue why. Fails OPEN (treats as trial
+    // available) rather than blocking every non-subscriber from
+    // generating anything the moment this column is missing — that
+    // regression would be far worse than the cap silently not applying.
+    logStep(
+      `free-trial:${userId.slice(0, 8)}`,
+      `assertFreeFicheTrialAvailable: profiles query FAILED (code ${error.code ?? "?"}) — ${error.message}. Failing open (treating trial as available) — check that migration 0014 was applied.`,
+    );
+    return;
+  }
+
+  if (!data) {
+    // handle_new_user (migration 0001) creates this row at signup, so
+    // this should never actually happen — logged in case it ever does
+    // (a row deleted out of band, or a signup path that bypassed the
+    // trigger) rather than failing silently either way.
+    logStep(
+      `free-trial:${userId.slice(0, 8)}`,
+      "assertFreeFicheTrialAvailable: no profiles row found for this user — treating trial as available.",
+    );
+    return;
+  }
+
+  if (data.free_fiche_generated) {
     throw new FreeFicheTrialExhaustedError();
   }
 }
@@ -141,5 +170,11 @@ export async function assertFreeFicheTrialAvailable(userId: string): Promise<voi
  * nothing to lose by not serializing it. */
 export async function markFreeFicheGenerated(userId: string): Promise<void> {
   const admin = createAdminClient();
-  await admin.from("profiles").update({ free_fiche_generated: true }).eq("id", userId);
+  const { error } = await admin.from("profiles").update({ free_fiche_generated: true }).eq("id", userId);
+  if (error) {
+    logStep(
+      `free-trial:${userId.slice(0, 8)}`,
+      `markFreeFicheGenerated: update FAILED (code ${error.code ?? "?"}) — ${error.message}`,
+    );
+  }
 }

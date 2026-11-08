@@ -13,6 +13,7 @@ import {
   assertFreeFicheTrialAvailable,
   getSubscriptionInfo,
   markFreeFicheGenerated,
+  type SubscriptionInfo,
 } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
@@ -53,8 +54,16 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (userError) {
+    logStep(requestTag, `supabase.auth.getUser() FAILED — ${userError.message}`);
+  }
+  if (!user) {
+    logStep(requestTag, "request REJECTED — no authenticated user (session not recognized)");
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+  logStep(requestTag, `authenticated as user ${user.id}`);
 
   // An account with no active subscription gets exactly one successful
   // generation ever (see gate.ts's doc comment for why this is checked
@@ -62,17 +71,31 @@ export async function POST(request: Request) {
   // naturally splits into several chunk requests still fully succeed on
   // that one allowed attempt). An active subscriber skips this entirely
   // and keeps today's unlimited-within-budget behavior, unchanged.
-  const subscription = await getSubscriptionInfo(user.id);
-  if (!subscription.isActive) {
-    try {
+  //
+  // Wrapped in its own try/catch (rather than relying on the main one
+  // further down) so that even a genuinely unexpected failure here —
+  // not just the two cases this code explicitly handles — still returns
+  // a clean, readable JSON error instead of an unhandled exception
+  // producing a generic non-JSON 500 the client can only describe as
+  // "Réponse invalide du serveur".
+  let subscription: SubscriptionInfo;
+  try {
+    subscription = await getSubscriptionInfo(user.id);
+    logStep(requestTag, `subscription status=${subscription.status} tier=${subscription.tier ?? "none"}`);
+
+    if (!subscription.isActive) {
       await assertFreeFicheTrialAvailable(user.id);
-    } catch (err) {
-      if (err instanceof FreeFicheTrialExhaustedError) {
-        const response: GenerateFichesResponse = { error: err.message, freeTrialExhausted: true };
-        return NextResponse.json(response, { status: 402 });
-      }
-      throw err;
+      logStep(requestTag, "free trial available — proceeding");
     }
+  } catch (err) {
+    if (err instanceof FreeFicheTrialExhaustedError) {
+      logStep(requestTag, "request REJECTED — free trial already used");
+      const response: GenerateFichesResponse = { error: err.message, freeTrialExhausted: true };
+      return NextResponse.json(response, { status: 402 });
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    logStep(requestTag, `request FAILED (subscription/free-trial check) — ${message}`);
+    return NextResponse.json({ error: `Vérification de l'abonnement impossible : ${message}` }, { status: 500 });
   }
 
   const body = (await request.json().catch(() => null)) as GenerateFichesRequest | null;
