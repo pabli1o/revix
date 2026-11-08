@@ -13,6 +13,7 @@ import type { CreateDraftResponse, FicheProposal } from "@/lib/fiches/types";
 import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./file-utils";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { ProposalPreview } from "./proposal-preview";
@@ -25,6 +26,11 @@ interface ValidationItem {
 }
 
 type Step = "sources" | "generating" | "validation" | "preparing";
+
+// See the matching constant in assign-flow.tsx — this flow's "sources" and
+// "validation" screens are steps 1 and 2 of 4; matière/chapitre (3 and 4)
+// live in assign-flow.tsx after a full navigation away from here.
+const CREATION_FLOW_TOTAL_STEPS = 4;
 
 /** Thrown by submitChunk so a failed chunk's reason (including whether it
  * was an AI usage cap) survives Promise.allSettled as a rejection. */
@@ -331,6 +337,8 @@ export function CreationFlow({ isSubscribed }: { isSubscribed: boolean }) {
 
   return (
     <div className={clsx(isReviewing && "pb-24")}>
+      <ProgressBar step={isReviewing ? 2 : 1} total={CREATION_FLOW_TOTAL_STEPS} />
+
       <div className="mb-6 flex items-start justify-between">
         <div>
           <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">

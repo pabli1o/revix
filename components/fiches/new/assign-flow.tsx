@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { ChoiceCard } from "@/components/ui/choice-card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
@@ -38,6 +40,12 @@ interface Destination {
 
 const POLL_INTERVAL_MS = 1500;
 const MAX_POLLS = 8;
+
+// The "création de fiche" journey spans 2 components across a full
+// navigation (this one and creation-flow.tsx) — 4 choice screens in total:
+// sources, validation (creation-flow.tsx), then matière, chapitre (here).
+// Loading/payment phases don't get a step of their own.
+const CREATION_FLOW_TOTAL_STEPS = 4;
 
 type Phase =
   | "checking-subscription"
@@ -355,6 +363,8 @@ export function AssignFlow({
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 pb-24 pt-2">
+      <ProgressBar step={phase === "picking-chapter" ? 4 : 3} total={CREATION_FLOW_TOTAL_STEPS} />
+
       <button
         type="button"
         onClick={() => setPhase("reviewing")}
@@ -413,19 +423,24 @@ export function AssignFlow({
           ) : (
             <>
               {subjects.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="flex flex-col gap-2">
                   {subjects.map((s) => {
                     const color = subjectColors.get(s.nom)!;
                     return (
-                      <button
+                      <ChoiceCard
                         key={s.id}
-                        type="button"
                         onClick={() => chooseExistingSubject(s.id)}
-                        className="flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-transform hover:-translate-y-0.5 active:scale-[0.97]"
-                        style={{ backgroundColor: color.bg, borderColor: color.border, color: color.text }}
-                      >
-                        {s.nom}
-                      </button>
+                        title={
+                          <span className="flex items-center gap-2.5">
+                            <span
+                              aria-hidden
+                              className="size-3 shrink-0 rounded-full"
+                              style={{ backgroundColor: color.bg }}
+                            />
+                            {s.nom}
+                          </span>
+                        }
+                      />
                     );
                   })}
                 </div>
@@ -461,20 +476,14 @@ export function AssignFlow({
             </p>
 
             {chapterOptions.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="flex flex-col gap-2">
                 {chapterOptions.map((c) => (
-                  <button
+                  <ChoiceCard
                     key={c.id}
-                    type="button"
+                    title={c.nom}
+                    selected={destination.chapterId === c.id}
                     onClick={() => chooseExistingChapter(c.id)}
-                    className={`flex aspect-[4/3] items-center justify-center rounded-2xl border p-3 text-center font-heading font-semibold shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.97] ${
-                      destination.chapterId === c.id
-                        ? "border-accent bg-accent text-[#1A1A1A]"
-                        : "border-border bg-bg-elevated text-text hover:border-accent"
-                    }`}
-                  >
-                    {c.nom}
-                  </button>
+                  />
                 ))}
               </div>
             )}

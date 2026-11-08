@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ChoiceCard } from "@/components/ui/choice-card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { QuizLoader } from "./quiz-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
@@ -142,28 +143,28 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
         <h1 className="mb-1 font-heading text-3xl font-semibold">Quiz — {chapterNom}</h1>
         <p className="mb-6 text-text-muted">Choisis un niveau de difficulté.</p>
         {error && <p className="mb-4 text-sm text-danger">{error}</p>}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-3">
           {DIFFICULTIES.map((d) => {
             const history = historyByDifficulty[d.value] ?? [];
             const last = history[0];
             return (
-              <Card key={d.value} className="flex flex-col items-center gap-3 text-center">
-                <span className="text-3xl">{d.emoji}</span>
-                <span className="font-heading text-lg font-semibold">{d.label}</span>
-                {last ? (
-                  <span className="font-mono text-sm text-text-muted">
-                    Dernier score : {last.score}/{last.total}
+              <ChoiceCard
+                key={d.value}
+                title={
+                  <span className="flex items-center gap-2">
+                    <span aria-hidden>{d.emoji}</span>
+                    {d.label}
                   </span>
-                ) : (
-                  <span className="text-sm text-text-muted">Pas encore tenté</span>
-                )}
-                <Button size="sm" className="w-full" onClick={() => startQuiz(d.value)}>
-                  {last ? "Refaire" : "Commencer"}
-                </Button>
-                {history.length > 0 && (
-                  <ul className="mt-1 w-full text-left text-xs text-text-muted">
-                    {history.slice(0, 3).map((a) => (
-                      <li key={a.id} className="flex justify-between border-t border-border py-1 first:border-t-0">
+                }
+                description={
+                  last ? `Dernier score : ${last.score}/${last.total} — ${last.score === last.total ? "refaire pour t'entraîner" : "clique pour refaire"}` : "Pas encore tenté — clique pour commencer"
+                }
+                onClick={() => startQuiz(d.value)}
+              >
+                {history.length > 1 && (
+                  <ul className="mt-2 flex flex-col gap-0.5 text-xs text-text-muted">
+                    {history.slice(1, 3).map((a) => (
+                      <li key={a.id} className="flex justify-between">
                         <span>{DATE_FORMATTER.format(new Date(a.created_at))}</span>
                         <span>
                           {a.score}/{a.total}
@@ -172,7 +173,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
                     ))}
                   </ul>
                 )}
-              </Card>
+              </ChoiceCard>
             );
           })}
         </div>

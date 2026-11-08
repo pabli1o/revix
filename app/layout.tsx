@@ -23,8 +23,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reviix — Fiches de révision",
-  description: "Crée des fiches de révision, un planning et des quiz à partir de tes cours.",
+  title: "Reviix — Tes fiches de révision en moins de 2 min",
+  description: "Tes fiches de révision en moins de 2 min à partir de tes cours — planning et quiz inclus.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

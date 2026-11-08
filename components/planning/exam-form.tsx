@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ChoiceCard } from "@/components/ui/choice-card";
 import { CalendarPicker } from "./calendar-picker";
 import type { Importance } from "@/lib/supabase/database.types";
 
-const IMPORTANCE_OPTIONS: { value: Importance; label: string }[] = [
-  { value: "normale", label: "Normale" },
-  { value: "importante", label: "Importante" },
-  { value: "tres_importante", label: "Très importante" },
+const IMPORTANCE_OPTIONS: { value: Importance; label: string; description: string }[] = [
+  { value: "normale", label: "Normale", description: "Un contrôle comme un autre" },
+  { value: "importante", label: "Importante", description: "Compte plus dans la moyenne" },
+  { value: "tres_importante", label: "Très importante", description: "Examen décisif, type bac/partiels" },
 ];
 
 interface SubjectOption {
@@ -95,28 +95,23 @@ export function ExamForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium">Importance</label>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
           {IMPORTANCE_OPTIONS.map((opt) => (
-            <button
+            <ChoiceCard
               key={opt.value}
-              type="button"
+              compact
+              title={opt.label}
+              description={opt.description}
+              selected={importance === opt.value}
               onClick={() => setImportance(opt.value)}
-              className={clsx(
-                "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                importance === opt.value
-                  ? "border-accent bg-accent text-[#1A1A1A]"
-                  : "border-border bg-bg-elevated hover:border-accent",
-              )}
-            >
-              {opt.label}
-            </button>
+            />
           ))}
         </div>
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">Chapitres couverts</label>
-        <div className="max-h-48 overflow-y-auto rounded-lg border border-border p-3">
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-border p-3">
           {subjects.length === 0 && (
             <p className="text-sm text-text-muted">Crée d&apos;abord des fiches pour avoir des chapitres.</p>
           )}
@@ -124,21 +119,21 @@ export function ExamForm({
             const subjectChapters = chapters.filter((c) => c.subject_id === subject.id);
             if (subjectChapters.length === 0) return null;
             return (
-              <div key={subject.id} className="mb-2">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+              <div key={subject.id} className="mb-3 last:mb-0">
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
                   {subject.nom}
                 </p>
-                {subjectChapters.map((c) => (
-                  <label key={c.id} className="flex items-center gap-2 py-1 text-sm">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-[#E8A33D]"
-                      checked={selectedChapters.has(c.id)}
-                      onChange={() => toggleChapter(c.id)}
+                <div className="flex flex-col gap-1.5">
+                  {subjectChapters.map((c) => (
+                    <ChoiceCard
+                      key={c.id}
+                      compact
+                      title={c.nom}
+                      selected={selectedChapters.has(c.id)}
+                      onClick={() => toggleChapter(c.id)}
                     />
-                    {c.nom}
-                  </label>
-                ))}
+                  ))}
+                </div>
               </div>
             );
           })}

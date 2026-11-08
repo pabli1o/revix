@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { ChoiceCard } from "@/components/ui/choice-card";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
@@ -33,44 +33,42 @@ export function SettingsPanel({
   }
 
   return (
-    <Card className="flex flex-col gap-4">
+    <Card className="flex flex-col gap-6">
       <div>
         <label className="text-sm font-medium">Jours de révision par semaine</label>
-        <Select
-          className="mt-2"
-          value={jours}
-          disabled={saving}
-          onChange={(e) => {
-            const next = Number(e.target.value);
-            setJours(next);
-            save(next, minutes);
-          }}
-        >
+        <div className="mt-3 flex flex-col gap-2">
           {DAYS_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {d} jour{d > 1 ? "s" : ""}
-            </option>
+            <ChoiceCard
+              key={d}
+              compact
+              title={`${d} jour${d > 1 ? "s" : ""} par semaine`}
+              selected={jours === d}
+              disabled={saving}
+              onClick={() => {
+                setJours(d);
+                save(d, minutes);
+              }}
+            />
           ))}
-        </Select>
+        </div>
       </div>
       <div>
         <label className="text-sm font-medium">Temps de révision par jour de travail</label>
-        <Select
-          className="mt-2"
-          value={minutes}
-          disabled={saving}
-          onChange={(e) => {
-            const next = Number(e.target.value);
-            setMinutes(next);
-            save(jours, next);
-          }}
-        >
+        <div className="mt-3 flex flex-col gap-2">
           {MINUTES_OPTIONS.map((m) => (
-            <option key={m} value={m}>
-              {m} min
-            </option>
+            <ChoiceCard
+              key={m}
+              compact
+              title={`${m} min par jour`}
+              selected={minutes === m}
+              disabled={saving}
+              onClick={() => {
+                setMinutes(m);
+                save(jours, m);
+              }}
+            />
           ))}
-        </Select>
+        </div>
       </div>
       <p className="text-xs text-text-muted">S&apos;applique à l&apos;ensemble de tes examens.</p>
     </Card>

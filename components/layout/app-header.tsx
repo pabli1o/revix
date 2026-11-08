@@ -18,7 +18,9 @@ export async function AppHeader() {
     <div className="mb-8">
       <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-[#1A1A1A]">
         <span aria-hidden>🎓</span>
-        <span>Réviser malin, sans y passer la nuit</span>
+        <span>
+          Tes fiches de révision en <strong className="font-bold">moins de 2 min</strong>
+        </span>
       </div>
       <img
         src="/reviix-wordmark.png"

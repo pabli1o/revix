@@ -2,41 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { ChoiceCard } from "@/components/ui/choice-card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
 
-// Fixed outline color per choice, per the validated design spec — not the
-// per-matière palette used elsewhere in the app (assignSubjectColors).
-const OUTLINE_BLUE = "#5B8DEF";
-const OUTLINE_GREEN = "#6FA88B";
-const OUTLINE_VIOLET = "#8B7FE8";
-const OUTLINE_ORANGE = "#E8664D";
-
-const CYCLE_OPTIONS: { value: ClasseCycle; label: string; color: string }[] = [
-  { value: "college", label: "Collège", color: OUTLINE_BLUE },
-  { value: "lycee", label: "Lycée", color: OUTLINE_GREEN },
-  { value: "superieur", label: "Supérieur", color: OUTLINE_VIOLET },
+const CYCLE_OPTIONS: { value: ClasseCycle; label: string; description: string }[] = [
+  { value: "college", label: "Collège", description: "De la 6e à la 3e" },
+  { value: "lycee", label: "Lycée", description: "Seconde, Première, Terminale" },
+  { value: "superieur", label: "Supérieur", description: "Licence, BTS, prépa…" },
 ];
 
-const COLLEGE_NIVEAUX = [
-  { value: "6e", color: OUTLINE_BLUE },
-  { value: "5e", color: OUTLINE_GREEN },
-  { value: "4e", color: OUTLINE_ORANGE },
-  { value: "3e", color: OUTLINE_VIOLET },
-];
-const LYCEE_NIVEAUX = [
-  { value: "Seconde", color: OUTLINE_BLUE },
-  { value: "Première", color: OUTLINE_ORANGE },
-  { value: "Terminale", color: OUTLINE_GREEN },
-];
+const COLLEGE_NIVEAUX = ["6e", "5e", "4e", "3e"];
+const LYCEE_NIVEAUX = ["Seconde", "Première", "Terminale"];
 
-type Step = "classe" | "niveau" | "prenom" | "rythme";
+type Step = "classe" | "niveau" | "prenom" | "jours" | "minutes";
+const STEP_ORDER: Step[] = ["classe", "niveau", "prenom", "jours", "minutes"];
 
 export function OnboardingWizard() {
   const router = useRouter();
@@ -98,18 +83,19 @@ export function OnboardingWizard() {
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
+        <ProgressBar step={STEP_ORDER.indexOf(step) + 1} total={STEP_ORDER.length} />
+
         {step === "classe" && (
           <div>
             <h1 className="font-heading text-2xl font-semibold">Tu es en quelle classe ?</h1>
             <p className="mt-1 text-sm text-text-muted">Pour adapter un peu l&apos;expérience.</p>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              {CYCLE_OPTIONS.map((opt, i, arr) => (
-                <OutlineChoice
+            <div className="mt-6 flex flex-col gap-3">
+              {CYCLE_OPTIONS.map((opt) => (
+                <ChoiceCard
                   key={opt.value}
-                  label={opt.label}
-                  color={opt.color}
-                  className={i === arr.length - 1 && arr.length % 2 === 1 ? "col-span-2" : undefined}
+                  title={opt.label}
+                  description={opt.description}
                   onClick={() => chooseCycle(opt.value)}
                 />
               ))}
@@ -145,15 +131,9 @@ export function OnboardingWizard() {
                 </Button>
               </div>
             ) : (
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {(cycle === "college" ? COLLEGE_NIVEAUX : LYCEE_NIVEAUX).map((opt, i, arr) => (
-                  <OutlineChoice
-                    key={opt.value}
-                    label={opt.value}
-                    color={opt.color}
-                    className={i === arr.length - 1 && arr.length % 2 === 1 ? "col-span-2" : undefined}
-                    onClick={() => chooseNiveau(opt.value)}
-                  />
+              <div className="mt-6 flex flex-col gap-3">
+                {(cycle === "college" ? COLLEGE_NIVEAUX : LYCEE_NIVEAUX).map((value) => (
+                  <ChoiceCard key={value} title={value} onClick={() => chooseNiveau(value)} />
                 ))}
               </div>
             )}
@@ -162,6 +142,13 @@ export function OnboardingWizard() {
 
         {step === "prenom" && (
           <div>
+            <button
+              type="button"
+              onClick={() => setStep("niveau")}
+              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← Retour
+            </button>
             <h1 className="font-heading text-2xl font-semibold">Comment on t&apos;appelle ?</h1>
             <p className="mt-2 text-sm text-text-muted">
               Ton prénom ou un pseudo, comme tu préfères.
@@ -173,53 +160,65 @@ export function OnboardingWizard() {
               value={prenom}
               onChange={(e) => setPrenom(e.target.value)}
             />
-            <Button
-              className="mt-6 w-full"
-              disabled={!canFinish}
-              onClick={() => setStep("rythme")}
-            >
+            <Button className="mt-6 w-full" disabled={!canFinish} onClick={() => setStep("jours")}>
               Continuer
             </Button>
           </div>
         )}
 
-        {step === "rythme" && (
+        {step === "jours" && (
           <div>
-            <h1 className="font-heading text-2xl font-semibold">Ton rythme de révision</h1>
+            <button
+              type="button"
+              onClick={() => setStep("prenom")}
+              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← Retour
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">
+              Combien de jours par semaine peux-tu réviser ?
+            </h1>
             <p className="mt-2 text-sm text-text-muted">
               Ça sert à construire ton planning plus tard — modifiable à tout moment.
             </p>
-            <div className="mt-6 flex flex-col gap-5">
-              <div>
-                <label className="text-sm font-medium">
-                  Combien de jours par semaine peux-tu réviser ?
-                </label>
-                <Select
-                  className="mt-2"
-                  value={joursSemaine}
-                  onChange={(e) => setJoursSemaine(Number(e.target.value))}
-                >
-                  {DAYS_OPTIONS.map((d) => (
-                    <option key={d} value={d}>
-                      {d} jour{d > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Combien de temps par jour de travail ?</label>
-                <Select
-                  className="mt-2"
-                  value={minutesJour}
-                  onChange={(e) => setMinutesJour(Number(e.target.value))}
-                >
-                  {MINUTES_OPTIONS.map((m) => (
-                    <option key={m} value={m}>
-                      {m} min
-                    </option>
-                  ))}
-                </Select>
-              </div>
+            <div className="mt-6 flex flex-col gap-3">
+              {DAYS_OPTIONS.map((d) => (
+                <ChoiceCard
+                  key={d}
+                  title={`${d} jour${d > 1 ? "s" : ""} par semaine`}
+                  selected={joursSemaine === d}
+                  onClick={() => {
+                    setJoursSemaine(d);
+                    setStep("minutes");
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === "minutes" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("jours")}
+              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← Retour
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">
+              Combien de temps par jour de travail ?
+            </h1>
+            <p className="mt-2 text-sm text-text-muted">Modifiable à tout moment dans les réglages.</p>
+            <div className="mt-6 flex flex-col gap-3">
+              {MINUTES_OPTIONS.map((m) => (
+                <ChoiceCard
+                  key={m}
+                  title={`${m} min par jour`}
+                  selected={minutesJour === m}
+                  onClick={() => setMinutesJour(m)}
+                />
+              ))}
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
             <Button className="mt-6 w-full" onClick={handleFinish} disabled={submitting}>
@@ -229,36 +228,5 @@ export function OnboardingWizard() {
         )}
       </div>
     </div>
-  );
-}
-
-function OutlineChoice({
-  label,
-  color,
-  onClick,
-  className,
-}: {
-  label: string;
-  color: string;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={
-        {
-          borderColor: color,
-          "--glow": `${color}55`,
-        } as React.CSSProperties
-      }
-      className={clsx(
-        "rounded-full border-2 bg-transparent px-4 py-4 text-center text-sm font-semibold text-text transition-all duration-150 hover:shadow-[0_0_0_4px_var(--glow)] active:scale-[0.96]",
-        className,
-      )}
-    >
-      {label}
-    </button>
   );
 }
