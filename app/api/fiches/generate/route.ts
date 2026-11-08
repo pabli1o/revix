@@ -7,7 +7,13 @@ import { extractTextFromDocx } from "@/lib/files/docx";
 import type { GenerateFichesRequest, GenerateFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { AiUsageCapExceededError } from "@/lib/subscription/gate";
+import {
+  AiUsageCapExceededError,
+  FreeFicheTrialExhaustedError,
+  assertFreeFicheTrialAvailable,
+  getSubscriptionInfo,
+  markFreeFicheGenerated,
+} from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
 const MAX_SOURCES = 12;
@@ -49,6 +55,25 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  // An account with no active subscription gets exactly one successful
+  // generation ever (see gate.ts's doc comment for why this is checked
+  // per-request rather than per-click — it's what lets a source that
+  // naturally splits into several chunk requests still fully succeed on
+  // that one allowed attempt). An active subscriber skips this entirely
+  // and keeps today's unlimited-within-budget behavior, unchanged.
+  const subscription = await getSubscriptionInfo(user.id);
+  if (!subscription.isActive) {
+    try {
+      await assertFreeFicheTrialAvailable(user.id);
+    } catch (err) {
+      if (err instanceof FreeFicheTrialExhaustedError) {
+        const response: GenerateFichesResponse = { error: err.message, freeTrialExhausted: true };
+        return NextResponse.json(response, { status: 402 });
+      }
+      throw err;
+    }
+  }
 
   const body = (await request.json().catch(() => null)) as GenerateFichesRequest | null;
   const sources = body?.sources ?? [];
@@ -123,6 +148,9 @@ export async function POST(request: Request) {
       });
 
       logStep(requestTag, `request done — total ${elapsedMs(requestStarted)}ms`);
+      if (!subscription.isActive) {
+        markFreeFicheGenerated(user.id).catch(() => {});
+      }
       const response: GenerateFichesResponse = { proposals };
       return NextResponse.json(response);
     } catch (err) {

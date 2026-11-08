@@ -42,6 +42,10 @@ export interface GenerateFichesResponse {
    * monthly AI usage budget — the client uses this to offer the credit
    * top-up instead of treating it as a generic error. */
   aiUsageCapExceeded?: boolean;
+  /** Set (with a 402 status) when an account with no active subscription
+   * has already used its one free fiche generation — see
+   * lib/subscription/gate.ts's assertFreeFicheTrialAvailable. */
+  freeTrialExhausted?: boolean;
 }
 
 /** One fiche the user has validated and is ready to save, with its

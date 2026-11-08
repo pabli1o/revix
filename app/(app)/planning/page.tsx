@@ -16,17 +16,18 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 export default async function PlanningPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
-  const userId = user!.id;
 
-  const subscription = await getSubscriptionInfo(userId);
+  const subscription = await getSubscriptionInfo(user?.id);
   if (!subscriptionHasFeature(subscription, "planning")) {
     return (
       <div>
         <AppHeader />
-        <FeatureLocked feature="planning" currentTier={subscription.tier} />
+        <FeatureLocked feature="planning" currentTier={subscription.tier} isAuthenticated={Boolean(user)} />
       </div>
     );
   }
+
+  const userId = user!.id;
 
   // `tasks` doesn't actually depend on subjects/chapters/fiches (only the
   // per-task rendering below does, to enrich each row with names/hrefs) —

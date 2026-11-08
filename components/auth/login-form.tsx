@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
+import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 
 export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean }) {
   const router = useRouter();
@@ -40,8 +41,12 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
         return;
       }
 
-      // Resumes the anonymous "Nouvelle fiche" draft (see creation-flow.tsx)
-      // if one was left pending — otherwise the normal destination.
+      // Applies any onboarding answers stashed locally during the
+      // anonymous flow (no-op if there are none — the common case for a
+      // normal returning login). Then resumes the pending fiche draft if
+      // one was left — otherwise "/" itself re-checks onboarding status
+      // and lands on /onboarding or /fiches as appropriate.
+      await applyLocalOnboardingIfPresent();
       const resume = consumeResumeFicheCreation();
       router.replace(resume ? "/fiches/new?resume=1" : "/");
       router.refresh();
@@ -61,7 +66,7 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
         <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
         <p className="mt-2 text-sm text-text-muted">
           {fromFicheCreation
-            ? "Connecte-toi pour générer et enregistrer ta fiche."
+            ? "Connecte-toi pour générer ta fiche."
             : "Tes fiches de révision, ton planning et tes quiz, générés pour toi."}
         </p>
 

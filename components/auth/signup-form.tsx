@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
+import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -66,12 +67,14 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
         // Providers → Email → "Confirm email" setting — on with "Confirm
         // email", off without it — not on anything in this code, so both
         // branches are kept rather than assuming one. A session here means
-        // confirmation is off: go straight into the app, same destination
-        // as a normal login — or resume the pending fiche draft if there
-        // is one (see creation-flow.tsx). A brand-new account still goes
-        // through /onboarding first either way (enforced by (app)/layout.tsx);
-        // the resume flag survives that detour and is picked up again by
-        // the onboarding wizard once it's done.
+        // confirmation is off: apply the onboarding answers stashed
+        // locally during the anonymous flow (the normal case for this
+        // screen — see app/onboarding/page.tsx's anonymous mode), then
+        // resume the pending fiche draft if there is one — or "/" itself,
+        // which re-checks onboarding status and falls back to
+        // /onboarding (asking again, authenticated) if those answers
+        // were somehow missing.
+        await applyLocalOnboardingIfPresent();
         const resume = consumeResumeFicheCreation();
         router.replace(resume ? "/fiches/new?resume=1" : "/");
         router.refresh();
@@ -100,7 +103,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
         <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
         <p className="mt-2 text-sm text-text-muted">
           {fromFicheCreation
-            ? "Crée ton compte pour générer et enregistrer ta fiche."
+            ? "Crée ton compte pour générer ta fiche."
             : "Crée ton compte pour commencer."}
         </p>
 

@@ -14,10 +14,12 @@ export default async function FichesPage() {
   const user = await getAuthedUser();
   const profile = await getProfile();
 
-  const [{ data: subjects }, { data: chapters }] = await Promise.all([
-    supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),
-    supabase.from("chapters").select("id, subject_id").eq("user_id", user!.id),
-  ]);
+  const [{ data: subjects }, { data: chapters }] = user
+    ? await Promise.all([
+        supabase.from("subjects").select("id, nom").eq("user_id", user.id).order("nom"),
+        supabase.from("chapters").select("id, subject_id").eq("user_id", user.id),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const colors = assignSubjectColors((subjects ?? []).map((s) => s.nom));
   const chapterCountBySubject = new Map<string, number>();

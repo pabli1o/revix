@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
+import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { AppHeader } from "@/components/layout/app-header";
+import { FeatureLocked } from "@/components/abonnement/feature-locked";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +13,25 @@ export default async function QuizIndexPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
 
+  // Previously gated only one level deeper (per-chapter) — elevated here
+  // too so the tab itself shows the lock immediately, consistent with
+  // examen/planning, instead of a non-subscriber (or anonymous visitor)
+  // seeing the normal "crée d'abord une fiche" empty state.
+  const subscription = await getSubscriptionInfo(user?.id);
+  if (!subscriptionHasFeature(subscription, "quiz")) {
+    return (
+      <div>
+        <AppHeader />
+        <FeatureLocked feature="quiz" currentTier={subscription.tier} isAuthenticated={Boolean(user)} />
+      </div>
+    );
+  }
+
+  const userId = user!.id;
   const [{ data: subjects }, { data: chapters }, { data: fiches }] = await Promise.all([
-    supabase.from("subjects").select("id, nom").eq("user_id", user!.id).order("nom"),
-    supabase.from("chapters").select("id, subject_id").eq("user_id", user!.id),
-    supabase.from("fiches").select("id, chapter_id").eq("user_id", user!.id).is("deleted_at", null),
+    supabase.from("subjects").select("id, nom").eq("user_id", userId).order("nom"),
+    supabase.from("chapters").select("id, subject_id").eq("user_id", userId),
+    supabase.from("fiches").select("id, chapter_id").eq("user_id", userId).is("deleted_at", null),
   ]);
 
   const colors = assignSubjectColors((subjects ?? []).map((s) => s.nom));

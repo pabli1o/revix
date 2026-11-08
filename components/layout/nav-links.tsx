@@ -4,14 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
-const LINKS = [
-  { href: "/fiches", label: "Fiches" },
-  { href: "/examen", label: "Examen" },
-  { href: "/planning", label: "Planning" },
-  { href: "/quiz", label: "Quiz" },
+type LockableTab = "examen" | "planning" | "quiz";
+
+const LINKS: { href: string; label: string; key: LockableTab | "fiches" }[] = [
+  { href: "/fiches", label: "Fiches", key: "fiches" },
+  { href: "/examen", label: "Examen", key: "examen" },
+  { href: "/planning", label: "Planning", key: "planning" },
+  { href: "/quiz", label: "Quiz", key: "quiz" },
 ];
 
-export function NavLinks({ compact = false }: { compact?: boolean }) {
+export function NavLinks({
+  compact = false,
+  locked = {},
+}: {
+  compact?: boolean;
+  /** Which of the 3 non-Fiches tabs show a lock icon — purely cosmetic, a
+   * hint before the click: the actual gate is enforced on each
+   * destination page (see app/(app)/examen|planning|quiz/page.tsx), so
+   * this never blocks navigation itself. */
+  locked?: Partial<Record<LockableTab, boolean>>;
+}) {
   const pathname = usePathname();
 
   return (
@@ -25,6 +37,7 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
     >
       {LINKS.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+        const isLocked = link.key !== "fiches" && locked[link.key];
         return (
           <Link
             key={link.href}
@@ -49,6 +62,7 @@ export function NavLinks({ compact = false }: { compact?: boolean }) {
                 : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >
+            {isLocked && <span aria-hidden>🔒 </span>}
             {link.label}
           </Link>
         );

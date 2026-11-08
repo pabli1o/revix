@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
+import { saveLocalOnboarding, loadLocalOnboarding } from "./local-onboarding";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
@@ -24,7 +25,7 @@ const LYCEE_NIVEAUX = ["Seconde", "Première", "Terminale"];
 type Step = "classe" | "niveau" | "prenom" | "jours" | "minutes";
 const STEP_ORDER: Step[] = ["classe", "niveau", "prenom", "jours", "minutes"];
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated" }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("classe");
 
@@ -37,6 +38,16 @@ export function OnboardingWizard() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Anonymous only: a visitor who already answered these (e.g. came back
+  // to "/" after already doing this once) doesn't need to redo it —
+  // skip straight to the app instead of re-asking.
+  useEffect(() => {
+    if (mode === "anonymous" && loadLocalOnboarding()) {
+      router.replace("/fiches");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function chooseCycle(value: ClasseCycle) {
     setCycle(value);
@@ -54,6 +65,24 @@ export function OnboardingWizard() {
     setSubmitting(true);
     setError(null);
     const finalNiveau = cycle === "superieur" ? superieurText.trim() : niveau;
+
+    if (mode === "anonymous") {
+      // No account yet — nothing to save server-side. Kept in the
+      // browser; applied to the real profile at signup/login (see
+      // components/auth/*-form.tsx), or re-asked here, authenticated,
+      // if those answers ever go missing (a different device, cleared
+      // storage — see local-onboarding.ts).
+      saveLocalOnboarding({
+        prenom,
+        classeCycle: cycle!,
+        classeNiveau: finalNiveau,
+        revisionJoursSemaine: joursSemaine,
+        revisionMinutesJour: minutesJour,
+      });
+      router.replace("/fiches");
+      router.refresh();
+      return;
+    }
 
     const res = await fetch("/api/onboarding", {
       method: "POST",

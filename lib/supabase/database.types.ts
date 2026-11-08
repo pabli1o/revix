@@ -57,6 +57,7 @@ export type ProfileRow = {
   onboarding_completed: boolean;
   revision_jours_semaine: number;
   revision_minutes_jour: number;
+  free_fiche_generated: boolean;
   created_at: string;
   updated_at: string;
 };

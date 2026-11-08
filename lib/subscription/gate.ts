@@ -12,7 +12,11 @@ export interface SubscriptionInfo {
   extraCreditUsdPeriod: number;
 }
 
-export async function getSubscriptionInfo(userId: string): Promise<SubscriptionInfo> {
+export async function getSubscriptionInfo(userId: string | null | undefined): Promise<SubscriptionInfo> {
+  if (!userId) {
+    return { status: "inactive", isActive: false, tier: null, aiCostUsdPeriod: 0, extraCreditUsdPeriod: 0 };
+  }
+
   const admin = createAdminClient();
   const { data } = await admin
     .from("subscriptions")
@@ -89,4 +93,53 @@ export async function recordAiUsageCost(userId: string, costUsd: number): Promis
   if (costUsd <= 0) return;
   const admin = createAdminClient();
   await admin.rpc("increment_ai_usage_cost", { p_user_id: userId, p_amount: costUsd });
+}
+
+export class FreeFicheTrialExhaustedError extends Error {
+  constructor() {
+    // Generic wording, no "IA" — surfaced via the freeTrialExhausted flag
+    // on the fiche generation response, never rendered as-is (see
+    // creation-flow.tsx for the actual user-facing message/CTA).
+    super("Fiche d'essai déjà utilisée.");
+    this.name = "FreeFicheTrialExhaustedError";
+  }
+}
+
+/**
+ * An account with no active subscription gets exactly one successful
+ * fiche generation, ever — checked at the top of
+ * app/api/fiches/generate/route.ts, before any Claude call. No-ops for an
+ * active subscriber: they're governed by assertAiUsageBudgetAvailable
+ * instead, unaffected by this cap.
+ *
+ * Deliberately checked per HTTP request to the generate route rather than
+ * per "Générer la fiche" click: a single click can fan out into several
+ * parallel requests (a dense PDF split into page-range chunks — see
+ * creation-flow.tsx/pdf-split.ts), all starting before any of them has
+ * had a chance to mark the trial used, so they all correctly pass this
+ * check together — one click's result is "one fiche" even when it's
+ * built from several chunks. A genuinely separate, later click sees the
+ * flag already set by the first one's chunks and is correctly blocked.
+ */
+export async function assertFreeFicheTrialAvailable(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("free_fiche_generated")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (data?.free_fiche_generated) {
+    throw new FreeFicheTrialExhaustedError();
+  }
+}
+
+/** Marks the free trial as used after a successful generation. A plain
+ * update (not an atomic RPC like the usage-cost increment above) is
+ * enough: it's a one-way false→true flip, so two concurrent chunk
+ * requests from the same click both writing `true` is harmless — there's
+ * nothing to lose by not serializing it. */
+export async function markFreeFicheGenerated(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  await admin.from("profiles").update({ free_fiche_generated: true }).eq("id", userId);
 }

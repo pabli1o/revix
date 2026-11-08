@@ -1,12 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
+import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { AppHeader } from "@/components/layout/app-header";
+import { FeatureLocked } from "@/components/abonnement/feature-locked";
 import { ExamenView } from "@/components/examen/examen-view";
 import type { ExamView } from "@/components/planning/exam-list";
 
 export default async function ExamenPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
+
+  // Unlike quiz/planning, examen has no per-tier exclusion — any active
+  // subscription unlocks it. Previously ungated for any authenticated
+  // user at all; now consistent with "no subscription = Fiches only".
+  const subscription = await getSubscriptionInfo(user?.id);
+  if (!subscription.isActive) {
+    return (
+      <div>
+        <AppHeader />
+        <FeatureLocked feature="examen" currentTier={subscription.tier} isAuthenticated={Boolean(user)} />
+      </div>
+    );
+  }
+
   const userId = user!.id;
 
   const [{ data: profile }, { data: subjects }, { data: chapters }, { data: exams }, { data: examChapters }] =

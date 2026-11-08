@@ -36,12 +36,15 @@ type Step = "sources" | "generating" | "validation" | "preparing";
 const CREATION_FLOW_TOTAL_STEPS = 4;
 
 /** Thrown by submitChunk so a failed chunk's reason (including whether it
- * was an AI usage cap) survives Promise.allSettled as a rejection. */
+ * was an AI usage cap, or the one-time free trial already used) survives
+ * Promise.allSettled as a rejection. */
 class ChunkGenerationError extends Error {
   aiUsageCapExceeded?: boolean;
-  constructor(message: string, aiUsageCapExceeded?: boolean) {
+  freeTrialExhausted?: boolean;
+  constructor(message: string, aiUsageCapExceeded?: boolean, freeTrialExhausted?: boolean) {
     super(message);
     this.aiUsageCapExceeded = aiUsageCapExceeded;
+    this.freeTrialExhausted = freeTrialExhausted;
   }
 }
 
@@ -114,23 +117,30 @@ export function CreationFlow({
   isSubscribed,
   isAuthenticated = true,
   resumeFromDraft = false,
+  initialFreeTrialExhausted = false,
 }: {
   isSubscribed: boolean;
-  /** False only for the public, unauthenticated entry point on "/" — see
-   * app/page.tsx. Gates 3 things: clicking "Générer" opens /signup instead
-   * of calling the API (the server would 401 it anyway — see
-   * /api/fiches/generate — this is purely so the anonymous visitor gets a
-   * clear next step instead of a failed request), sources are persisted
-   * to/restored from IndexedDB (lib: local-draft.ts) so they survive the
-   * round trip through signup/login, and the "✕ Fermer" link is hidden
-   * (there's no /fiches to go back to yet). */
+  /** False only for an anonymous visitor (the Fiches tab is reachable
+   * without an account — see middleware.ts/app/(app)/layout.tsx; onboarding
+   * happens first, locally, before any of this — app/onboarding/page.tsx).
+   * Gates 2 things: clicking "Générer" opens /signup instead of calling the
+   * API (the server would 401 it anyway — see /api/fiches/generate — this
+   * is purely so the anonymous visitor gets a clear next step instead of a
+   * failed request), and sources are persisted to/restored from IndexedDB
+   * (local-draft.ts) so they survive the round trip through signup/login. */
   isAuthenticated?: boolean;
   /** True only on the one authenticated landing right after signup/login/
    * onboarding when an anonymous draft was pending (see app/(app)/fiches/
    * new/page.tsx's ?resume=1 and the 3 call sites that set it). Loads the
-   * draft once on mount and immediately calls handleGenerate() with it —
-   * "sans qu'il ait à recliquer" — then clears it, success or not. */
+   * draft once on mount — the user still has to click "Générer" themselves
+   * (no auto-generation: a fresh account's one free fiche shouldn't be
+   * spent before they've even seen what they're about to generate). */
   resumeFromDraft?: boolean;
+  /** Known upfront from the server for an authenticated non-subscriber
+   * (see app/(app)/fiches/new/page.tsx) — lets the "fiche d'essai déjà
+   * utilisée" message show immediately instead of only after a pointless
+   * round trip that the server would reject anyway. */
+  initialFreeTrialExhausted?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("sources");
@@ -140,36 +150,37 @@ export function CreationFlow({
   const [subscribing, setSubscribing] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [pricingDraftId, setPricingDraftId] = useState<string | null>(null);
+  const [freeTrialExhausted, setFreeTrialExhausted] = useState(initialFreeTrialExhausted);
   const [generationProgress, setGenerationProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
 
   // Anonymous visitor: restore whatever was typed/added before (e.g. they
   // navigated back from /signup without finishing). Resumed-after-auth
-  // visitor: load the pending draft once and kick off generation right
-  // away — no state is carried over through the full-page redirect chain
-  // (signup/login → maybe /onboarding → here), so IndexedDB is the only
-  // thing bridging it. Either way, a missing/unreadable draft is a clear
-  // message, never a crash — see local-draft.ts's doc comment.
+  // visitor: load the pending draft once so it's there to review and
+  // click "Générer" on — no state is carried over through the full-page
+  // redirect chain (signup/login → maybe /onboarding → here), so
+  // IndexedDB is the only thing bridging it. Either way, a missing/
+  // unreadable draft is a clear message, never a crash — see
+  // local-draft.ts's doc comment.
   useEffect(() => {
     if (resumeFromDraft) {
-      (async () => {
-        let draft: PendingSource[] | null = null;
-        try {
-          draft = await loadDraftSources();
-        } catch {
-          draft = null;
-        }
-        if (!draft) {
+      loadDraftSources()
+        .then((draft) => {
+          if (!draft) {
+            setError(
+              "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
+            );
+            return;
+          }
+          setSources(draft);
+          clearDraftSources().catch(() => {});
+        })
+        .catch(() => {
           setError(
             "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
           );
-          return;
-        }
-        setSources(draft);
-        await handleGenerate(draft);
-        clearDraftSources().catch(() => {});
-      })();
+        });
       return;
     }
     if (!isAuthenticated) {
@@ -224,13 +235,18 @@ export function CreationFlow({
       proposals?: FicheProposal[];
       error?: string;
       aiUsageCapExceeded?: boolean;
+      freeTrialExhausted?: boolean;
     }>("/api/fiches/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sources: chunk }),
     });
     if (status < 200 || status >= 300 || !data?.proposals) {
-      throw new ChunkGenerationError(data?.error ?? "La génération a échoué.", data?.aiUsageCapExceeded);
+      throw new ChunkGenerationError(
+        data?.error ?? "La génération a échoué.",
+        data?.aiUsageCapExceeded,
+        data?.freeTrialExhausted,
+      );
     }
     return data.proposals;
   }
@@ -249,12 +265,13 @@ export function CreationFlow({
    * can be reassembled in the original chunk order regardless of which
    * one actually finished first.
    */
-  async function handleGenerate(overrideSources?: PendingSource[]) {
+  async function handleGenerate() {
     setError(null);
+    setFreeTrialExhausted(false);
 
     let resolvedSources: PendingSource[];
     try {
-      resolvedSources = await resolvePendingUploads(overrideSources ?? sources);
+      resolvedSources = await resolvePendingUploads(sources);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Échec de l'envoi d'un fichier — réessaie.",
@@ -334,6 +351,11 @@ export function CreationFlow({
         const reason = failure.reason;
         if (reason instanceof ChunkGenerationError && reason.aiUsageCapExceeded) {
           router.push("/limite");
+          return;
+        }
+        if (reason instanceof ChunkGenerationError && reason.freeTrialExhausted) {
+          setFreeTrialExhausted(true);
+          setStep("sources");
           return;
         }
         setError(reason instanceof Error ? reason.message : "La génération a échoué.");
@@ -483,16 +505,14 @@ export function CreationFlow({
             </p>
           )}
         </div>
-        {isAuthenticated && (
-          <Link
-            href="/fiches"
-            prefetch={true}
-            aria-label="Fermer"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            ✕
-          </Link>
-        )}
+        <Link
+          href="/fiches"
+          prefetch={true}
+          aria-label="Fermer"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          ✕
+        </Link>
       </div>
 
       {error && (
@@ -502,12 +522,29 @@ export function CreationFlow({
       )}
 
       {step === "sources" && (
-        <Card>
-          <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
-          <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
-            Générer la fiche ✨
-          </Button>
-        </Card>
+        freeTrialExhausted ? (
+          <Card className="flex flex-col items-center gap-4 p-8 text-center">
+            <span className="text-4xl" aria-hidden>
+              🔒
+            </span>
+            <div>
+              <p className="font-heading text-lg font-semibold">Tu as déjà généré ta fiche d&apos;essai.</p>
+              <p className="mt-1 text-text-muted">
+                Abonne-toi pour continuer à créer des fiches.
+              </p>
+            </div>
+            <Button size="lg" onClick={() => setPricingOpen(true)}>
+              Voir les abonnements
+            </Button>
+          </Card>
+        ) : (
+          <Card>
+            <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
+            <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
+              Générer la fiche ✨
+            </Button>
+          </Card>
+        )
       )}
 
       {step === "generating" && (

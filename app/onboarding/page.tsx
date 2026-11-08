@@ -8,8 +8,11 @@ export default async function OnboardingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // No account yet: this is the very first screen a new visitor sees
+  // (see app/page.tsx) — answers are kept in the browser, nothing to
+  // check server-side (see OnboardingWizard's "anonymous" mode).
   if (!user) {
-    redirect("/login");
+    return <OnboardingWizard mode="anonymous" />;
   }
 
   const { data: profile } = await supabase
@@ -22,5 +25,5 @@ export default async function OnboardingPage() {
     redirect("/fiches");
   }
 
-  return <OnboardingWizard />;
+  return <OnboardingWizard mode="authenticated" />;
 }
