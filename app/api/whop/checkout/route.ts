@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
-import { isSubscriptionTier } from "@/lib/subscription/constants";
+import { isSubscriptionTier, TIER_ORDER } from "@/lib/subscription/constants";
 import { logStep } from "@/lib/observability/timing";
 
+// tier3 is deliberately left in this map (rather than deleted) even though
+// it's unreachable below — it documents that the retired 39,99 € plan used
+// to live at WHOP_PLAN_ID_TIER3, for whoever next touches this file.
 const PLAN_ENV_BY_TIER = {
   tier0: "WHOP_PLAN_ID_TIER0",
   tier1: "WHOP_PLAN_ID_TIER1",
@@ -20,7 +23,15 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as { tier?: string; draftId?: string } | null;
   const tier = body?.tier;
-  if (!isSubscriptionTier(tier)) {
+  // isSubscriptionTier alone would still accept "tier3" — TIERS keeps it
+  // configured so an existing subscriber's access check still works (see
+  // lib/subscription/constants.ts), but it's retired and must never be
+  // purchasable again, especially now that its old Whop plan_id has been
+  // repriced and reassigned to tier0 (plan_F5UaVA2vxvHGZ: 39,99€ → 4,99€).
+  // Checking TIER_ORDER (what's actually offered) instead of `tier in
+  // TIERS` structurally closes this off at the code level, regardless of
+  // whether WHOP_PLAN_ID_TIER3 is still set in the environment.
+  if (!isSubscriptionTier(tier) || !TIER_ORDER.includes(tier)) {
     return NextResponse.json({ error: "Offre invalide" }, { status: 400 });
   }
   const draftId = body?.draftId;
