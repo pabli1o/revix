@@ -43,7 +43,13 @@ Règles strictes :
       "aRetenir": ["Phrase clé 1", "Phrase clé 2"]
     }
   ]
-}`;
+}
+
+Consignes de concision supplémentaires (fiche dense, mais complète) :
+- Chaque sous-point ("texte") : 1 à 2 phrases denses maximum, jamais un paragraphe entier.
+- Chaque phrase de "aRetenir" : une ligne courte (moins de 20 mots), sans réintroduire de contexte déjà donné ailleurs dans la fiche.
+- Ne répète jamais dans le texte d'un sous-point le titre de la fiche ou de sa section.
+- La concision ne doit jamais faire disparaître une notion présente dans les sources : reformule plus densément, ne coupe aucun contenu utile.`;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;

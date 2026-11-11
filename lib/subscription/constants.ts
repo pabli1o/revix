@@ -49,7 +49,13 @@ export const TIERS: Record<SubscriptionTier, TierConfig> = {
     credits: 1500,
     budgetUsd: (1500 / CREDITS_PER_EUR) * USD_PER_EUR,
     features: { quiz: false, planning: false },
-    estimatedFiches: { min: 5, max: 8 },
+    // Re-derived from a measured side-by-side test (claude-sonnet-5-5,
+    // effort "low", see lib/anthropic/fiche-split-retry.ts) rather than
+    // the old claude-opus-5/medium figure. Kept conservative relative to
+    // the single test course measured (≈61 fiches/1500cr on a dense
+    // 23-page course) — see the comment on TierConfig.estimatedFiches for
+    // why this can't be derived automatically.
+    estimatedFiches: { min: 10, max: 15 },
   },
   tier2: {
     label: "Complet",

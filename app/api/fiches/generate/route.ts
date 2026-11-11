@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { ClaudeContentBlock } from "@/lib/anthropic/client";
-import { generateJson, AiGenerationError } from "@/lib/anthropic/client";
-import { FICHE_GENERATION_SYSTEM, validateFicheProposals } from "@/lib/anthropic/prompts";
+import { AiGenerationError } from "@/lib/anthropic/client";
+import { generateFichesWithSplitRetry } from "@/lib/anthropic/fiche-split-retry";
 import { extractTextFromDocx } from "@/lib/files/docx";
 import type { GenerateFichesRequest, GenerateFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
@@ -161,14 +161,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const proposals = await generateJson({
-        userId: user.id,
-        label: "fiche",
-        system: FICHE_GENERATION_SYSTEM,
-        content,
-        maxTokens: 8000,
-        validate: validateFicheProposals,
-      });
+      const proposals = await generateFichesWithSplitRetry(user.id, content);
 
       logStep(requestTag, `request done — total ${elapsedMs(requestStarted)}ms`);
       if (!subscription.isActive) {

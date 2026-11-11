@@ -5,50 +5,61 @@ import Anthropic from "@anthropic-ai/sdk";
 import { assertAiUsageBudgetAvailable, recordAiUsageCost } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
 
-const MODEL = "claude-opus-5";
+const DEFAULT_MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3;
 const DEFAULT_MAX_TOKENS = 8000;
 
 /** Claude Opus 5 runs adaptive thinking by default when `effort` is left
  * unset, at its default of "high" — billed as output tokens ($25/Mtok)
  * even though generateJson only ever reads the final `text` block, never
- * the `thinking` one. Fiche/quiz generation is a structured-extraction
- * task (turn given sources into a fixed JSON shape), not open-ended
- * reasoning, so it's a good candidate for a lower effort level per
- * Anthropic's own published cost/quality curves for that kind of workload.
- * "medium" first, as the safer step down from the implicit "high" — drop
- * to "low" only after medium is confirmed to hold fiche quality. */
-const EFFORT: Anthropic.OutputConfig = { effort: "medium" };
+ * the `thinking` one. Structured-extraction tasks (turn given sources into
+ * a fixed JSON shape) don't need that much thinking per Anthropic's own
+ * published cost/quality curves — this is the default for callers that
+ * don't override it (currently quiz generation, see lib/quiz/generate.ts).
+ * Fiche generation overrides both model and effort — see
+ * lib/anthropic/fiche-split-retry.ts — after a measured side-by-side test
+ * confirmed claude-sonnet-5-5 at "low" holds fiche quality for roughly a
+ * third of the cost. */
+const DEFAULT_EFFORT: Anthropic.OutputConfig = { effort: "medium" };
 
-/** USD per million tokens for MODEL above. Pricing isn't queryable from the
- * API, so this must be kept in sync by hand — computeCostUsd throws rather
- * than silently under-costing (which would quietly break the usage cap) if
- * MODEL is ever changed without updating this. */
-const MODEL_PRICING_USD_PER_MTOK = { model: "claude-opus-5", input: 5, output: 25 } as const;
+/** USD per million tokens, per model — kept in sync by hand against
+ * platform.claude.com/docs/en/about-claude/pricing since pricing isn't
+ * queryable from the API. computeCostUsd throws rather than silently
+ * under-costing (which would quietly break the usage cap) for any model
+ * not listed here. cacheReadMultiplier differs by model: 0.1x on Claude
+ * Opus 5, 0.05x on Claude Sonnet 5.5 (and Claude Opus 5.5). The 5-minute
+ * cache *write* multiplier (1.25x) is the same across every current model,
+ * so it isn't part of this per-model table. */
+const MODEL_PRICING_USD_PER_MTOK: Record<
+  string,
+  { input: number; output: number; cacheReadMultiplier: number }
+> = {
+  "claude-opus-5": { input: 5, output: 25, cacheReadMultiplier: 0.1 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheReadMultiplier: 0.05 },
+};
 
-/** Prompt-caching billing multipliers off the base input price, for the
+/** Prompt-caching write multiplier off the base input price, for the
  * default 5-minute ephemeral cache_control TTL used on the system prompt
- * below (see toAnthropicSystem) — writing to the cache costs 1.25x a
- * normal input token, reading from it costs 0.1x. Fiche/quiz generation
- * calls share the exact same (short, static) system prompt per label
- * across every user, so once any call has warmed the cache, every other
- * call within the TTL — including concurrent parallel chunks of the same
- * fiche upload, and any other user's calls shortly after — reads it
- * cheaply instead of paying full input price for it again. */
+ * below (see toAnthropicSystem). Fiche/quiz generation calls share the
+ * exact same (short, static) system prompt per label across every user,
+ * so once any call has warmed the cache, every other call within the TTL
+ * — including concurrent parallel chunks of the same fiche upload, and any
+ * other user's calls shortly after — reads it cheaply instead of paying
+ * full input price for it again. */
 const CACHE_WRITE_MULTIPLIER = 1.25;
-const CACHE_READ_MULTIPLIER = 0.1;
 
-function computeCostUsd(usage: Anthropic.Usage): number {
-  if (MODEL_PRICING_USD_PER_MTOK.model !== MODEL) {
-    throw new Error(`No pricing configured for model "${MODEL}" — update MODEL_PRICING_USD_PER_MTOK.`);
+function computeCostUsd(model: string, usage: Anthropic.Usage): number {
+  const pricing = MODEL_PRICING_USD_PER_MTOK[model];
+  if (!pricing) {
+    throw new Error(`No pricing configured for model "${model}" — update MODEL_PRICING_USD_PER_MTOK.`);
   }
-  const { input, output } = MODEL_PRICING_USD_PER_MTOK;
+  const { input, output, cacheReadMultiplier } = pricing;
   const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
   const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
   return (
     (usage.input_tokens / 1_000_000) * input +
     (cacheWriteTokens / 1_000_000) * input * CACHE_WRITE_MULTIPLIER +
-    (cacheReadTokens / 1_000_000) * input * CACHE_READ_MULTIPLIER +
+    (cacheReadTokens / 1_000_000) * input * cacheReadMultiplier +
     (usage.output_tokens / 1_000_000) * output
   );
 }
@@ -87,6 +98,14 @@ function toAnthropicContent(blocks: ClaudeContentBlock[]): Anthropic.ContentBloc
 
 export class AiGenerationError extends Error {}
 
+/** Thrown instead of retrying identically when a generation attempt
+ * truncates (stop_reason === "max_tokens"): the content sent was too dense
+ * for maxTokens, so an identical retry would very likely truncate again
+ * for the same reason, wasting its full cost for nothing. Fiche generation
+ * catches this specifically and retries by splitting the source content in
+ * two instead — see lib/anthropic/fiche-split-retry.ts. */
+export class AiOutputTruncatedError extends AiGenerationError {}
+
 /**
  * Strips a ```json ... ``` (or bare ```...```) fence if the model wrapped
  * its JSON output in one despite instructions not to.
@@ -102,6 +121,13 @@ interface GenerateJsonOptions<T> {
   system: string;
   content: ClaudeContentBlock[];
   maxTokens?: number;
+  /** Defaults to DEFAULT_MODEL ("claude-opus-5") — quiz generation relies
+   * on this default. Fiche generation overrides it to "claude-sonnet-5-5"
+   * (see lib/anthropic/fiche-split-retry.ts). */
+  model?: string;
+  /** Defaults to DEFAULT_EFFORT ({effort: "medium"}). Fiche generation
+   * overrides it to {effort: "low"}. */
+  effort?: Anthropic.OutputConfig;
   /**
    * Validates AND narrows the parsed JSON. Must throw or return null when
    * the payload is missing required data (which can happen even on a
@@ -153,6 +179,8 @@ export async function generateJson<T>({
   system,
   content,
   maxTokens = DEFAULT_MAX_TOKENS,
+  model = DEFAULT_MODEL,
+  effort = DEFAULT_EFFORT,
   validate,
   label = "generate",
 }: GenerateJsonOptions<T>): Promise<T> {
@@ -170,25 +198,25 @@ export async function generateJson<T>({
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const attemptStarted = startTimer();
       const response = await anthropic.messages.create({
-        model: MODEL,
+        model,
         max_tokens: maxTokens,
         // Cached (ephemeral, 5-minute TTL): every fiche/quiz call under
         // one `label` sends this exact same static string, so after the
         // first call warms the cache, every other call within the TTL —
         // including concurrent parallel chunks of the same upload, and
-        // any other user's calls shortly after — reads it at 0.1x
-        // instead of paying full input price for it again. Below the
-        // model's minimum cacheable prefix (~512 tokens on this model)
-        // this silently just doesn't cache — harmless, not an error.
+        // any other user's calls shortly after — reads it cheaply instead
+        // of paying full input price for it again. Below the model's
+        // minimum cacheable prefix this silently just doesn't cache —
+        // harmless, not an error.
         system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: toAnthropicContent(content) }],
-        output_config: EFFORT,
+        output_config: effort,
       });
-      const cost = computeCostUsd(response.usage);
-      // thinking_tokens is logged on its own: it's the exact lever
-      // EFFORT above targets, so this line is what shows in Vercel
-      // logs whether dropping to "medium" (and later "low") actually
-      // moved it, rather than inferring that from the cost total alone.
+      const cost = computeCostUsd(model, response.usage);
+      // thinking_tokens is logged on its own: it's the exact lever the
+      // `effort` param targets, so this line is what shows in Vercel logs
+      // whether a given effort level actually moved it, rather than
+      // inferring that from the cost total alone.
       // cache_write/cache_read are logged for the same reason, to
       // verify in Vercel logs that prompt caching is actually hitting
       // rather than silently no-op'ing (see the comment above).
@@ -215,9 +243,16 @@ export async function generateJson<T>({
       }
 
       if (response.stop_reason === "max_tokens") {
-        lastError = "Réponse tronquée (limite de longueur atteinte)";
-        logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
-        continue;
+        // No identical retry here, unlike the other rejection causes below:
+        // the content sent was too dense for maxTokens, so another attempt
+        // with the exact same input would very likely truncate again for
+        // the same reason, wasting its full cost for nothing. Thrown
+        // immediately so the caller can split the source and retry with
+        // less content per call instead — see AiOutputTruncatedError.
+        logStep(tag, `attempt ${attempt} truncated (max_tokens) — surfacing for split-retry`);
+        throw new AiOutputTruncatedError(
+          "Réponse tronquée : contenu trop dense pour une seule génération.",
+        );
       }
 
       let parsed: unknown;
