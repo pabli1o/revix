@@ -8,7 +8,7 @@ import { logStep } from "@/lib/observability/timing";
  * One-time (not recurring) Whop Checkout that adds a fixed credit top-up to
  * the current period's cap — see app/api/whop/webhook/route.ts's
  * "ai_credit_topup" branch, which grants the credit once this payment
- * succeeds. Available to an active subscriber on any of the 3 tiers.
+ * succeeds. Available to an active subscriber on any tier.
  *
  * References a Plan pre-created in the Whop dashboard (WHOP_CREDIT_PLAN_ID)
  * rather than creating one inline: in testing, a checkout built from an

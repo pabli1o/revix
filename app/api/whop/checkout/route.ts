@@ -5,6 +5,7 @@ import { isSubscriptionTier } from "@/lib/subscription/constants";
 import { logStep } from "@/lib/observability/timing";
 
 const PLAN_ENV_BY_TIER = {
+  tier0: "WHOP_PLAN_ID_TIER0",
   tier1: "WHOP_PLAN_ID_TIER1",
   tier2: "WHOP_PLAN_ID_TIER2",
   tier3: "WHOP_PLAN_ID_TIER3",
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     // Copied by Whop onto both the resulting payment and membership (see
     // app/api/whop/webhook/route.ts) — this is how a webhook event links
     // back to our own user and tier, since Whop has no client_reference_id
-    // concept and a Plan id alone doesn't tell the webhook which of our 3
+    // concept and a Plan id alone doesn't tell the webhook which of our
     // tiers it maps to (that mapping only exists in PLAN_ENV_BY_TIER above).
     metadata: { userId: user.id, type: "subscription", tier, ...(draftId ? { draftId } : {}) },
   });

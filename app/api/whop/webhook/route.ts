@@ -39,7 +39,7 @@ function mapMembershipStatus(status: Whop.MembershipStatus): SubscriptionStatus 
 }
 
 /** membership.activated: (re)links the account's row to this membership,
- * records which of the 3 tiers it's for (from the checkout's own
+ * records which tier it's for (from the checkout's own
  * metadata — see app/api/whop/checkout/route.ts), and refreshes
  * status/period end. Deliberately does NOT touch ai_cost_usd_period —
  * Supabase's upsert only updates the columns listed here, so the existing

@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   const subscription = await getSubscriptionInfo(user?.id);
   const lockedTabs = {
-    examen: !subscription.isActive,
+    examen: !subscriptionHasFeature(subscription, "examen"),
     planning: !subscriptionHasFeature(subscription, "planning"),
     quiz: !subscriptionHasFeature(subscription, "quiz"),
   };

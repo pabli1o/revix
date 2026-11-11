@@ -9,7 +9,7 @@ export type PlanningTaskType = "decouverte" | "rappel";
 export type QuizDifficulty = "facile" | "moyen" | "difficile";
 export type QuizStatus = "pending" | "ready" | "failed";
 export type SubscriptionStatus = "inactive" | "active" | "past_due" | "canceled";
-export type SubscriptionTier = "tier1" | "tier2" | "tier3";
+export type SubscriptionTier = "tier0" | "tier1" | "tier2" | "tier3";
 
 export interface FicheSousPoint {
   lettre: string;

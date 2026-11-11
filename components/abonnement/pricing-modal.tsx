@@ -5,7 +5,7 @@ import type { SubscriptionTier } from "@/lib/subscription/constants";
 import { PricingCards } from "./pricing-cards";
 
 /**
- * The 3-offer picker as a popup — used wherever a user hits a paywall
+ * The subscription-offer picker as a popup — used wherever a user hits a paywall
  * mid-flow (an unlocked fiche, a locked quiz/planning screen) rather than
  * being sent to a whole new page. /abonnement renders <PricingCards>
  * inline instead, since it's already a dedicated subscription page.

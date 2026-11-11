@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { TIERS, TIER_ORDER, type SubscriptionTier } from "@/lib/subscription/constants";
 
 const BADGE_BY_TIER: Partial<Record<SubscriptionTier, string>> = {
-  tier2: "Populaire",
-  tier3: "Meilleure valeur",
+  tier1: "Populaire",
+  tier2: "Meilleure valeur",
 };
 
 /**
@@ -54,9 +54,10 @@ export function PricingCards({
       {TIER_ORDER.map((tierId) => {
         const tier = TIERS[tierId];
         const isCurrent = currentTier === tierId;
-        // Tier 1 is deliberately the plain option — the visual emphasis on
-        // 2 and 3 is what's supposed to make them read as the better deal.
-        const highlighted = tierId !== "tier1";
+        // tier0 (the fiches-only entry plan) is deliberately the plain
+        // option — the visual emphasis on the others is what's supposed to
+        // make them read as the better deal.
+        const highlighted = tierId !== "tier0";
         const badge = BADGE_BY_TIER[tierId];
 
         return (
@@ -101,6 +102,10 @@ export function PricingCards({
               <li className="flex items-center gap-2">
                 <span aria-hidden>{tier.features.planning ? "✅" : "❌"}</span>
                 <span>{tier.features.planning ? "Accès au planning" : "Pas de planning"}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span aria-hidden>{tier.features.examen ? "✅" : "❌"}</span>
+                <span>{tier.features.examen ? "Accès aux examens" : "Pas d'examens"}</span>
               </li>
             </ul>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import type { Importance } from "@/lib/supabase/database.types";
 
 const VALID_IMPORTANCE: Importance[] = ["normale", "importante", "tres_importante"];
@@ -11,6 +12,12 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/exams/[exa
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  // See app/api/exams/route.ts's POST for why this check is needed here too.
+  const subscription = await getSubscriptionInfo(user.id);
+  if (!subscriptionHasFeature(subscription, "examen")) {
+    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux examens." }, { status: 402 });
+  }
 
   const body = (await request.json().catch(() => null)) as {
     nom?: string;
@@ -55,6 +62,11 @@ export async function DELETE(_request: Request, ctx: RouteContext<"/api/exams/[e
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const subscription = await getSubscriptionInfo(user.id);
+  if (!subscriptionHasFeature(subscription, "examen")) {
+    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux examens." }, { status: 402 });
+  }
 
   const { error } = await supabase.from("exams").delete().eq("id", examId).eq("user_id", user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -17,9 +17,8 @@ const COPY: Record<LockableFeature, string> = {
 /**
  * Shown instead of the real examen/quiz/planning content for anyone
  * without the access it requires — an anonymous visitor, an account with
- * no active subscription, or (quiz/planning only) a subscriber whose
- * tier doesn't include that feature (tier1, "Fiches" — see
- * lib/subscription/constants.ts).
+ * no active subscription, or a subscriber whose tier doesn't include that
+ * feature (tier0, "Fiches" — see lib/subscription/constants.ts).
  *
  * The CTA differs by `isAuthenticated`: opening the pricing popup calls
  * /api/whop/checkout, which requires a session — pointless (and
