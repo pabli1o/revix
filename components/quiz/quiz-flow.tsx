@@ -64,7 +64,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
         questions?: QuizQuestion[];
         error?: string;
         aiUsageCapExceeded?: boolean;
-      }>(`/api/quiz/${chapterId}?difficulty=${diff}`);
+      }>(`/api/quiz/${chapterId}?difficulty=${diff}`, undefined, t.common.network);
       if (status < 200 || status >= 300 || !data?.questions) {
         if (data?.aiUsageCapExceeded) {
           router.push("/limite");

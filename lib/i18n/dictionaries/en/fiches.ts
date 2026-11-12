@@ -57,6 +57,7 @@ export const fiches: FichesDict = {
       ? `${list} couldn't be kept (empty or unreadable in this browser) — remove them and add them again.`
       : `${list} couldn't be kept (empty or unreadable in this browser) — remove it and add it again.`;
   },
+  sourceFailure: (name: string, message: string) => `"${name}": ${message}`,
   draftNotFoundOnDevice: "Your draft couldn't be found on this device — add your course again.",
   draftSaveFailedBeforeSignup:
     "Your draft couldn't be saved in this browser (storage full or blocked). Try again with fewer files, or log in first.",

@@ -49,11 +49,20 @@ export const errors: ErrorsDict = {
     chapterNotFound: "Tema no encontrado",
     invalidParams: "Parámetros no válidos",
     quizNotFound: "Cuestionario no encontrado o no disponible",
+    noFicheContent: "Este tema todavía no tiene ninguna ficha a partir de la cual generar un cuestionario.",
   },
   whop: {
     noSubscriptionToManage: "No hay ninguna suscripción que gestionar",
     invalidOffer: "Plan no válido",
     missingConfig: "Falta la configuración de Whop",
     checkoutCreationFailed: "No se pudo crear la sesión de pago",
+  },
+  generation: {
+    truncatedResponse: "Respuesta truncada: contenido demasiado denso para una sola generación.",
+    emptyResponse: "Respuesta vacía recibida",
+    invalidResponseFormat: "Formato de respuesta no válido",
+    incompleteResponse: "Respuesta incompleta recibida",
+    failedAfterAttempts: (attempts: number, lastError: string) =>
+      `Fallo en la generación tras ${attempts} intentos: ${lastError}`,
   },
 };

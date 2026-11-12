@@ -62,6 +62,7 @@ export const fiches = {
       ? `${list} n'ont pas pu être conservés (vides ou illisibles dans ce navigateur) — retire-les et rajoute-les.`
       : `${list} n'a pas pu être conservé (vide ou illisible dans ce navigateur) — retire-le et rajoute-le.`;
   },
+  sourceFailure: (name: string, message: string) => `« ${name} » : ${message}`,
   draftNotFoundOnDevice: "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
   draftSaveFailedBeforeSignup:
     "Impossible d'enregistrer ton brouillon dans ce navigateur (stockage plein ou bloqué). Réessaie avec moins de fichiers, ou connecte-toi d'abord.",

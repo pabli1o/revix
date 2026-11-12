@@ -57,6 +57,7 @@ export const fiches: FichesDict = {
       ? `${list} no se han podido conservar (vacíos o ilegibles en este navegador) — quítalos y vuelve a añadirlos.`
       : `${list} no se ha podido conservar (vacío o ilegible en este navegador) — quítalo y vuelve a añadirlo.`;
   },
+  sourceFailure: (name: string, message: string) => `«${name}»: ${message}`,
   draftNotFoundOnDevice: "No se ha encontrado tu borrador en este dispositivo — añade tu curso de nuevo.",
   draftSaveFailedBeforeSignup:
     "No se ha podido guardar tu borrador en este navegador (almacenamiento lleno o bloqueado). Inténtalo con menos archivos, o inicia sesión primero.",

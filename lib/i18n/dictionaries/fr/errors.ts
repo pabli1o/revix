@@ -54,12 +54,26 @@ export const errors = {
     chapterNotFound: "Chapitre introuvable",
     invalidParams: "Paramètres invalides",
     quizNotFound: "Quiz introuvable ou non prêt",
+    noFicheContent: "Ce chapitre ne contient aucune fiche à partir de laquelle générer un quiz.",
   },
   whop: {
     noSubscriptionToManage: "Aucun abonnement à gérer",
     invalidOffer: "Offre invalide",
     missingConfig: "Configuration Whop manquante",
     checkoutCreationFailed: "Impossible de créer la session de paiement",
+  },
+  /** lib/anthropic/client.ts's generateJson() — these can reach the user
+   * as-is via the 502 branch in app/api/fiches/generate/route.ts and
+   * lib/quiz/generate.ts's caller, unlike gate.ts's own error classes
+   * (see the comments there), so they're translated too. Nothing about
+   * the generation/retry logic itself changes — only this message text. */
+  generation: {
+    truncatedResponse: "Réponse tronquée : contenu trop dense pour une seule génération.",
+    emptyResponse: "Réponse vide reçue",
+    invalidResponseFormat: "Format de réponse invalide",
+    incompleteResponse: "Réponse incomplète reçue",
+    failedAfterAttempts: (attempts: number, lastError: string) =>
+      `Échec de la génération après ${attempts} tentatives : ${lastError}`,
   },
 };
 

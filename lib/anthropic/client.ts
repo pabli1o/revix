@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { assertAiUsageBudgetAvailable, recordAiUsageCost } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
+import { getDictionary } from "@/lib/i18n/server";
 
 const DEFAULT_MODEL = "claude-opus-5";
 const MAX_ATTEMPTS = 3;
@@ -191,8 +192,9 @@ export async function generateJson<T>({
   try {
     await assertAiUsageBudgetAvailable(userId);
 
+    const t = await getDictionary();
     const anthropic = getClient();
-    let lastError: string = "Erreur inconnue";
+    let lastError: string = t.errors.common.unknownError;
     let result: T | null = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -237,7 +239,7 @@ export async function generateJson<T>({
       const rawText = textBlock && textBlock.type === "text" ? textBlock.text : "";
 
       if (!rawText.trim()) {
-        lastError = "Réponse vide reçue";
+        lastError = t.errors.generation.emptyResponse;
         logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
         continue;
       }
@@ -250,23 +252,21 @@ export async function generateJson<T>({
         // immediately so the caller can split the source and retry with
         // less content per call instead — see AiOutputTruncatedError.
         logStep(tag, `attempt ${attempt} truncated (max_tokens) — surfacing for split-retry`);
-        throw new AiOutputTruncatedError(
-          "Réponse tronquée : contenu trop dense pour une seule génération.",
-        );
+        throw new AiOutputTruncatedError(t.errors.generation.truncatedResponse);
       }
 
       let parsed: unknown;
       try {
         parsed = JSON.parse(stripCodeFence(rawText));
       } catch {
-        lastError = "Format de réponse invalide";
+        lastError = t.errors.generation.invalidResponseFormat;
         logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
         continue;
       }
 
       const validated = validate(parsed);
       if (validated === null) {
-        lastError = "Réponse incomplète reçue";
+        lastError = t.errors.generation.incompleteResponse;
         logStep(tag, `attempt ${attempt} rejected: ${lastError}`);
         continue;
       }
@@ -276,9 +276,7 @@ export async function generateJson<T>({
     }
 
     if (result === null) {
-      throw new AiGenerationError(
-        `Échec de la génération après ${MAX_ATTEMPTS} tentatives : ${lastError}`,
-      );
+      throw new AiGenerationError(t.errors.generation.failedAfterAttempts(MAX_ATTEMPTS, lastError));
     }
 
     logStep(tag, `done — total ${elapsedMs(totalStarted)}ms`);

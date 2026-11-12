@@ -7,6 +7,8 @@ export const root: RootDict = {
   errorBoundary: {
     defaultMessage: "Ha ocurrido un error inesperado.",
     reference: "Referencia: ",
+    title: "Ha ocurrido un problema",
+    backHome: "Volver al inicio",
   },
   limite: {
     title: "Créditos agotados",

@@ -7,6 +7,8 @@ export const root: RootDict = {
   errorBoundary: {
     defaultMessage: "Something unexpected happened.",
     reference: "Reference: ",
+    title: "Something went wrong",
+    backHome: "Back to home",
   },
   limite: {
     title: "Out of credits",

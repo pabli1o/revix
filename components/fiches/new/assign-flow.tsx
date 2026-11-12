@@ -120,9 +120,11 @@ export function AssignFlow({
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
-      const { data } = await fetchJson<{ subscription?: { isActive: boolean } }>("/api/me").catch(
-        () => ({ status: 0, data: null }),
-      );
+      const { data } = await fetchJson<{ subscription?: { isActive: boolean } }>(
+        "/api/me",
+        undefined,
+        t.common.network,
+      ).catch(() => ({ status: 0, data: null }));
       if (cancelled) return;
       if (data?.subscription?.isActive) {
         setPhase("loading-draft");
@@ -142,13 +144,18 @@ export function AssignFlow({
       cancelled = true;
       clearTimeout(timeoutId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId, checkoutStatus, initialIsSubscribed, retryTick]);
 
   useEffect(() => {
     if (phase !== "loading-draft") return;
     let cancelled = false;
 
-    fetchJson<FicheDraftResponse & { error?: string }>(`/api/fiches/drafts/${draftId}`)
+    fetchJson<FicheDraftResponse & { error?: string }>(
+      `/api/fiches/drafts/${draftId}`,
+      undefined,
+      t.common.network,
+    )
       .then(({ status, data }) => {
         if (cancelled) return;
         if (status < 200 || status >= 300 || !data) {
@@ -226,11 +233,15 @@ export function AssignFlow({
     }));
 
     try {
-      const { status, data } = await fetchJson<SaveFichesResponse>("/api/fiches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: toSave }),
-      });
+      const { status, data } = await fetchJson<SaveFichesResponse>(
+        "/api/fiches",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: toSave }),
+        },
+        t.common.network,
+      );
 
       if (status < 200 || status >= 300 || !data || data.saved === 0) {
         setError(data?.error ?? t.fiches.saveFailed);

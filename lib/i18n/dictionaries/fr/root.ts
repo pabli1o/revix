@@ -10,6 +10,11 @@ export const root = {
     // so the component can just concatenate the digest after it, correctly
     // punctuated per locale.
     reference: "Référence : ",
+    // Used only by app/(app)/error.tsx (the in-app error boundary, shown
+    // without replacing the whole page) — app/error.tsx (the root one,
+    // full-page) uses the Reviix wordmark instead of a title string.
+    title: "Un problème est survenu",
+    backHome: "Retour à l'accueil",
   },
   limite: {
     title: "Crédits épuisés",

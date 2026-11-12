@@ -9,6 +9,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 import { getChapterContent } from "./content";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Generates (or regenerates) the quiz for one chapter/difficulty pair,
@@ -26,7 +27,8 @@ export async function generateAndStoreQuiz(
   const { text, latestFicheUpdatedAt } = await getChapterContent(chapterId);
 
   if (!text.trim()) {
-    throw new Error("Ce chapitre ne contient aucune fiche à partir de laquelle générer un quiz.");
+    const t = await getDictionary();
+    throw new Error(t.errors.quiz.noFicheContent);
   }
 
   try {

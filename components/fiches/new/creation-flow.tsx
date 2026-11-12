@@ -283,11 +283,15 @@ export function CreationFlow({
       error?: string;
       aiUsageCapExceeded?: boolean;
       freeTrialExhausted?: boolean;
-    }>("/api/fiches/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sources: chunk }),
-    });
+    }>(
+      "/api/fiches/generate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: chunk }),
+      },
+      t.common.network,
+    );
     if (status < 200 || status >= 300 || !data?.proposals) {
       throw new ChunkGenerationError(
         data?.error ?? t.fiches.generationFailed,
@@ -323,7 +327,7 @@ export function CreationFlow({
       // shouldn't also take down the texte/photos that were fine.
       const failedIds = new Set(failures.map((f) => f.id));
       setSources((prev) => prev.filter((s) => !failedIds.has(s.id)));
-      setError(failures.map((f) => `« ${f.nom} » : ${f.message}`).join(" "));
+      setError(failures.map((f) => t.fiches.sourceFailure(f.nom, f.message)).join(" "));
       if (resolvedSources.length === 0) {
         return;
       }
@@ -468,6 +472,7 @@ export function CreationFlow({
           sources: sources.map((s) => ({ type: s.type, nom: s.nom })),
         }),
       },
+      t.common.network,
     );
     if (draftRes.status < 200 || draftRes.status >= 300 || !draftRes.data?.draftId) {
       setError(draftRes.data?.error ?? t.fiches.cannotPrepareSave);

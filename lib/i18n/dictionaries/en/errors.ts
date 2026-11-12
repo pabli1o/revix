@@ -47,11 +47,20 @@ export const errors: ErrorsDict = {
     chapterNotFound: "Chapter not found",
     invalidParams: "Invalid parameters",
     quizNotFound: "Quiz not found or not ready",
+    noFicheContent: "This chapter has no note to generate a quiz from yet.",
   },
   whop: {
     noSubscriptionToManage: "No subscription to manage",
     invalidOffer: "Invalid plan",
     missingConfig: "Missing Whop configuration",
     checkoutCreationFailed: "Couldn't create the checkout session",
+  },
+  generation: {
+    truncatedResponse: "Truncated response: content too dense for a single generation.",
+    emptyResponse: "Empty response received",
+    invalidResponseFormat: "Invalid response format",
+    incompleteResponse: "Incomplete response received",
+    failedAfterAttempts: (attempts: number, lastError: string) =>
+      `Generation failed after ${attempts} attempts: ${lastError}`,
   },
 };
