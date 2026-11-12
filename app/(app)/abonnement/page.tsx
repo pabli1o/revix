@@ -7,12 +7,14 @@ import { Card } from "@/components/ui/card";
 import { BuyCreditButton, ManageSubscriptionButton } from "@/components/abonnement/subscribe-actions";
 import { PricingCards } from "@/components/abonnement/pricing-cards";
 import { ProfileForm } from "@/components/abonnement/profile-form";
-import { getDictionary } from "@/lib/i18n/server";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { formatEuros } from "@/lib/i18n/format";
 
 export default async function AbonnementPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
   const t = await getDictionary();
+  const locale = await getLocale();
 
   const [subscription, { data: profile }] = await Promise.all([
     getSubscriptionInfo(user!.id),
@@ -87,7 +89,7 @@ export default async function AbonnementPage() {
                 <p className="mt-1 text-sm text-text-muted">
                   {t.abonnement.addCreditsDescription(
                     EXTRA_CREDIT_CREDITS,
-                    `${EXTRA_CREDIT_PRICE_EUR.toFixed(2).replace(".", ",")} €`,
+                    formatEuros(EXTRA_CREDIT_PRICE_EUR, locale),
                   )}
                 </p>
               </div>

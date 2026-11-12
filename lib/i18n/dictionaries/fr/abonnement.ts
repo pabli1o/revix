@@ -1,13 +1,19 @@
+// Credits/fiche counts shown to the user format with this locale's own
+// digit grouping (Intl.NumberFormat), matching lib/i18n/locale.ts's
+// INTL_TAG["fr"] — hardcoded here rather than threaded in as a parameter
+// since each locale's dictionary file already knows its own tag.
+const nf = new Intl.NumberFormat("fr-FR");
+
 export const abonnement = {
   pageTitle: "Paramètres",
   profileTitle: "Profil",
   subscriptionTitle: "Abonnement",
   activeSubscription: (tierLabel: string) => `Abonnement ${tierLabel} actif`,
   creditsUsedThisMonth: "Crédits utilisés ce mois-ci",
-  creditsCount: (used: number, total: number) => `${used} / ${total} crédits`,
-  extraCreditsNote: (count: number) => `Dont ${count} crédits ajoutés ce mois-ci.`,
+  creditsCount: (used: number, total: number) => `${nf.format(used)} / ${nf.format(total)} crédits`,
+  extraCreditsNote: (count: number) => `Dont ${nf.format(count)} crédits ajoutés ce mois-ci.`,
   capReached: (total: number) =>
-    `Tu as atteint le plafond de ${total} crédits ce mois-ci (fiches + quiz confondus). Il se réinitialise à ton prochain renouvellement, ou tu peux ajouter des crédits dès maintenant ci-dessous.`,
+    `Tu as atteint le plafond de ${nf.format(total)} crédits ce mois-ci (fiches + quiz confondus). Il se réinitialise à ton prochain renouvellement, ou tu peux ajouter des crédits dès maintenant ci-dessous.`,
   needMoreCredits: "Besoin de plus de crédits ?",
   addCreditsDescription: (credits: number, price: string) =>
     `Ajoute ${credits} crédits au plafond du mois en cours, en paiement unique de ${price} — quel que soit ton abonnement actuel. Ne se renouvelle pas automatiquement.`,

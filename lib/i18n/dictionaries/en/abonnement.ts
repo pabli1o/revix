@@ -1,15 +1,17 @@
 import type { AbonnementDict } from "../fr/abonnement";
 
+const nf = new Intl.NumberFormat("en-US");
+
 export const abonnement: AbonnementDict = {
   pageTitle: "Settings",
   profileTitle: "Profile",
   subscriptionTitle: "Subscription",
   activeSubscription: (tierLabel: string) => `${tierLabel} plan active`,
   creditsUsedThisMonth: "Credits used this month",
-  creditsCount: (used: number, total: number) => `${used} / ${total} credits`,
-  extraCreditsNote: (count: number) => `Including ${count} credits added this month.`,
+  creditsCount: (used: number, total: number) => `${nf.format(used)} / ${nf.format(total)} credits`,
+  extraCreditsNote: (count: number) => `Including ${nf.format(count)} credits added this month.`,
   capReached: (total: number) =>
-    `You've reached your ${total}-credit cap for this month (notes and quizzes combined). It resets at your next renewal, or you can add more credits right now below.`,
+    `You've reached your ${nf.format(total)}-credit cap for this month (notes and quizzes combined). It resets at your next renewal, or you can add more credits right now below.`,
   needMoreCredits: "Need more credits?",
   addCreditsDescription: (credits: number, price: string) =>
     `Add ${credits} credits to this month's cap, as a one-time payment of ${price} — whatever plan you're on. Doesn't renew automatically.`,

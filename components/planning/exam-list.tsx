@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Importance } from "@/lib/supabase/database.types";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { formatDate } from "@/lib/i18n/format";
 
 export interface ExamView {
   id: string;
@@ -16,17 +17,9 @@ export interface ExamView {
   chaptersLabel: string;
 }
 
-// Not locale-parametrized yet — a separate pass handles date/number
-// formatting across the app.
-const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
-
 export function ExamList({ exams }: { exams: ExamView[] }) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const importanceLabel: Record<Importance, string> = {
@@ -55,7 +48,8 @@ export function ExamList({ exams }: { exams: ExamView[] }) {
           <div>
             <p className="font-medium">{exam.nom}</p>
             <p className="text-sm text-text-muted">
-              {DATE_FORMATTER.format(new Date(exam.date))} · {exam.chaptersLabel}
+              {formatDate(exam.date, locale, { weekday: "long", day: "numeric", month: "long" })} ·{" "}
+              {exam.chaptersLabel}
             </p>
           </div>
           <div className="flex items-center gap-2">

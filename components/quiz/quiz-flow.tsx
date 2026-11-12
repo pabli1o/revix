@@ -10,6 +10,7 @@ import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { QuizLoader } from "./quiz-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { formatDate } from "@/lib/i18n/format";
 
 // Values sent to the API and used as object keys — stay the French
 // literals the backend expects (see lib/anthropic/prompts.ts's
@@ -23,15 +24,11 @@ interface Attempt {
   created_at: string;
 }
 
-// Not locale-parametrized yet — a separate pass handles date/number
-// formatting across the app.
-const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
-
 type Phase = "select" | "loading" | "playing" | "finished";
 
 export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapterNom: string }) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [phase, setPhase] = useState<Phase>("select");
   const [difficulty, setDifficulty] = useState<QuizDifficulty | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -167,7 +164,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
                   <ul className="mt-2 flex flex-col gap-0.5 text-xs text-text-muted">
                     {history.slice(1, 3).map((a) => (
                       <li key={a.id} className="flex justify-between">
-                        <span>{DATE_FORMATTER.format(new Date(a.created_at))}</span>
+                        <span>{formatDate(a.created_at, locale, { day: "numeric", month: "short" })}</span>
                         <span>
                           {a.score}/{a.total}
                         </span>

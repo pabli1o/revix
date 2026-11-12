@@ -1,15 +1,17 @@
 import type { AbonnementDict } from "../fr/abonnement";
 
+const nf = new Intl.NumberFormat("es-ES");
+
 export const abonnement: AbonnementDict = {
   pageTitle: "Ajustes",
   profileTitle: "Perfil",
   subscriptionTitle: "Suscripción",
   activeSubscription: (tierLabel: string) => `Plan ${tierLabel} activo`,
   creditsUsedThisMonth: "Créditos usados este mes",
-  creditsCount: (used: number, total: number) => `${used} / ${total} créditos`,
-  extraCreditsNote: (count: number) => `Incluye ${count} créditos añadidos este mes.`,
+  creditsCount: (used: number, total: number) => `${nf.format(used)} / ${nf.format(total)} créditos`,
+  extraCreditsNote: (count: number) => `Incluye ${nf.format(count)} créditos añadidos este mes.`,
   capReached: (total: number) =>
-    `Has alcanzado el límite de ${total} créditos este mes (fichas y cuestionarios juntos). Se reinicia en tu próxima renovación, o puedes añadir créditos ahora mismo abajo.`,
+    `Has alcanzado el límite de ${nf.format(total)} créditos este mes (fichas y cuestionarios juntos). Se reinicia en tu próxima renovación, o puedes añadir créditos ahora mismo abajo.`,
   needMoreCredits: "¿Necesitas más créditos?",
   addCreditsDescription: (credits: number, price: string) =>
     `Añade ${credits} créditos al límite de este mes, con un pago único de ${price} — sea cual sea tu plan actual. No se renueva automáticamente.`,

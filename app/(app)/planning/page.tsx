@@ -6,16 +6,13 @@ import { AppHeader } from "@/components/layout/app-header";
 import { FeatureLocked } from "@/components/abonnement/feature-locked";
 import { PlanningView, type DayTasks } from "@/components/planning/planning-view";
 import type { PlanningTaskView } from "@/components/planning/task-row";
-
-const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
+import { getLocale } from "@/lib/i18n/server";
+import { formatDate } from "@/lib/i18n/format";
 
 export default async function PlanningPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const locale = await getLocale();
 
   const subscription = await getSubscriptionInfo(user?.id);
   if (!subscriptionHasFeature(subscription, "planning")) {
@@ -93,7 +90,7 @@ export default async function PlanningPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, dayTasks]) => ({
       date,
-      label: DAY_LABEL_FORMATTER.format(new Date(date)),
+      label: formatDate(date, locale, { weekday: "long", day: "numeric", month: "long" }),
       tasks: dayTasks,
     }));
 

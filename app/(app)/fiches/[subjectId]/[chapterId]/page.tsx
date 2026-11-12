@@ -6,17 +6,15 @@ import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "@/components/fiches/planning-task-timer-bar";
-import { getDictionary } from "@/lib/i18n/server";
-
-// TODO(i18n date formatting pass): parametrize by locale instead of
-// hardcoded "fr-FR" — see lib/i18n/format.ts's formatDate.
-const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { formatDate } from "@/lib/i18n/format";
 
 export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/[chapterId]">) {
   const { subjectId, chapterId } = await props.params;
   const supabase = await createClient();
   const user = await getAuthedUser();
   const t = await getDictionary();
+  const locale = await getLocale();
 
   const [{ data: subject }, { data: chapter }, { data: allSubjects }, { data: fiches }] =
     await Promise.all([
@@ -49,7 +47,7 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
     id: f.id,
     nom: f.titre,
     count: 0,
-    countLabel: DATE_FORMATTER.format(new Date(f.created_at)),
+    countLabel: formatDate(f.created_at, locale, { day: "numeric", month: "short" }),
     color,
     href: `/fiches/${subjectId}/${chapterId}/${f.id}`,
     renameUrl: `/api/fiches/${f.id}`,

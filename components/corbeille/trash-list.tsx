@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { formatDate } from "@/lib/i18n/format";
 
 export interface TrashedFiche {
   id: string;
@@ -14,18 +15,9 @@ export interface TrashedFiche {
   deletedAt: string;
 }
 
-// Not locale-parametrized yet — a separate pass handles date/number
-// formatting across the app.
-const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 export function TrashList({ items }: { items: TrashedFiche[] }) {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function restore(id: string) {
@@ -57,7 +49,9 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
             <p className="font-medium">{item.titre}</p>
             <p className="text-sm text-text-muted">
               {item.subjectNom} / {item.chapterNom} ·{" "}
-              {t.corbeille.deletedOn(DATE_FORMATTER.format(new Date(item.deletedAt)))}
+              {t.corbeille.deletedOn(
+                formatDate(item.deletedAt, locale, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }),
+              )}
             </p>
           </div>
           <div className="flex gap-2">

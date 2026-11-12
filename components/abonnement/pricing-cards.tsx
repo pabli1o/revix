@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { IconCheck, IconMinus } from "@/components/ui/icons";
 import { TIERS, TIER_ORDER, type SubscriptionTier } from "@/lib/subscription/constants";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { formatEuros, formatNumber } from "@/lib/i18n/format";
 
 /**
  * The 3 subscription offers, shown identically everywhere a user is asked
@@ -28,7 +29,7 @@ export function PricingCards({
   draftId?: string;
   onCheckoutError?: (message: string) => void;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [loadingTier, setLoadingTier] = useState<SubscriptionTier | null>(null);
 
   const badgeByTier: Partial<Record<SubscriptionTier, string>> = {
@@ -83,12 +84,12 @@ export function PricingCards({
               <p className="font-heading text-lg font-semibold">{t.abonnement.tierLabels[tierId] ?? tier.label}</p>
               <p className="mt-1 flex items-baseline gap-1">
                 <span className="font-heading text-3xl font-semibold text-accent">
-                  {tier.priceEur.toFixed(2).replace(".", ",")} €
+                  {formatEuros(tier.priceEur, locale)}
                 </span>
                 <span className="text-sm text-text-muted">{t.abonnement.perMonth}</span>
               </p>
               <p className="mt-1 font-mono text-sm text-text-muted">
-                {tier.credits} {t.abonnement.creditsPerMonth}
+                {formatNumber(tier.credits, locale)} {t.abonnement.creditsPerMonth}
               </p>
               <p className="mt-0.5 text-xs text-text-muted">
                 {t.abonnement.estimatedFiches(tier.estimatedFiches.min, tier.estimatedFiches.max)}
