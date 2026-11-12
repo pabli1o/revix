@@ -21,6 +21,7 @@ import { uploadSourceFile } from "./upload-source";
 import { loadDraftSources, saveDraftSources, clearDraftSources } from "./local-draft";
 import { markResumeFicheCreation } from "./resume-flag";
 import { ProposalPreview } from "./proposal-preview";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface ValidationItem {
   key: string;
@@ -60,18 +61,6 @@ const PARTIE_SUFFIX_RE = /^(.*?)\s*[—-]\s*Partie\s+\d+\s*$/i;
 function stripPartieSuffix(titre: string): string {
   const match = titre.match(PARTIE_SUFFIX_RE);
   return match ? match[1].trim() : titre.trim();
-}
-
-/** Shared wording for a source dropped because it came back empty/
- * unreadable from the browser's local storage (the confirmed Safari/
- * WebKit IndexedDB bug — see local-draft.ts) — used wherever that can
- * happen: loading a draft, saving one, or resolving an upload right
- * before generation. */
-function droppedSourcesMessage(names: string[]): string {
-  const list = names.map((n) => `« ${n} »`).join(", ");
-  return names.length > 1
-    ? `${list} n'ont pas pu être conservés (vides ou illisibles dans ce navigateur) — retire-les et rajoute-les.`
-    : `${list} n'a pas pu être conservé (vide ou illisible dans ce navigateur) — retire-le et rajoute-le.`;
 }
 
 /**
@@ -156,6 +145,7 @@ export function CreationFlow({
   initialFreeTrialExhausted?: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [step, setStep] = useState<Step>("sources");
   const [sources, setSources] = useState<PendingSource[]>([]);
   const [items, setItems] = useState<ValidationItem[]>([]);
@@ -184,14 +174,14 @@ export function CreationFlow({
             console.error("[creation-flow] resumeFromDraft: loadDraftSources() returned no usable source", result);
             setError(
               result && result.dropped.length > 0
-                ? droppedSourcesMessage(result.dropped.map((d) => d.nom))
-                : "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
+                ? t.fiches.droppedSources(result.dropped.map((d) => d.nom))
+                : t.fiches.draftNotFoundOnDevice,
             );
             return;
           }
           setSources(result.sources);
           if (result.dropped.length > 0) {
-            setError(droppedSourcesMessage(result.dropped.map((d) => d.nom)));
+            setError(t.fiches.droppedSources(result.dropped.map((d) => d.nom)));
           }
           clearDraftSources().catch((err) => {
             console.error("[creation-flow] clearDraftSources() failed after resume:", err);
@@ -199,9 +189,7 @@ export function CreationFlow({
         })
         .catch((err) => {
           console.error("[creation-flow] resumeFromDraft: loadDraftSources() threw:", err);
-          setError(
-            "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
-          );
+          setError(t.fiches.draftNotFoundOnDevice);
         });
       return;
     }
@@ -210,7 +198,7 @@ export function CreationFlow({
         .then((result) => {
           if (!result) return;
           if (result.sources.length > 0) setSources(result.sources);
-          if (result.dropped.length > 0) setError(droppedSourcesMessage(result.dropped.map((d) => d.nom)));
+          if (result.dropped.length > 0) setError(t.fiches.droppedSources(result.dropped.map((d) => d.nom)));
         })
         .catch((err) => {
           console.error("[creation-flow] anonymous loadDraftSources() threw:", err);
@@ -237,13 +225,11 @@ export function CreationFlow({
           // silently won't survive the trip through signup.
           const droppedIds = new Set(dropped.map((d) => d.id));
           setSources((prev) => prev.filter((s) => !droppedIds.has(s.id)));
-          setError(droppedSourcesMessage(dropped.map((d) => d.nom)));
+          setError(t.fiches.droppedSources(dropped.map((d) => d.nom)));
         })
         .catch((err) => {
           console.error("[creation-flow] updateSources: saveDraftSources() failed:", err);
-          setError(
-            "Ton brouillon ne peut pas être conservé dans ce navigateur (stockage plein ou bloqué) — connecte-toi avant d'ajouter d'autres fichiers, au risque de les perdre en changeant de page.",
-          );
+          setError(t.fiches.draftSaveFailedMidFlow);
         });
     }
   }
@@ -265,11 +251,11 @@ export function CreationFlow({
     const settled = await Promise.allSettled(
       list.map(async (s): Promise<PendingSource> => {
         if (s.file) {
-          const storagePath = await uploadSourceFile(s.file);
+          const storagePath = await uploadSourceFile(s.file, t.fiches);
           return { ...s, storagePath, file: undefined };
         }
         if (s.files && s.files.length > 0) {
-          const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f)));
+          const storagePaths = await Promise.all(s.files.map((f) => uploadSourceFile(f, t.fiches)));
           return { ...s, storagePaths, files: undefined };
         }
         return s;
@@ -304,7 +290,7 @@ export function CreationFlow({
     });
     if (status < 200 || status >= 300 || !data?.proposals) {
       throw new ChunkGenerationError(
-        data?.error ?? "La génération a échoué.",
+        data?.error ?? t.fiches.generationFailed,
         data?.aiUsageCapExceeded,
         data?.freeTrialExhausted,
       );
@@ -348,9 +334,7 @@ export function CreationFlow({
       0,
     );
     if (totalBytes > MAX_TOTAL_PAYLOAD_BYTES) {
-      setError(
-        "Le contenu total dépasse ce que le serveur peut recevoir en une fois. Retire une ou plusieurs sources (photos surtout), ou répartis-les sur plusieurs fiches.",
-      );
+      setError(t.fiches.payloadTooLarge);
       return;
     }
 
@@ -423,7 +407,7 @@ export function CreationFlow({
           setStep("sources");
           return;
         }
-        setError(reason instanceof Error ? reason.message : "La génération a échoué.");
+        setError(reason instanceof Error ? reason.message : t.fiches.generationFailed);
         setStep("sources");
         return;
       }
@@ -448,7 +432,7 @@ export function CreationFlow({
       // choking on an unexpected shape. Logged with the raw error since
       // "Erreur réseau" would be misleading for a non-network failure.
       console.error("[creation-flow] handleGenerate: unexpected failure after chunks settled:", err);
-      setError(err instanceof RequestFailedError ? err.message : "Une erreur inattendue est survenue pendant la génération.");
+      setError(err instanceof RequestFailedError ? err.message : t.fiches.unexpectedGenerationError);
       setStep("sources");
     } finally {
       setGenerationProgress(null);
@@ -464,7 +448,7 @@ export function CreationFlow({
       .filter((it) => it.selected)
       .map((it) => ({ titre: it.titre, contenu: it.proposal.contenu }));
     if (toSave.length === 0) {
-      setError("Sélectionne au moins une fiche à enregistrer.");
+      setError(t.fiches.selectAtLeastOne);
       return null;
     }
     return toSave;
@@ -486,7 +470,7 @@ export function CreationFlow({
       },
     );
     if (draftRes.status < 200 || draftRes.status >= 300 || !draftRes.data?.draftId) {
-      setError(draftRes.data?.error ?? "Impossible de préparer l'enregistrement.");
+      setError(draftRes.data?.error ?? t.fiches.cannotPrepareSave);
       return null;
     }
     return draftRes.data.draftId;
@@ -508,7 +492,7 @@ export function CreationFlow({
       }
       router.push(`/fiches/new/assign?draft=${draftId}`);
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
+      setError(err instanceof RequestFailedError ? err.message : t.fiches.networkError);
       setStep("validation");
     }
   }
@@ -528,7 +512,7 @@ export function CreationFlow({
       setPricingDraftId(draftId);
       setPricingOpen(true);
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
+      setError(err instanceof RequestFailedError ? err.message : t.fiches.networkError);
     } finally {
       setSubscribing(false);
     }
@@ -550,9 +534,7 @@ export function CreationFlow({
         ({ dropped } = await saveDraftSources(sources));
       } catch (err) {
         console.error("[creation-flow] handleGenerateClick: saveDraftSources() failed:", err);
-        setError(
-          "Impossible d'enregistrer ton brouillon dans ce navigateur (stockage plein ou bloqué). Réessaie avec moins de fichiers, ou connecte-toi d'abord.",
-        );
+        setError(t.fiches.draftSaveFailedBeforeSignup);
         return;
       }
 
@@ -562,7 +544,7 @@ export function CreationFlow({
           : sources;
       if (dropped.length > 0) {
         setSources(remaining);
-        setError(droppedSourcesMessage(dropped.map((d) => d.nom)));
+        setError(t.fiches.droppedSources(dropped.map((d) => d.nom)));
       }
       if (remaining.length === 0) {
         // Nothing left to generate — don't send the visitor to signup
@@ -584,18 +566,18 @@ export function CreationFlow({
       <div className="mb-6 flex items-start justify-between">
         <div>
           <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
-            Nouvelle fiche
+            {t.fiches.newFicheLabel}
           </p>
           {isReviewing && (
             <p className="mt-1 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
-              {items.length} fiche{items.length > 1 ? "s" : ""} proposée{items.length > 1 ? "s" : ""}
+              {t.fiches.proposedCount(items.length)}
             </p>
           )}
         </div>
         <Link
           href="/fiches"
           prefetch={true}
-          aria-label="Fermer"
+          aria-label={t.common.close}
           className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
         >
           ✕
@@ -613,20 +595,18 @@ export function CreationFlow({
           <Card className="flex flex-col items-center gap-4 p-8 text-center">
             <IconLock className="size-10 text-accent" />
             <div>
-              <p className="font-heading text-lg font-semibold">Tu as déjà généré ta fiche d&apos;essai.</p>
-              <p className="mt-1 text-text-muted">
-                Abonne-toi pour continuer à créer des fiches.
-              </p>
+              <p className="font-heading text-lg font-semibold">{t.fiches.freeTrialUsedTitle}</p>
+              <p className="mt-1 text-text-muted">{t.fiches.freeTrialUsedBody}</p>
             </div>
             <Button size="lg" onClick={() => setPricingOpen(true)}>
-              Voir les abonnements
+              {t.fiches.seeSubscriptions}
             </Button>
           </Card>
         ) : (
           <Card>
             <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
             <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
-              Générer la fiche
+              {t.fiches.generateFiche}
             </Button>
           </Card>
         )
@@ -636,10 +616,10 @@ export function CreationFlow({
         <Card>
           <div className="flex flex-col items-center gap-5 py-16 text-center">
             <FicheLoader />
-            <p className="font-heading text-lg font-semibold">Tes fiches prennent forme…</p>
+            <p className="font-heading text-lg font-semibold">{t.fiches.generatingTitle}</p>
             {generationProgress && generationProgress.total > 1 && (
               <p className="font-mono text-sm text-text-muted">
-                {generationProgress.done} / {generationProgress.total} prêtes
+                {t.fiches.generatingProgress(generationProgress.done, generationProgress.total)}
               </p>
             )}
           </div>
@@ -674,7 +654,7 @@ export function CreationFlow({
                   >
                     {item.selected && "✓"}
                   </span>
-                  <span className="text-sm text-text-muted">garder</span>
+                  <span className="text-sm text-text-muted">{t.fiches.keep}</span>
                 </button>
               </div>
 
@@ -694,7 +674,7 @@ export function CreationFlow({
               disabled={subscribing}
               className="text-sm text-text-muted hover:text-accent disabled:opacity-50"
             >
-              ← Retour
+              ← {t.common.back}
             </button>
           </div>
         </div>
@@ -708,7 +688,7 @@ export function CreationFlow({
       {isReviewing && isSubscribed && (
         <FloatingBottomBar>
           <Button className="w-full" onClick={handleContinue} disabled={step === "preparing"}>
-            {step === "preparing" ? "Un instant…" : "Enregistrer les fiches"}
+            {step === "preparing" ? t.fiches.oneInstant : t.fiches.saveFiches}
           </Button>
         </FloatingBottomBar>
       )}

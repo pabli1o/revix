@@ -17,9 +17,10 @@ import {
 } from "./file-utils";
 import { getPdfPageCount, splitPdfByPages } from "./pdf-split";
 import { SOURCE_UPLOADS_BUCKET, uploadSourceFile } from "./upload-source";
+import { useLocale } from "@/components/i18n/locale-provider";
 
-function formatMB(bytes: number): string {
-  return `${(bytes / 1_000_000).toFixed(0)} Mo`;
+function formatMB(bytes: number, unit: string): string {
+  return `${(bytes / 1_000_000).toFixed(0)} ${unit}`;
 }
 
 function totalPayloadBytes(sources: PendingSource[]): number {
@@ -65,6 +66,7 @@ export function SourcePicker({
    * uploads it for real right before generation, once authenticated. */
   deferUpload?: boolean;
 }) {
+  const { t } = useLocale();
   const [textDraft, setTextDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
@@ -87,22 +89,18 @@ export function SourcePicker({
     for (const candidate of candidates) {
       const size = estimateBase64Bytes(candidate.data ?? "") + (candidate.texte?.length ?? 0);
       if (size > MAX_SINGLE_SOURCE_BYTES) {
-        rejected.push(`${candidate.nom} (trop lourd même compressé)`);
+        rejected.push(t.fiches.tooHeavyCompressed(candidate.nom));
         continue;
       }
       if (runningTotal + size > MAX_TOTAL_PAYLOAD_BYTES) {
-        rejected.push(`${candidate.nom} (limite totale atteinte)`);
+        rejected.push(t.fiches.totalLimitReached(candidate.nom));
         continue;
       }
       runningTotal += size;
       accepted.push(candidate);
     }
 
-    setSizeError(
-      rejected.length > 0
-        ? `Non ajouté(s) car trop volumineux pour être envoyés en une fois : ${rejected.join(", ")}. Réduis leur nombre ou leur taille, ou crée une fiche séparée pour le reste.`
-        : null,
-    );
+    setSizeError(rejected.length > 0 ? t.fiches.rejectedSummary(rejected.join(", ")) : null);
 
     return accepted;
   }
@@ -111,7 +109,7 @@ export function SourcePicker({
     if (!textDraft.trim()) return;
     onChange([
       ...sources,
-      { id: makeId(), type: "texte", nom: "Notes tapées", texte: textDraft.trim() },
+      { id: makeId(), type: "texte", nom: t.fiches.typedNotesName, texte: textDraft.trim() },
     ]);
     setTextDraft("");
   }
@@ -168,7 +166,7 @@ export function SourcePicker({
     const toUpload: File[] = [];
     for (const file of Array.from(files)) {
       if (file.size > MAX_DOCUMENT_FILE_BYTES) {
-        failed.push(`${file.name} (trop lourd : max ${formatMB(MAX_DOCUMENT_FILE_BYTES)})`);
+        failed.push(t.fiches.tooHeavyMax(file.name, formatMB(MAX_DOCUMENT_FILE_BYTES, t.fiches.megabyteUnit)));
         continue;
       }
       toUpload.push(file);
@@ -180,7 +178,7 @@ export function SourcePicker({
         if (type === "pdf") {
           const pageCount = await getPdfPageCount(file);
           if (pageCount !== null && pageCount > MAX_PDF_PAGES) {
-            failed.push(`${file.name} (trop de pages : ${pageCount}, max ${MAX_PDF_PAGES})`);
+            failed.push(t.fiches.tooManyPages(file.name, pageCount, MAX_PDF_PAGES));
             continue;
           }
 
@@ -189,7 +187,7 @@ export function SourcePicker({
             if (deferUpload) {
               added.push({ id: makeId(), type, nom: file.name, files: parts.map((p) => p.file) });
             } else {
-              const storagePaths = await Promise.all(parts.map((part) => uploadSourceFile(part.file)));
+              const storagePaths = await Promise.all(parts.map((part) => uploadSourceFile(part.file, t.fiches)));
               added.push({ id: makeId(), type, nom: file.name, storagePaths });
             }
             continue;
@@ -199,11 +197,11 @@ export function SourcePicker({
         if (deferUpload) {
           added.push({ id: makeId(), type, nom: file.name, file });
         } else {
-          const storagePath = await uploadSourceFile(file);
+          const storagePath = await uploadSourceFile(file, t.fiches);
           added.push({ id: makeId(), type, nom: file.name, storagePath });
         }
       } catch {
-        failed.push(`${file.name} (échec de l'envoi)`);
+        failed.push(t.fiches.uploadFailed(file.name));
       }
     }
     return tryAddSources(added, failed);
@@ -248,15 +246,15 @@ export function SourcePicker({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="mb-2 text-sm font-medium">Colle ou tape tes notes</p>
+        <p className="mb-2 text-sm font-medium">{t.fiches.pasteNotesLabel}</p>
         <Textarea
           rows={5}
           value={textDraft}
           onChange={(e) => setTextDraft(e.target.value)}
-          placeholder="Colle ici le contenu de ton cours…"
+          placeholder={t.fiches.pasteNotesPlaceholder}
         />
         <Button size="sm" variant="secondary" className="mt-2" onClick={addText}>
-          + Ajouter ce texte
+          {t.fiches.addThisText}
         </Button>
       </div>
 
@@ -270,7 +268,7 @@ export function SourcePicker({
           onChange={(e) => handlePhotos(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => photoInputRef.current?.click()}>
-          Ajouter des photos
+          {t.fiches.addPhotos}
         </Button>
 
         <input
@@ -282,7 +280,7 @@ export function SourcePicker({
           onChange={(e) => handlePdf(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => pdfInputRef.current?.click()}>
-          Ajouter un PDF
+          {t.fiches.addPdf}
         </Button>
 
         <input
@@ -294,11 +292,11 @@ export function SourcePicker({
           onChange={(e) => handleWord(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => wordInputRef.current?.click()}>
-          Ajouter un Word
+          {t.fiches.addWord}
         </Button>
       </div>
 
-      {busy && <p className="text-sm text-text-muted">Traitement des fichiers…</p>}
+      {busy && <p className="text-sm text-text-muted">{t.fiches.processingFiles}</p>}
       {sizeError && <p className="text-sm text-danger">{sizeError}</p>}
 
       {sources.length > 0 && (
@@ -316,7 +314,7 @@ export function SourcePicker({
                 type="button"
                 onClick={() => removeSource(s.id)}
                 className="ml-3 shrink-0 text-text-muted hover:text-danger"
-                aria-label="Retirer"
+                aria-label={t.fiches.removeAction}
               >
                 ✕
               </button>

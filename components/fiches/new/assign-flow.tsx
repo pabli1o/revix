@@ -14,6 +14,7 @@ import { FicheLoader } from "@/components/ui/fiche-loader";
 import { PricingCards } from "@/components/abonnement/pricing-cards";
 import { ProposalPreview } from "./proposal-preview";
 import type { FicheDraftResponse, SaveFichesResponse } from "@/lib/fiches/types";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface SubjectOption {
   id: string;
@@ -74,6 +75,7 @@ export function AssignFlow({
   initialIsSubscribed: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [phase, setPhase] = useState<Phase>(
     !draftId
       ? "draft-error"
@@ -150,7 +152,7 @@ export function AssignFlow({
       .then(({ status, data }) => {
         if (cancelled) return;
         if (status < 200 || status >= 300 || !data) {
-          setError(data?.error ?? "Brouillon introuvable ou expiré.");
+          setError(data?.error ?? t.fiches.draftNotFoundOrExpired);
           setPhase("draft-error");
           return;
         }
@@ -167,7 +169,7 @@ export function AssignFlow({
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Impossible de charger le brouillon.");
+          setError(t.fiches.draftLoadFailed);
           setPhase("draft-error");
         }
       });
@@ -231,7 +233,7 @@ export function AssignFlow({
       });
 
       if (status < 200 || status >= 300 || !data || data.saved === 0) {
-        setError(data?.error ?? "Échec de l'enregistrement.");
+        setError(data?.error ?? t.fiches.saveFailed);
         setPhase("picking-chapter");
         return;
       }
@@ -243,7 +245,7 @@ export function AssignFlow({
       router.push("/fiches?saved=1");
       router.refresh();
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau pendant l'enregistrement.");
+      setError(err instanceof RequestFailedError ? err.message : t.fiches.networkError);
       setPhase("picking-chapter");
     }
   }
@@ -251,8 +253,8 @@ export function AssignFlow({
   if (phase === "draft-error") {
     return (
       <Card className="mx-auto max-w-md text-center">
-        <p className="mb-4 text-sm text-danger">{error ?? "Brouillon introuvable ou expiré."}</p>
-        <Button onClick={() => router.push("/fiches/new")}>Recommencer une fiche</Button>
+        <p className="mb-4 text-sm text-danger">{error ?? t.fiches.draftNotFoundOrExpired}</p>
+        <Button onClick={() => router.push("/fiches/new")}>{t.fiches.restartFiche}</Button>
       </Card>
     );
   }
@@ -261,13 +263,13 @@ export function AssignFlow({
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <Card className="text-center">
-          <p className="mb-2 text-sm">Paiement annulé — ta fiche est toujours prête à être enregistrée.</p>
+          <p className="mb-2 text-sm">{t.fiches.checkoutCancelled}</p>
           <button
             type="button"
             onClick={() => router.push("/fiches/new")}
             className="text-sm text-text-muted hover:text-accent"
           >
-            ← Recommencer une fiche
+            ← {t.fiches.restartFiche}
           </button>
         </Card>
         {error && <p className="text-center text-sm text-danger">{error}</p>}
@@ -280,12 +282,8 @@ export function AssignFlow({
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
         <div>
-          <h1 className="mb-2 font-heading text-2xl font-semibold">
-            Profite pleinement de tes fiches
-          </h1>
-          <p className="text-sm text-text-muted">
-            Un abonnement actif est nécessaire pour enregistrer et relire tes fiches en entier.
-          </p>
+          <h1 className="mb-2 font-heading text-2xl font-semibold">{t.fiches.enjoyTitle}</h1>
+          <p className="text-sm text-text-muted">{t.fiches.enjoyBody}</p>
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
         <PricingCards draftId={draftId} onCheckoutError={setError} />
@@ -310,9 +308,7 @@ export function AssignFlow({
   if (phase === "subscription-timeout") {
     return (
       <Card className="mx-auto max-w-md text-center">
-        <p className="mb-4 text-sm">
-          Ton paiement a été reçu mais l&apos;activation prend plus de temps que prévu.
-        </p>
+        <p className="mb-4 text-sm">{t.fiches.subscriptionDelayed}</p>
         <Button
           onClick={() => {
             pollCount.current = 0;
@@ -320,7 +316,7 @@ export function AssignFlow({
             setRetryTick((n) => n + 1);
           }}
         >
-          Réessayer
+          {t.common.retry}
         </Button>
       </Card>
     );
@@ -345,10 +341,10 @@ export function AssignFlow({
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
               <span aria-hidden>✓</span>
-              <span>Abonnement activé — tu as maintenant accès à tes fiches.</span>
+              <span>{t.fiches.subscriptionActivated}</span>
             </div>
             <Button className="w-full" onClick={() => setPhase("picking-subject")}>
-              Enregistrer les fiches
+              {t.fiches.saveFiches}
             </Button>
           </div>
         </FloatingBottomBar>
@@ -370,12 +366,12 @@ export function AssignFlow({
         onClick={() => setPhase("reviewing")}
         className="self-start rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10"
       >
-        ← Modifier les fiches
+        ← {t.fiches.editFiches}
       </button>
 
       <Card className="flex flex-col gap-7 p-6">
         <p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
-          Où ranger ces {items.length} fiche{items.length > 1 ? "s" : ""} ?
+          {t.fiches.whereToFile(items.length)}
         </p>
 
         {error && (
@@ -386,7 +382,7 @@ export function AssignFlow({
 
         <div className="flex flex-col gap-3">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-            Matière
+            {t.fiches.subjectLabel}
           </p>
 
           {hasSubject ? (
@@ -417,7 +413,7 @@ export function AssignFlow({
                 }}
                 className="text-xs text-text-muted hover:text-accent"
               >
-                changer
+                {t.fiches.change}
               </button>
             </div>
           ) : (
@@ -450,19 +446,19 @@ export function AssignFlow({
                 <div className="flex gap-2">
                   <Input
                     autoFocus
-                    placeholder="Nom de la matière"
+                    placeholder={t.fiches.newSubjectPlaceholder}
                     value={newSubjectDraft}
                     onChange={(e) => setNewSubjectDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && confirmNewSubject()}
                     className="flex-1"
                   />
                   <Button size="sm" onClick={confirmNewSubject} disabled={!newSubjectDraft.trim()}>
-                    Valider
+                    {t.fiches.valider}
                   </Button>
                 </div>
               ) : (
                 <Button variant="outline" size="sm" className="self-start" onClick={() => setCreatingSubject(true)}>
-                  + Nouvelle
+                  {t.fiches.newSubjectAction}
                 </Button>
               )}
             </>
@@ -472,7 +468,7 @@ export function AssignFlow({
         {hasSubject && (
           <div className="flex flex-col gap-3 border-t border-border pt-7">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-              Chapitre
+              {t.fiches.chapterLabel}
             </p>
 
             {chapterOptions.length > 0 && (
@@ -492,14 +488,14 @@ export function AssignFlow({
               <div className="flex gap-2">
                 <Input
                   autoFocus
-                  placeholder="Nom du chapitre"
+                  placeholder={t.fiches.newChapterPlaceholder}
                   value={newChapterDraft}
                   onChange={(e) => setNewChapterDraft(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && confirmNewChapter()}
                   className="flex-1"
                 />
                 <Button size="sm" onClick={confirmNewChapter} disabled={!newChapterDraft.trim()}>
-                  Valider
+                  {t.fiches.valider}
                 </Button>
               </div>
             ) : (
@@ -509,7 +505,7 @@ export function AssignFlow({
                 className="self-start"
                 onClick={() => setCreatingChapter(true)}
               >
-                {destination.newChapterNom ? `Nouveau : ${destination.newChapterNom}` : "+ Nouveau"}
+                {destination.newChapterNom ? t.fiches.newChapterNamed(destination.newChapterNom) : t.fiches.newChapterAction}
               </Button>
             )}
           </div>
@@ -517,7 +513,7 @@ export function AssignFlow({
       </Card>
 
       <Button className="w-full" onClick={handleSave} disabled={phase === "saving" || !hasChapter}>
-        {phase === "saving" ? "Enregistrement…" : "✓ Confirmer et ranger"}
+        {phase === "saving" ? t.common.saving : `✓ ${t.fiches.confirmAndFile}`}
       </Button>
     </div>
   );

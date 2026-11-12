@@ -1,8 +1,14 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export const SOURCE_UPLOADS_BUCKET = "source-uploads";
+
+type UploadMessages = Pick<
+  Dictionary["fiches"],
+  "fileNotSurvivedDraft" | "fileEmptyAfterStorage" | "sessionNotFound" | "notSignedInYet" | "uploadRejectedByStorage"
+>;
 
 /**
  * Uploads a PDF/Word file straight from the browser to Supabase Storage,
@@ -20,15 +26,13 @@ export const SOURCE_UPLOADS_BUCKET = "source-uploads";
  * round trip, (b) the session isn't actually active yet, or (c) Storage
  * itself rejected the upload (bucket/RLS) is the actual cause.
  */
-export async function uploadSourceFile(file: File): Promise<string> {
+export async function uploadSourceFile(file: File, t: UploadMessages): Promise<string> {
   if (!(file instanceof File)) {
     // Would otherwise throw a bare "Cannot read properties of undefined
     // (reading 'name')" below — happens if a source's `file`/`files`
     // field somehow didn't survive the IndexedDB round trip as a real
     // File (see local-draft.ts) intact.
-    throw new Error(
-      "Le fichier n'a pas survécu au brouillon enregistré dans ce navigateur — ajoute-le à nouveau.",
-    );
+    throw new Error(t.fileNotSurvivedDraft);
   }
 
   if (file.size === 0) {
@@ -38,9 +42,7 @@ export async function uploadSourceFile(file: File): Promise<string> {
     // defense, checked before spending a network round trip on a file
     // that Storage would refuse anyway with a much less legible "No
     // content provided").
-    throw new Error(
-      `« ${file.name} » est vide (0 octet) — il n'a pas survécu au stockage local de ce navigateur. Retire-le et rajoute-le.`,
-    );
+    throw new Error(t.fileEmptyAfterStorage(file.name));
   }
 
   const supabase = createClient();
@@ -49,12 +51,10 @@ export async function uploadSourceFile(file: File): Promise<string> {
     error: userError,
   } = await supabase.auth.getUser();
   if (userError) {
-    throw new Error(`Session introuvable pour envoyer « ${file.name} » : ${userError.message}`);
+    throw new Error(t.sessionNotFound(file.name, userError.message));
   }
   if (!user) {
-    throw new Error(
-      `Pas encore connecté — impossible d'envoyer « ${file.name} ». Réessaie dans un instant ou reconnecte-toi.`,
-    );
+    throw new Error(t.notSignedInYet(file.name));
   }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -65,7 +65,7 @@ export async function uploadSourceFile(file: File): Promise<string> {
     upsert: false,
   });
   if (error) {
-    throw new Error(`Envoi de « ${file.name} » refusé par le stockage : ${error.message}`);
+    throw new Error(t.uploadRejectedByStorage(file.name, error.message));
   }
 
   return path;

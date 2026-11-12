@@ -5,6 +5,7 @@ import { computePreviewCutoff, isARetenirVisible } from "@/lib/subscription/prev
 import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
 import { RichText } from "@/components/fiches/rich-text";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /** Matches .notebook-paper-light's fixed cream background (see
  * fiche-viewer.tsx for the same constant) — this card uses a plain
@@ -50,6 +51,7 @@ export function ProposalPreview({
   onUnlock?: () => void;
   unlocking?: boolean;
 }) {
+  const { t } = useLocale();
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
 
@@ -94,7 +96,7 @@ export function ProposalPreview({
   const aRetenirVisible = isARetenirVisible(cutoff);
   const aRetenirBox = (
     <div className="rounded-lg border border-dashed border-accent/60 bg-accent/10 p-3">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">À retenir</p>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">{t.fiches.aRetenir}</p>
       <ul className="flex flex-col gap-1">
         {contenu.aRetenir.map((point, i) => (
           <li key={i}>
@@ -128,12 +130,10 @@ export function ProposalPreview({
               background: `linear-gradient(to bottom, ${CARD_BG}f5 0%, ${CARD_BG}f5 55%, transparent 100%)`,
             }}
           >
-            <p className="font-medium">
-              Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
-            </p>
+            <p className="font-medium">{t.fiches.previewLimited(Math.round(FREE_PREVIEW_FRACTION * 100))}</p>
             {onUnlock && (
               <Button onClick={onUnlock} disabled={unlocking}>
-                {unlocking ? "Préparation…" : "Débloquer la fiche complète"}
+                {unlocking ? t.fiches.preparing : t.fiches.unlockFull}
               </Button>
             )}
           </div>

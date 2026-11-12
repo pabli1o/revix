@@ -56,10 +56,12 @@ export const fiches = {
   keep: "garder",
   oneInstant: "Un instant…",
   saveFiches: "Enregistrer les fiches",
-  droppedSourceOne: (nom: string) =>
-    `« ${nom} » n'a pas pu être conservé (vide ou illisible dans ce navigateur) — retire-le et rajoute-le.`,
-  droppedSourceMany: (list: string) =>
-    `${list} n'ont pas pu être conservés (vides ou illisibles dans ce navigateur) — retire-les et rajoute-les.`,
+  droppedSources: (names: string[]) => {
+    const list = names.map((n) => `« ${n} »`).join(", ");
+    return names.length > 1
+      ? `${list} n'ont pas pu être conservés (vides ou illisibles dans ce navigateur) — retire-les et rajoute-les.`
+      : `${list} n'a pas pu être conservé (vide ou illisible dans ce navigateur) — retire-le et rajoute-le.`;
+  },
   draftNotFoundOnDevice: "Ton brouillon n'a pas été retrouvé sur cet appareil — ajoute à nouveau ton cours.",
   draftSaveFailedBeforeSignup:
     "Impossible d'enregistrer ton brouillon dans ce navigateur (stockage plein ou bloqué). Réessaie avec moins de fichiers, ou connecte-toi d'abord.",
@@ -114,6 +116,16 @@ export const fiches = {
   uploadFailed: (nom: string) => `${nom} (échec de l'envoi)`,
   removeAction: "Retirer",
   megabyteUnit: "Mo",
+
+  // components/fiches/new/upload-source.ts (thrown errors that reach the
+  // UI via creation-flow.tsx's resolvePendingUploads / source-picker.tsx)
+  fileNotSurvivedDraft: "Le fichier n'a pas survécu au brouillon enregistré dans ce navigateur — ajoute-le à nouveau.",
+  fileEmptyAfterStorage: (nom: string) =>
+    `« ${nom} » est vide (0 octet) — il n'a pas survécu au stockage local de ce navigateur. Retire-le et rajoute-le.`,
+  sessionNotFound: (nom: string, message: string) => `Session introuvable pour envoyer « ${nom} » : ${message}`,
+  notSignedInYet: (nom: string) =>
+    `Pas encore connecté — impossible d'envoyer « ${nom} ». Réessaie dans un instant ou reconnecte-toi.`,
+  uploadRejectedByStorage: (nom: string, message: string) => `Envoi de « ${nom} » refusé par le stockage : ${message}`,
 
   // components/fiches/planning-task-timer-bar.tsx
   pauseTimer: "Mettre en pause",

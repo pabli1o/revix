@@ -51,10 +51,12 @@ export const fiches: FichesDict = {
   keep: "keep",
   oneInstant: "One moment…",
   saveFiches: "Save the notes",
-  droppedSourceOne: (nom: string) =>
-    `“${nom}” couldn't be kept (empty or unreadable in this browser) — remove it and add it again.`,
-  droppedSourceMany: (list: string) =>
-    `${list} couldn't be kept (empty or unreadable in this browser) — remove them and add them again.`,
+  droppedSources: (names: string[]) => {
+    const list = names.map((n) => `"${n}"`).join(", ");
+    return names.length > 1
+      ? `${list} couldn't be kept (empty or unreadable in this browser) — remove them and add them again.`
+      : `${list} couldn't be kept (empty or unreadable in this browser) — remove it and add it again.`;
+  },
   draftNotFoundOnDevice: "Your draft couldn't be found on this device — add your course again.",
   draftSaveFailedBeforeSignup:
     "Your draft couldn't be saved in this browser (storage full or blocked). Try again with fewer files, or log in first.",
@@ -107,6 +109,13 @@ export const fiches: FichesDict = {
   uploadFailed: (nom: string) => `${nom} (upload failed)`,
   removeAction: "Remove",
   megabyteUnit: "MB",
+
+  fileNotSurvivedDraft: "This file didn't survive the draft saved in this browser — add it again.",
+  fileEmptyAfterStorage: (nom: string) =>
+    `"${nom}" is empty (0 bytes) — it didn't survive this browser's local storage. Remove it and add it again.`,
+  sessionNotFound: (nom: string, message: string) => `No session found to send "${nom}": ${message}`,
+  notSignedInYet: (nom: string) => `Not signed in yet — can't send "${nom}". Try again in a moment or log back in.`,
+  uploadRejectedByStorage: (nom: string, message: string) => `Sending "${nom}" was rejected by storage: ${message}`,
 
   pauseTimer: "Pause",
   startTimer: "Start the timer",

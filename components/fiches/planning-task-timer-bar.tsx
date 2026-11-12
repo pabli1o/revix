@@ -85,7 +85,7 @@ export function PlanningTaskTimerBar() {
             isOvertime ? "text-danger" : "text-text-muted",
           )}
         >
-          {plannedSeconds === null ? "Écoulé" : isOvertime ? "Dépassé" : "Restant"}
+          {plannedSeconds === null ? t.fiches.timerElapsed : isOvertime ? t.fiches.timerOvertime : t.fiches.timerRemaining}
         </span>
       </div>
     </div>

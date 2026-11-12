@@ -51,10 +51,12 @@ export const fiches: FichesDict = {
   keep: "conservar",
   oneInstant: "Un momento…",
   saveFiches: "Guardar las fichas",
-  droppedSourceOne: (nom: string) =>
-    `«${nom}» no se ha podido conservar (vacío o ilegible en este navegador) — quítalo y vuelve a añadirlo.`,
-  droppedSourceMany: (list: string) =>
-    `${list} no se han podido conservar (vacíos o ilegibles en este navegador) — quítalos y vuelve a añadirlos.`,
+  droppedSources: (names: string[]) => {
+    const list = names.map((n) => `«${n}»`).join(", ");
+    return names.length > 1
+      ? `${list} no se han podido conservar (vacíos o ilegibles en este navegador) — quítalos y vuelve a añadirlos.`
+      : `${list} no se ha podido conservar (vacío o ilegible en este navegador) — quítalo y vuelve a añadirlo.`;
+  },
   draftNotFoundOnDevice: "No se ha encontrado tu borrador en este dispositivo — añade tu curso de nuevo.",
   draftSaveFailedBeforeSignup:
     "No se ha podido guardar tu borrador en este navegador (almacenamiento lleno o bloqueado). Inténtalo con menos archivos, o inicia sesión primero.",
@@ -107,6 +109,15 @@ export const fiches: FichesDict = {
   uploadFailed: (nom: string) => `${nom} (error al subir)`,
   removeAction: "Quitar",
   megabyteUnit: "MB",
+
+  fileNotSurvivedDraft: "El archivo no ha sobrevivido al borrador guardado en este navegador — añádelo de nuevo.",
+  fileEmptyAfterStorage: (nom: string) =>
+    `«${nom}» está vacío (0 bytes) — no ha sobrevivido al almacenamiento local de este navegador. Quítalo y vuelve a añadirlo.`,
+  sessionNotFound: (nom: string, message: string) => `No se ha encontrado sesión para enviar «${nom}»: ${message}`,
+  notSignedInYet: (nom: string) =>
+    `Todavía no has iniciado sesión — no se puede enviar «${nom}». Inténtalo de nuevo en un momento o vuelve a iniciar sesión.`,
+  uploadRejectedByStorage: (nom: string, message: string) =>
+    `El envío de «${nom}» ha sido rechazado por el almacenamiento: ${message}`,
 
   pauseTimer: "Pausar",
   startTimer: "Iniciar el cronómetro",
