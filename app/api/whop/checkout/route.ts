@@ -3,6 +3,7 @@ import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { isSubscriptionTier, TIER_ORDER } from "@/lib/subscription/constants";
 import { logStep } from "@/lib/observability/timing";
+import { getDictionary } from "@/lib/i18n/server";
 
 // tier3 is deliberately left in this map (rather than deleted) even though
 // it's unreachable below — it documents that the retired 39,99 € plan used
@@ -16,10 +17,11 @@ const PLAN_ENV_BY_TIER = {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as { tier?: string; draftId?: string } | null;
   const tier = body?.tier;
@@ -32,12 +34,12 @@ export async function POST(request: Request) {
   // TIERS` structurally closes this off at the code level, regardless of
   // whether WHOP_PLAN_ID_TIER3 is still set in the environment.
   if (!isSubscriptionTier(tier) || !TIER_ORDER.includes(tier)) {
-    return NextResponse.json({ error: "Offre invalide" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.whop.invalidOffer }, { status: 400 });
   }
   const draftId = body?.draftId;
 
   const planId = whopEnv(PLAN_ENV_BY_TIER[tier]);
-  if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
+  if (!planId) return NextResponse.json({ error: t.errors.whop.missingConfig }, { status: 500 });
 
   const whop = getWhop();
   const siteUrl = getSiteUrl(request);
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
   });
 
   if (!config.purchase_url) {
-    return NextResponse.json({ error: "Impossible de créer la session de paiement" }, { status: 500 });
+    return NextResponse.json({ error: t.errors.whop.checkoutCreationFailed }, { status: 500 });
   }
 
   return NextResponse.json({ url: config.purchase_url });

@@ -107,4 +107,10 @@ export const fiches: FichesDict = {
   uploadFailed: (nom: string) => `${nom} (upload failed)`,
   removeAction: "Remove",
   megabyteUnit: "MB",
+
+  pauseTimer: "Pause",
+  startTimer: "Start the timer",
+  timerElapsed: "Elapsed",
+  timerOvertime: "Over",
+  timerRemaining: "Remaining",
 };

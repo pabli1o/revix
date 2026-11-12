@@ -3,6 +3,7 @@ import { getSiteUrl, getWhop, whopEnv } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { logStep } from "@/lib/observability/timing";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * One-time (not recurring) Whop Checkout that adds a fixed credit top-up to
@@ -18,21 +19,22 @@ import { logStep } from "@/lib/observability/timing";
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscription.isActive) {
     return NextResponse.json(
-      { error: "Un abonnement actif est nécessaire pour acheter un supplément de crédit." },
+      { error: t.errors.subscription.activeRequiredForCreditTopup },
       { status: 402 },
     );
   }
 
   const planId = whopEnv("WHOP_CREDIT_PLAN_ID");
-  if (!planId) return NextResponse.json({ error: "Configuration Whop manquante" }, { status: 500 });
+  if (!planId) return NextResponse.json({ error: t.errors.whop.missingConfig }, { status: 500 });
 
   const whop = getWhop();
   const siteUrl = getSiteUrl(request);
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
   );
 
   if (!config.purchase_url) {
-    return NextResponse.json({ error: "Impossible de créer la session de paiement" }, { status: 500 });
+    return NextResponse.json({ error: t.errors.whop.checkoutCreationFailed }, { status: 500 });
   }
 
   return NextResponse.json({ url: config.purchase_url });

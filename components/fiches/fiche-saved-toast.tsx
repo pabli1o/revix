@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SuccessToast } from "@/components/ui/success-toast";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * Shows the "fiches enregistrées" toast on /fiches right after a save
@@ -17,6 +18,7 @@ export function FicheSavedToast() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useLocale();
   // Lazy initializer: reads the param once, at the component's first
   // render, rather than via a setState call inside an effect body.
   const [visible, setVisible] = useState(() => searchParams.get("saved") === "1");
@@ -33,7 +35,5 @@ export function FicheSavedToast() {
   }, []);
 
   if (!visible) return null;
-  return (
-    <SuccessToast message="Tes fiches ont bien été enregistrées" onDismiss={() => setVisible(false)} />
-  );
+  return <SuccessToast message={t.fiches.savedToast} onDismiss={() => setVisible(false)} />;
 }

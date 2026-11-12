@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { useSessionTimer, formatDuration } from "@/components/timer/session-timer-context";
 import { IconPause, IconPlay } from "@/components/ui/icons";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * Shown only when arriving from the planning flow (?planningTask=<id> in
@@ -20,6 +21,7 @@ import { IconPause, IconPlay } from "@/components/ui/icons";
  */
 export function PlanningTaskTimerBar() {
   const searchParams = useSearchParams();
+  const { t } = useLocale();
   const taskId = searchParams.get("planningTask");
   const plannedMinutes = Number(searchParams.get("duree"));
   const plannedSeconds = Number.isFinite(plannedMinutes) && plannedMinutes > 0 ? plannedMinutes * 60 : null;
@@ -57,7 +59,7 @@ export function PlanningTaskTimerBar() {
       <button
         type="button"
         onClick={() => (running ? pauseActive() : startTask(taskId))}
-        aria-label={running ? "Mettre en pause" : "Démarrer le chrono"}
+        aria-label={running ? t.fiches.pauseTimer : t.fiches.startTimer}
         className={clsx(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base transition-transform active:scale-90",
           running

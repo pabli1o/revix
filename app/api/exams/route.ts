@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     !body.importance ||
     !VALID_IMPORTANCE.includes(body.importance)
   ) {
-    return NextResponse.json({ error: "Champs manquants ou invalides" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
   }
 
   const { data: exam, error } = await supabase

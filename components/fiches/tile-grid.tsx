@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IntentLink } from "@/components/ui/intent-link";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface TileItem {
   id: string;
@@ -72,6 +73,7 @@ function Tile({
   deleteWarning?: string;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(item.nom);
   const [saving, setSaving] = useState(false);
@@ -97,7 +99,7 @@ function Tile({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setActionError(data?.error ?? "Le renommage a échoué.");
+        setActionError(data?.error ?? t.fiches.renameFailed);
         setSaving(false);
         return;
       }
@@ -105,7 +107,7 @@ function Tile({
       setEditing(false);
       router.refresh();
     } catch {
-      setActionError("Erreur réseau — le renommage a échoué.");
+      setActionError(t.fiches.renameNetworkError);
       setSaving(false);
     }
   }
@@ -113,7 +115,7 @@ function Tile({
   async function handleDelete() {
     const message = deleteWarning
       ? deleteWarning.replace("{nom}", item.nom)
-      : `Supprimer « ${item.nom} » ? Cette action est définitive.`;
+      : t.fiches.confirmDeleteGeneric(item.nom);
     if (!window.confirm(message)) return;
     setDeleting(true);
     setActionError(null);
@@ -121,13 +123,13 @@ function Tile({
       const res = await fetch(renameUrl, { method: "DELETE" });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setActionError(data?.error ?? "La suppression a échoué.");
+        setActionError(data?.error ?? t.fiches.deleteFailed);
         setDeleting(false);
         return;
       }
       router.refresh();
     } catch {
-      setActionError("Erreur réseau — la suppression a échoué.");
+      setActionError(t.fiches.deleteNetworkError);
       setDeleting(false);
     }
   }
@@ -154,7 +156,7 @@ function Tile({
                 }}
                 className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
               >
-                Renommer
+                {t.fiches.rename}
               </button>
               {allowDelete && (
                 <button
@@ -166,7 +168,7 @@ function Tile({
                   }}
                   className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
                 >
-                  {deleting ? "…" : "Supprimer"}
+                  {deleting ? "…" : t.fiches.deleteAction}
                 </button>
               )}
             </div>
@@ -199,7 +201,7 @@ function Tile({
                 "rounded-md bg-black/20 px-2 py-1 text-xs font-medium hover:bg-black/30",
               )}
             >
-              OK
+              {t.fiches.ok}
             </button>
             <button
               type="button"
@@ -209,7 +211,7 @@ function Tile({
               }}
               className="rounded-md px-2 py-1 text-xs font-medium hover:bg-black/10"
             >
-              Annuler
+              {t.common.cancel}
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { RichText } from "./rich-text";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "./planning-task-timer-bar";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /** The fiche's paper background is a fixed cream (#FFFDF6, see
  * .notebook-paper-light in app/globals.css) rather than a theme token, so
@@ -62,6 +63,7 @@ export function FicheViewer({
   backHref: string;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export function FicheViewer({
       className="mt-10 rounded-xl border-2 border-dashed p-5"
       style={{ borderColor: "#1e3a5f99", backgroundColor: "#1e3a5f1a" }}
     >
-      <h3 className="mb-2 font-heading text-lg font-semibold text-accent">À retenir</h3>
+      <h3 className="mb-2 font-heading text-lg font-semibold text-accent">{t.fiches.aRetenir}</h3>
       <ul className="flex flex-col gap-1.5">
         {contenu.aRetenir.map((point, i) => (
           <li key={i} className="leading-relaxed">
@@ -140,7 +142,7 @@ export function FicheViewer({
       const canvas = await html2canvas(node, { backgroundColor: "#FFFDF6", scale: 2 });
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) {
-        setExportError("Impossible de générer l'image de cette fiche.");
+        setExportError(t.fiches.exportFailed);
         return;
       }
 
@@ -183,9 +185,7 @@ export function FicheViewer({
       // AbortError: the user closed the native share sheet without
       // picking anything — not a real failure, nothing to show.
       if (err instanceof Error && err.name === "AbortError") return;
-      setExportError(
-        "Le téléchargement a échoué. Fais une capture d'écran en attendant, ou réessaie.",
-      );
+      setExportError(t.fiches.downloadFailed);
     } finally {
       setExporting(false);
     }
@@ -213,11 +213,11 @@ export function FicheViewer({
              come out fully legible — a silent way around the paywall. */}
           {!isBlurred && (
             <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? "Préparation…" : "Télécharger en image"}
+              {exporting ? t.fiches.preparing : t.fiches.downloadAsImage}
             </Button>
           )}
           <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-            Corbeille
+            {t.fiches.corbeille}
           </Button>
         </div>
         {exportError && <p className="text-sm text-danger">{exportError}</p>}
@@ -231,7 +231,7 @@ export function FicheViewer({
           className="mb-6 inline-block rounded-lg px-3 py-1 font-mono text-xs uppercase tracking-wide"
           style={{ backgroundColor: color.bg, color: color.text }}
         >
-          Fiche de révision
+          {t.fiches.ficheLabel}
         </div>
         <h1 className="mb-8 font-heading text-3xl font-semibold">{titre}</h1>
 
@@ -260,10 +260,10 @@ export function FicheViewer({
               }}
             >
               <p className="font-heading text-lg font-semibold">
-                Tu n&apos;as accès qu&apos;à {Math.round(FREE_PREVIEW_FRACTION * 100)}% de la fiche.
+                {t.fiches.previewLimited(Math.round(FREE_PREVIEW_FRACTION * 100))}
               </p>
               <Button size="lg" onClick={() => setPricingOpen(true)}>
-                Débloquer la fiche complète
+                {t.fiches.unlockFull}
               </Button>
             </div>
           </div>

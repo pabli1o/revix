@@ -114,6 +114,13 @@ export const fiches = {
   uploadFailed: (nom: string) => `${nom} (échec de l'envoi)`,
   removeAction: "Retirer",
   megabyteUnit: "Mo",
+
+  // components/fiches/planning-task-timer-bar.tsx
+  pauseTimer: "Mettre en pause",
+  startTimer: "Démarrer le chrono",
+  timerElapsed: "Écoulé",
+  timerOvertime: "Dépassé",
+  timerRemaining: "Restant",
 };
 
 export type FichesDict = typeof fiches;
