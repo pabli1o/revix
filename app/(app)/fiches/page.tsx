@@ -58,7 +58,7 @@ export default async function FichesPage() {
         deleteWarning="Supprimer la matière « {nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille)."
       />
       {isEmpty && profile?.prenom && (
-        <p className="mt-6 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-center text-sm text-success">
+        <p className="mt-6 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-center text-sm text-success">
           Bienvenue, {profile.prenom} ! Crée ta première fiche pour commencer.
         </p>
       )}

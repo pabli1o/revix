@@ -1,25 +1,17 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import { SessionTimerProvider } from "@/components/timer/session-timer-context";
 import { NavigationHistoryProvider } from "@/components/navigation/navigation-history-provider";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-heading",
+// Single font for the whole site (headings, body, buttons, tabs, labels,
+// fiche content) — app/globals.css aliases --font-heading/--font-body/
+// --font-mono all to this same instance, so weight/size are the only
+// levers, never a different family.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${fraunces.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
+    <html lang="fr" className={inter.variable}>
       <body className="min-h-screen bg-bg text-text antialiased">
         <NavigationHistoryProvider>
           <SessionTimerProvider>{children}</SessionTimerProvider>

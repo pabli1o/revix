@@ -142,7 +142,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
             <button
               type="button"
               onClick={() => setStep("classe")}
-              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← Retour
             </button>
@@ -179,7 +179,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
             <button
               type="button"
               onClick={() => setStep("niveau")}
-              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← Retour
             </button>
@@ -205,7 +205,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
             <button
               type="button"
               onClick={() => setStep("prenom")}
-              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← Retour
             </button>
@@ -236,7 +236,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
             <button
               type="button"
               onClick={() => setStep("jours")}
-              className="mb-4 rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← Retour
             </button>

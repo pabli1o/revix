@@ -66,12 +66,12 @@ export function PricingCards({
             className={clsx(
               "relative flex flex-col gap-4 rounded-2xl border p-5 pt-6",
               highlighted
-                ? "border-accent bg-accent/5 shadow-[0_4px_24px_-8px_rgba(232,163,61,0.5)]"
+                ? "border-accent bg-accent/5 shadow-[0_4px_24px_-8px_rgba(30,58,95,0.4)]"
                 : "border-border bg-bg-card",
             )}
           >
             {badge && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-bold whitespace-nowrap uppercase tracking-wide text-[#1A1A1A]">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-bold whitespace-nowrap uppercase tracking-wide text-white">
                 {badge}
               </span>
             )}

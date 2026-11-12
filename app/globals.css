@@ -1,20 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #1a1a1a;
-  --color-bg-elevated: #242424;
-  --color-bg-card: #2c2c2c;
-  --color-border: #414141;
-  --color-text: #f2f1ea;
-  --color-text-muted: #b3b3c9;
-  --color-accent: #e8a33d;
-  --color-accent-strong: #c7842a;
-  --color-danger: #e8664d;
-  --color-success: #6fa88b;
+  /* Light theme — white with a fine graph-paper grid (see body/.notebook-paper
+     below). Was a dark anthracite theme; every token below is the single
+     place to retune a color, the font, or the grid — nothing else in the
+     codebase hardcodes these values (a handful of spots that used to bypass
+     the token system with copies of the old hex values were fixed to
+     reference these instead). */
+  --color-bg: #ffffff;
+  --color-bg-elevated: #f6f6f4;
+  --color-bg-card: #ffffff;
+  --color-border: #e2e0da;
+  --color-text: #17181b;
+  --color-text-muted: #595f66;
+  /* Bleu marine — remplace l'ambre pour tous les boutons et éléments actifs
+     (onglets, barres de progression, badges, cartes sélectionnées). */
+  --color-accent: #1e3a5f;
+  --color-accent-strong: #142a47;
+  /* Deepened from the original coral/sage so plain text in this color (error/
+     success messages) keeps AA contrast on white — same hue family, just darker. */
+  --color-danger: #a8402a;
+  --color-success: #2f7a52;
+  /* The fiche "highlighter" mark (see components/fiches/rich-text.tsx) —
+     deliberately kept yellow, like a real notebook, independent of --color-accent. */
+  --color-highlight: rgba(253, 224, 71, 0.5);
 
-  --font-heading: "Fraunces", ui-serif, Georgia, serif;
-  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  /* Single font everywhere — see app/layout.tsx for the next/font load.
+     Three variable names are kept (rather than collapsing every font-heading/
+     font-body/font-mono class site across the app) so no other file needs to
+     change: all three now simply resolve to the same Inter instance. */
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Quadrillage — fine grid lines over the white background, on every page. */
+  --grid-color: rgba(0, 0, 0, 0.1);
+  --grid-size: 20px;
 }
 
 @theme inline {
@@ -28,22 +49,22 @@
   --color-accent-strong: var(--color-accent-strong);
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
+  --color-highlight: var(--color-highlight);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  /* Subtle depth instead of a flat fill — a soft glow near the top fading
-     into a touch darker at the bottom, staying in the same anthracite/gray
-     family as --color-bg so the site's identity doesn't shift. */
-  background:
-    radial-gradient(ellipse 1200px 640px at 50% -12%, #323232 0%, transparent 60%),
-    linear-gradient(180deg, #202020 0%, var(--color-bg) 45%, #111111 100%);
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
   background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-body);
@@ -51,20 +72,24 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 ::selection {
   background: var(--color-accent);
-  color: #1a1a1a;
+  color: #ffffff;
 }
 
-/* Grid-paper "cahier" texture used behind fiche content */
+/* Grid-paper "cahier" texture — same recipe as body's background, used as a
+   full-bleed wrapper on a few screens (auth, onboarding) that render before
+   the main app chrome. */
 .notebook-paper {
-  background-color: #242424;
+  background-color: var(--color-bg);
   background-image:
-    linear-gradient(rgba(232, 163, 61, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232, 163, 61, 0.09) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
 }
 
 /* Same grid-paper texture, but as an actual light sheet of paper — used for

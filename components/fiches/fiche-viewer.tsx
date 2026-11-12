@@ -117,7 +117,7 @@ export function FicheViewer({
   const aRetenirBox = (
     <div
       className="mt-10 rounded-xl border-2 border-dashed p-5"
-      style={{ borderColor: "#e8a33d99", backgroundColor: "#e8a33d1a" }}
+      style={{ borderColor: "#1e3a5f99", backgroundColor: "#1e3a5f1a" }}
     >
       <h3 className="mb-2 font-heading text-lg font-semibold text-accent">📌 À retenir</h3>
       <ul className="flex flex-col gap-1.5">

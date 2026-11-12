@@ -19,7 +19,7 @@ export function SettingsLink() {
       className={clsx(
         "flex size-9 shrink-0 items-center justify-center rounded-lg text-lg transition-colors",
         active
-          ? "bg-accent text-[#1A1A1A]"
+          ? "bg-accent text-white"
           : "text-text-muted hover:bg-bg-card hover:text-text",
       )}
     >

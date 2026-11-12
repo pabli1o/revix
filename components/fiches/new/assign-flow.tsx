@@ -343,7 +343,7 @@ export function AssignFlow({
         </div>
         <FloatingBottomBar>
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 rounded-2xl border border-success bg-[#123424] px-4 py-3 text-sm text-success">
+            <div className="flex items-center gap-2 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
               <span aria-hidden>✓</span>
               <span>Abonnement activé — tu as maintenant accès à tes fiches.</span>
             </div>
@@ -368,7 +368,7 @@ export function AssignFlow({
       <button
         type="button"
         onClick={() => setPhase("reviewing")}
-        className="self-start rounded-full border border-border bg-white/5 px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10"
+        className="self-start rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:border-accent hover:bg-accent/10"
       >
         ← Modifier les fiches
       </button>

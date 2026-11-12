@@ -58,7 +58,7 @@ export function NavLinks({
             className={clsx(
               "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
               active
-                ? "bg-accent font-bold text-[#1A1A1A] shadow-[0_2px_12px_-2px_rgba(232,163,61,0.6)]"
+                ? "bg-accent font-bold text-white shadow-[0_2px_12px_-2px_rgba(30,58,95,0.35)]"
                 : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >

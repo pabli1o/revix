@@ -152,7 +152,7 @@ function Tile({
                   e.preventDefault();
                   setEditing(true);
                 }}
-                className="rounded-full bg-white/10 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-white/20 active:scale-90"
+                className="rounded-full bg-black/5 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
                 aria-label="Renommer"
                 title="Renommer"
               >
@@ -166,7 +166,7 @@ function Tile({
                     e.preventDefault();
                     handleDelete();
                   }}
-                  className="rounded-full bg-white/10 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-white/20 active:scale-90"
+                  className="rounded-full bg-black/5 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
                   aria-label="Supprimer"
                   title="Supprimer"
                 >

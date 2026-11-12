@@ -32,7 +32,7 @@ export function SuccessToast({ message, onDismiss }: { message: string; onDismis
         leaving ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >
-      <div className="flex items-center gap-2 rounded-full border border-success bg-[#123424] px-5 py-3 text-sm font-medium text-success shadow-lg">
+      <div className="flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-5 py-3 text-sm font-medium text-success shadow-lg">
         <span aria-hidden>✓</span>
         <span>{message}</span>
       </div>
