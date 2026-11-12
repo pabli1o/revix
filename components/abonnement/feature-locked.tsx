@@ -6,14 +6,9 @@ import { Button } from "@/components/ui/button";
 import { IconLock } from "@/components/ui/icons";
 import type { SubscriptionTier } from "@/lib/subscription/constants";
 import { PricingModal } from "./pricing-modal";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 type LockableFeature = "examen" | "quiz" | "planning";
-
-const COPY: Record<LockableFeature, string> = {
-  examen: "Un abonnement actif est nécessaire pour créer et consulter des examens.",
-  quiz: "Un abonnement actif est nécessaire pour accéder aux quiz.",
-  planning: "Un abonnement actif est nécessaire pour accéder au planning.",
-};
 
 /**
  * Shown instead of the real examen/quiz/planning content for anyone
@@ -35,25 +30,26 @@ export function FeatureLocked({
   currentTier: SubscriptionTier | null;
   isAuthenticated?: boolean;
 }) {
+  const { t } = useLocale();
   const [pricingOpen, setPricingOpen] = useState(false);
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-6 pt-10 text-center">
       <IconLock className="size-12 text-accent" />
       <div>
-        <h1 className="mb-2 font-heading text-2xl font-semibold">Fonctionnalité verrouillée</h1>
-        <p className="text-text-muted">{COPY[feature]}</p>
+        <h1 className="mb-2 font-heading text-2xl font-semibold">{t.abonnement.lockedTitle}</h1>
+        <p className="text-text-muted">{t.abonnement.lockedCopy[feature]}</p>
       </div>
       {isAuthenticated ? (
         <>
           <Button size="lg" onClick={() => setPricingOpen(true)}>
-            Voir les abonnements
+            {t.abonnement.viewPlans}
           </Button>
           <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} currentTier={currentTier} />
         </>
       ) : (
         <Link href="/signup" prefetch={true}>
-          <Button size="lg">Créer un compte</Button>
+          <Button size="lg">{t.abonnement.createAccount}</Button>
         </Link>
       )}
     </div>

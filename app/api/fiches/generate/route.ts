@@ -16,6 +16,8 @@ import {
   type SubscriptionInfo,
 } from "@/lib/subscription/gate";
 import { elapsedMs, logStep, startTimer } from "@/lib/observability/timing";
+import { getDictionary } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 const MAX_SOURCES = 12;
 const SOURCE_UPLOADS_BUCKET = "source-uploads";
@@ -24,15 +26,15 @@ const SOURCE_UPLOADS_BUCKET = "source-uploads";
  * components/fiches/new/upload-source.ts) and returns its base64 bytes.
  * Scoped to the requesting user's own folder — storagePath is client-
  * supplied, so this refuses to read outside "<userId>/...". */
-async function downloadSourceFile(storagePath: string, userId: string, tag: string): Promise<string> {
+async function downloadSourceFile(storagePath: string, userId: string, tag: string, t: Dictionary): Promise<string> {
   if (!storagePath.startsWith(`${userId}/`)) {
-    throw new Error("Fichier introuvable");
+    throw new Error(t.errors.fiches.fileNotFound);
   }
   const started = startTimer();
   const admin = createAdminClient();
   const { data, error } = await admin.storage.from(SOURCE_UPLOADS_BUCKET).download(storagePath);
   if (error || !data) {
-    throw new Error("Impossible de récupérer le fichier envoyé");
+    throw new Error(t.errors.fiches.fileDownloadFailed);
   }
   const buffer = Buffer.from(await data.arrayBuffer());
   logStep(tag, `storage download (${storagePath}) — ${elapsedMs(started)}ms, ${buffer.length} bytes`);
@@ -50,6 +52,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const requestTag = `fiches-route:${randomUUID().slice(0, 8)}`;
   const requestStarted = startTimer();
+  const t = await getDictionary();
 
   const supabase = await createClient();
   const {
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   }
   if (!user) {
     logStep(requestTag, "request REJECTED — no authenticated user (session not recognized)");
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
   }
   logStep(requestTag, `authenticated as user ${user.id}`);
 
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
     }
     const message = err instanceof Error ? err.message : String(err);
     logStep(requestTag, `request FAILED (subscription/free-trial check) — ${message}`);
-    return NextResponse.json({ error: `Vérification de l'abonnement impossible : ${message}` }, { status: 500 });
+    return NextResponse.json({ error: t.errors.subscription.checkFailed(message) }, { status: 500 });
   }
 
   const body = (await request.json().catch(() => null)) as GenerateFichesRequest | null;
@@ -107,10 +110,10 @@ export async function POST(request: Request) {
   );
 
   if (sources.length === 0) {
-    return NextResponse.json({ error: "Aucune source fournie" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.fiches.noSourceProvided }, { status: 400 });
   }
   if (sources.length > MAX_SOURCES) {
-    return NextResponse.json({ error: `Trop de sources (max ${MAX_SOURCES})` }, { status: 400 });
+    return NextResponse.json({ error: t.errors.fiches.tooManySources(MAX_SOURCES) }, { status: 400 });
   }
 
   // Cleaned up in `finally` below regardless of outcome — a storage upload
@@ -135,13 +138,13 @@ export async function POST(request: Request) {
           content.push({ type: "image", media_type: mediaType, data: source.data });
         } else if (source.type === "pdf") {
           const data = source.storagePath
-            ? await downloadSourceFile(source.storagePath, user.id, requestTag)
+            ? await downloadSourceFile(source.storagePath, user.id, requestTag, t)
             : source.data;
           if (!data) continue;
           content.push({ type: "document", media_type: "application/pdf", data });
         } else if (source.type === "word") {
           const data = source.storagePath
-            ? await downloadSourceFile(source.storagePath, user.id, requestTag)
+            ? await downloadSourceFile(source.storagePath, user.id, requestTag, t)
             : source.data;
           if (!data) continue;
           const docxStarted = startTimer();
@@ -151,13 +154,13 @@ export async function POST(request: Request) {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erreur de lecture d'une source";
+      const message = err instanceof Error ? err.message : t.errors.fiches.sourceReadError;
       logStep(requestTag, `request FAILED (source read) after ${elapsedMs(requestStarted)}ms — ${message}`);
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
     if (content.length === 0) {
-      return NextResponse.json({ error: "Sources vides ou illisibles" }, { status: 400 });
+      return NextResponse.json({ error: t.errors.fiches.emptyOrUnreadableSources }, { status: 400 });
     }
 
     try {
@@ -181,7 +184,7 @@ export async function POST(request: Request) {
       if (err instanceof AiGenerationError) {
         return NextResponse.json({ error: err.message }, { status: 502 });
       }
-      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      const message = err instanceof Error ? err.message : t.errors.common.unknownError;
       return NextResponse.json({ error: message }, { status: 500 });
     }
   } finally {

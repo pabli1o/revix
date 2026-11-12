@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { SettingsModal } from "@/components/planning/settings-modal";
 import { ExamForm } from "@/components/planning/exam-form";
 import { ExamList, type ExamView } from "@/components/planning/exam-list";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface SubjectOption {
   id: string;
@@ -32,6 +33,7 @@ export function ExamenView({
   revisionMinutesJour: number;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [showExamForm, setShowExamForm] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -53,30 +55,27 @@ export function ExamenView({
         ) : (
           <>
             <Button size="lg" className="w-full" onClick={() => setShowExamForm(true)}>
-              + Ajouter un examen
+              {t.examen.addExam}
             </Button>
-            <p className="text-center text-xs text-text-muted">
-              Chaque examen est réparti dans le temps qui lui reste, en priorisant les fiches les
-              plus urgentes et les chapitres pas encore révisés.
-            </p>
+            <p className="text-center text-xs text-text-muted">{t.examen.distributionNote}</p>
           </>
         )}
 
         <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
-          Modifier mon temps de révision
+          {t.examen.editRhythm}
         </Button>
       </div>
 
       <div>
         <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
-          Tes examens
+          {t.examen.yourExams}
         </p>
         <ExamList exams={exams} />
       </div>
 
       <div className="sticky bottom-4 mt-2">
         <Button className="w-full" onClick={generatePlanning} disabled={generating}>
-          {generating ? "Génération…" : "Générer le planning"}
+          {generating ? t.examen.generatingPlanning : t.examen.generatePlanning}
         </Button>
       </div>
 

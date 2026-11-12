@@ -4,11 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId]">) {
   const { subjectId } = await props.params;
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   const [{ data: subject }, { data: allSubjects }, { data: chapters }, { data: fiches }, { data: attempts }] =
     await Promise.all([
@@ -48,7 +50,7 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
         id: c.id,
         nom: c.nom,
         count: 0,
-        countLabel: last ? `Dernier score : ${last.score}/${last.total}` : "Pas encore tenté",
+        countLabel: last ? t.quiz.lastScore(last.score, last.total) : t.quiz.notAttempted,
         color,
         href: `/quiz/chapitre/${c.id}`,
         renameUrl: `/api/chapters/${c.id}`,
@@ -59,7 +61,7 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
     <div>
       <p className="mb-6 text-sm text-text-muted">
         <Link href="/quiz" prefetch={true} className="hover:text-accent">
-          Se tester
+          {t.quiz.testYourself}
         </Link>
         <span className="mx-1.5">/</span>
         <span className="text-text">{subject.nom}</span>
@@ -75,20 +77,15 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
         </div>
         <div>
           <h1 className="font-heading text-3xl font-semibold">{subject.nom}</h1>
-          <p className="text-sm text-text-muted">
-            {items.length} chapitre{items.length !== 1 ? "s" : ""}
-          </p>
+          <p className="text-sm text-text-muted">{t.quiz.chapterCount(items.length)}</p>
         </div>
       </div>
 
       {items.length > 0 && (
-        <p className="mb-6 text-sm text-text-muted">Clique sur un chapitre pour lancer un quiz.</p>
+        <p className="mb-6 text-sm text-text-muted">{t.quiz.clickChapterToStart}</p>
       )}
 
-      <TileGrid
-        items={items}
-        emptyMessage="Aucun chapitre avec des fiches pour l'instant dans cette matière."
-      />
+      <TileGrid items={items} emptyMessage={t.quiz.noChaptersWithFichesInSubject} />
     </div>
   );
 }

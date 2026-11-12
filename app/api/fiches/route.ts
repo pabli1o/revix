@@ -3,6 +3,7 @@ import { scheduleQuizPreparation } from "@/lib/quiz/schedule";
 import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import type { SaveFichesRequest, SaveFichesResponse } from "@/lib/fiches/types";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/server";
 
 // scheduleQuizPreparation() below runs its 3 background quiz generations via
 // after(), which Vercel bills against this route's duration budget even
@@ -12,15 +13,16 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscription.isActive) {
     return NextResponse.json(
-      { error: "Un abonnement actif est nécessaire pour enregistrer une fiche." },
+      { error: t.errors.subscription.activeRequiredToSaveFiche },
       { status: 402 },
     );
   }
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as SaveFichesRequest | null;
   const items = body?.items ?? [];
   if (items.length === 0) {
-    return NextResponse.json({ error: "Aucune fiche à enregistrer" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.fiches.noFicheToSave }, { status: 400 });
   }
 
   const touchedChapterIds = new Set<string>();
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
 
   for (const [index, item] of items.entries()) {
     if (!item.titre?.trim() || !item.contenu) {
-      stopError = "Fiche invalide (titre ou contenu manquant)";
+      stopError = t.errors.fiches.invalidFiche;
       break;
     }
 
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
         }
       }
       if (!subjectId) {
-        stopError = "Matière manquante pour une fiche";
+        stopError = t.errors.fiches.missingSubject;
         break;
       }
 
@@ -104,7 +106,7 @@ export async function POST(request: Request) {
         }
       }
       if (!chapterId) {
-        stopError = "Chapitre manquant pour une fiche";
+        stopError = t.errors.fiches.missingChapter;
         break;
       }
 
@@ -122,7 +124,7 @@ export async function POST(request: Request) {
       touchedChapterIds.add(chapterId);
       saved++;
     } catch (err) {
-      stopError = err instanceof Error ? err.message : "Erreur lors de l'enregistrement";
+      stopError = err instanceof Error ? err.message : t.errors.fiches.saveFailed;
       break;
     }
   }

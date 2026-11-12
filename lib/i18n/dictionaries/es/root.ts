@@ -6,6 +6,12 @@ export const root: RootDict = {
     "Sube tu curso y recibe una ficha de estudio clara en segundos — planning antes del examen y cuestionarios incluidos.",
   errorBoundary: {
     defaultMessage: "Ha ocurrido un error inesperado.",
-    reference: "Referencia",
+    reference: "Referencia: ",
+  },
+  limite: {
+    title: "Créditos agotados",
+    subtitle: "Has usado todos tus créditos este mes.",
+    description:
+      "Tus créditos se renuevan automáticamente en tu próxima renovación de suscripción. También puedes añadir más o cambiar a un plan con más créditos ahora mismo.",
   },
 };

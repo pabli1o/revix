@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
 import { TrashList, type TrashedFiche } from "@/components/corbeille/trash-list";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function CorbeillePage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   const { data: fiches } = await supabase
     .from("fiches")
@@ -42,7 +44,7 @@ export default async function CorbeillePage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-heading text-3xl font-semibold">Corbeille</h1>
+      <h1 className="mb-6 font-heading text-3xl font-semibold">{t.corbeille.title}</h1>
       <TrashList items={items} />
     </div>
   );

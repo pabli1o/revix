@@ -9,25 +9,19 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { saveLocalOnboarding, loadLocalOnboarding } from "./local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
-const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
-const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
-
-const CYCLE_OPTIONS: { value: ClasseCycle; label: string; description: string }[] = [
-  { value: "college", label: "Collège", description: "De la 6e à la 3e" },
-  { value: "lycee", label: "Lycée", description: "Seconde, Première, Terminale" },
-  { value: "superieur", label: "Supérieur", description: "Licence, BTS, prépa…" },
-];
-
-const COLLEGE_NIVEAUX = ["6e", "5e", "4e", "3e"];
-const LYCEE_NIVEAUX = ["Seconde", "Première", "Terminale"];
+const CYCLE_VALUES: ClasseCycle[] = ["college", "lycee", "superieur"];
 
 type Step = "classe" | "niveau" | "prenom" | "jours" | "minutes";
 const STEP_ORDER: Step[] = ["classe", "niveau", "prenom", "jours", "minutes"];
 
 export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated" }) {
   const router = useRouter();
+  const { t } = useLocale();
+  const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+  const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
   const [step, setStep] = useState<Step>("classe");
 
   const [prenom, setPrenom] = useState("");
@@ -99,7 +93,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
 
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? "Une erreur est survenue.");
+      setError(data?.error ?? t.onboarding.genericError);
       setSubmitting(false);
       return;
     }
@@ -125,16 +119,16 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
 
         {step === "classe" && (
           <div>
-            <h1 className="font-heading text-2xl font-semibold">Tu es en quelle classe ?</h1>
-            <p className="mt-1 text-sm text-text-muted">Pour adapter un peu l&apos;expérience.</p>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.classe.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.onboarding.classe.subtitle}</p>
 
             <div className="mt-6 flex flex-col gap-3">
-              {CYCLE_OPTIONS.map((opt) => (
+              {CYCLE_VALUES.map((value) => (
                 <ChoiceCard
-                  key={opt.value}
-                  title={opt.label}
-                  description={opt.description}
-                  onClick={() => chooseCycle(opt.value)}
+                  key={value}
+                  title={t.onboarding.classe.options[value].label}
+                  description={t.onboarding.classe.options[value].description}
+                  onClick={() => chooseCycle(value)}
                 />
               ))}
             </div>
@@ -148,15 +142,15 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               onClick={() => setStep("classe")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              ← Retour
+              ← {t.common.back}
             </button>
-            <h1 className="font-heading text-2xl font-semibold">Quel niveau ?</h1>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.niveau.title}</h1>
 
             {cycle === "superieur" ? (
               <div className="mt-6">
                 <Input
                   autoFocus
-                  placeholder="Ex : Licence 2 Économie, BTS, prépa…"
+                  placeholder={t.onboarding.niveau.superieurPlaceholder}
                   value={superieurText}
                   onChange={(e) => setSuperieurText(e.target.value)}
                 />
@@ -165,14 +159,16 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
                   disabled={!canGoPrenom}
                   onClick={() => setStep("prenom")}
                 >
-                  Continuer
+                  {t.onboarding.niveau.continuer}
                 </Button>
               </div>
             ) : (
               <div className="mt-6 flex flex-col gap-3">
-                {(cycle === "college" ? COLLEGE_NIVEAUX : LYCEE_NIVEAUX).map((value) => (
-                  <ChoiceCard key={value} title={value} onClick={() => chooseNiveau(value)} />
-                ))}
+                {(cycle === "college" ? t.onboarding.niveau.collegeNiveaux : t.onboarding.niveau.lyceeNiveaux).map(
+                  (value) => (
+                    <ChoiceCard key={value} title={value} onClick={() => chooseNiveau(value)} />
+                  ),
+                )}
               </div>
             )}
           </div>
@@ -185,21 +181,19 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               onClick={() => setStep("niveau")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              ← Retour
+              ← {t.common.back}
             </button>
-            <h1 className="font-heading text-2xl font-semibold">Comment on t&apos;appelle ?</h1>
-            <p className="mt-2 text-sm text-text-muted">
-              Ton prénom ou un pseudo, comme tu préfères.
-            </p>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.prenom.title}</h1>
+            <p className="mt-2 text-sm text-text-muted">{t.onboarding.prenom.subtitle}</p>
             <Input
               autoFocus
               className="mt-6"
-              placeholder="Ex : Léa, ou un pseudo…"
+              placeholder={t.onboarding.prenom.placeholder}
               value={prenom}
               onChange={(e) => setPrenom(e.target.value)}
             />
             <Button className="mt-6 w-full" disabled={!canFinish} onClick={() => setStep("jours")}>
-              Continuer
+              {t.onboarding.prenom.continuer}
             </Button>
           </div>
         )}
@@ -211,19 +205,15 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               onClick={() => setStep("prenom")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              ← Retour
+              ← {t.common.back}
             </button>
-            <h1 className="font-heading text-2xl font-semibold">
-              Combien de jours par semaine peux-tu réviser ?
-            </h1>
-            <p className="mt-2 text-sm text-text-muted">
-              Ça sert à construire ton planning plus tard — modifiable à tout moment.
-            </p>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.jours.title}</h1>
+            <p className="mt-2 text-sm text-text-muted">{t.onboarding.jours.subtitle}</p>
             <div className="mt-6 flex flex-col gap-3">
               {DAYS_OPTIONS.map((d) => (
                 <ChoiceCard
                   key={d}
-                  title={`${d} jour${d > 1 ? "s" : ""} par semaine`}
+                  title={t.onboarding.jours.optionLabel(d)}
                   selected={joursSemaine === d}
                   onClick={() => {
                     setJoursSemaine(d);
@@ -242,17 +232,15 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               onClick={() => setStep("jours")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
-              ← Retour
+              ← {t.common.back}
             </button>
-            <h1 className="font-heading text-2xl font-semibold">
-              Combien de temps par jour de travail ?
-            </h1>
-            <p className="mt-2 text-sm text-text-muted">Modifiable à tout moment dans les réglages.</p>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.minutes.title}</h1>
+            <p className="mt-2 text-sm text-text-muted">{t.onboarding.minutes.subtitle}</p>
             <div className="mt-6 flex flex-col gap-3">
               {MINUTES_OPTIONS.map((m) => (
                 <ChoiceCard
                   key={m}
-                  title={`${m} min par jour`}
+                  title={t.onboarding.minutes.optionLabel(m)}
                   selected={minutesJour === m}
                   onClick={() => setMinutesJour(m)}
                 />
@@ -260,7 +248,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
             <Button className="mt-6 w-full" onClick={handleFinish} disabled={submitting}>
-              {submitting ? "Un instant…" : "Terminer"}
+              {submitting ? t.onboarding.minutes.finishing : t.onboarding.minutes.finish}
             </Button>
           </div>
         )}

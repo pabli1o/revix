@@ -5,11 +5,7 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { IconCheck, IconMinus } from "@/components/ui/icons";
 import { TIERS, TIER_ORDER, type SubscriptionTier } from "@/lib/subscription/constants";
-
-const BADGE_BY_TIER: Partial<Record<SubscriptionTier, string>> = {
-  tier1: "Populaire",
-  tier2: "Meilleure valeur",
-};
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * The 3 subscription offers, shown identically everywhere a user is asked
@@ -32,7 +28,13 @@ export function PricingCards({
   draftId?: string;
   onCheckoutError?: (message: string) => void;
 }) {
+  const { t } = useLocale();
   const [loadingTier, setLoadingTier] = useState<SubscriptionTier | null>(null);
+
+  const badgeByTier: Partial<Record<SubscriptionTier, string>> = {
+    tier1: t.abonnement.badgePopular,
+    tier2: t.abonnement.badgeBestValue,
+  };
 
   async function handleSelect(tier: SubscriptionTier) {
     setLoadingTier(tier);
@@ -46,7 +48,7 @@ export function PricingCards({
       window.location.assign(data.url);
     } else {
       setLoadingTier(null);
-      onCheckoutError?.(data.error ?? "Impossible de démarrer le paiement.");
+      onCheckoutError?.(data.error ?? t.abonnement.checkoutError);
     }
   }
 
@@ -59,7 +61,7 @@ export function PricingCards({
         // option — the visual emphasis on the others is what's supposed to
         // make them read as the better deal.
         const highlighted = tierId !== "tier0";
-        const badge = BADGE_BY_TIER[tierId];
+        const badge = badgeByTier[tierId];
 
         return (
           <div
@@ -78,23 +80,25 @@ export function PricingCards({
             )}
 
             <div>
-              <p className="font-heading text-lg font-semibold">{tier.label}</p>
+              <p className="font-heading text-lg font-semibold">{t.abonnement.tierLabels[tierId] ?? tier.label}</p>
               <p className="mt-1 flex items-baseline gap-1">
                 <span className="font-heading text-3xl font-semibold text-accent">
                   {tier.priceEur.toFixed(2).replace(".", ",")} €
                 </span>
-                <span className="text-sm text-text-muted">/mois</span>
+                <span className="text-sm text-text-muted">{t.abonnement.perMonth}</span>
               </p>
-              <p className="mt-1 font-mono text-sm text-text-muted">{tier.credits} crédits / mois</p>
+              <p className="mt-1 font-mono text-sm text-text-muted">
+                {tier.credits} {t.abonnement.creditsPerMonth}
+              </p>
               <p className="mt-0.5 text-xs text-text-muted">
-                ≈ {tier.estimatedFiches.min}-{tier.estimatedFiches.max} fiches générées*
+                {t.abonnement.estimatedFiches(tier.estimatedFiches.min, tier.estimatedFiches.max)}
               </p>
             </div>
 
             <ul className="flex flex-col gap-1.5 text-sm">
               <li className="flex items-center gap-2">
                 <IconCheck className="size-4 shrink-0 text-accent" />
-                <span>Génération de fiches</span>
+                <span>{t.abonnement.featureFiches}</span>
               </li>
               <li className="flex items-center gap-2">
                 {tier.features.quiz ? (
@@ -102,7 +106,7 @@ export function PricingCards({
                 ) : (
                   <IconMinus className="size-4 shrink-0 text-text-muted" />
                 )}
-                <span>{tier.features.quiz ? "Accès au quiz" : "Pas de quiz"}</span>
+                <span>{tier.features.quiz ? t.abonnement.featureQuizOn : t.abonnement.featureQuizOff}</span>
               </li>
               <li className="flex items-center gap-2">
                 {tier.features.planning ? (
@@ -110,7 +114,7 @@ export function PricingCards({
                 ) : (
                   <IconMinus className="size-4 shrink-0 text-text-muted" />
                 )}
-                <span>{tier.features.planning ? "Accès au planning" : "Pas de planning"}</span>
+                <span>{tier.features.planning ? t.abonnement.featurePlanningOn : t.abonnement.featurePlanningOff}</span>
               </li>
               <li className="flex items-center gap-2">
                 {tier.features.examen ? (
@@ -118,7 +122,7 @@ export function PricingCards({
                 ) : (
                   <IconMinus className="size-4 shrink-0 text-text-muted" />
                 )}
-                <span>{tier.features.examen ? "Accès aux examens" : "Pas d'examens"}</span>
+                <span>{tier.features.examen ? t.abonnement.featureExamenOn : t.abonnement.featureExamenOff}</span>
               </li>
             </ul>
 
@@ -128,16 +132,13 @@ export function PricingCards({
               disabled={isCurrent || loadingTier !== null}
               onClick={() => handleSelect(tierId)}
             >
-              {isCurrent ? "Abonnement actuel" : loadingTier === tierId ? "Redirection…" : "S'abonner"}
+              {isCurrent ? t.abonnement.currentPlanButton : loadingTier === tierId ? t.abonnement.redirecting : t.abonnement.subscribeButton}
             </Button>
           </div>
         );
       })}
 
-      <p className="col-span-full text-xs text-text-muted">
-        * Estimation indicative, pas une garantie : le nombre réel de fiches dépend du type de
-        contenu (photos, PDF courts ou longs) et de l&apos;usage du quiz.
-      </p>
+      <p className="col-span-full text-xs text-text-muted">{t.abonnement.estimateDisclaimer}</p>
     </div>
   );
 }

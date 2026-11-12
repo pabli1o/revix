@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/server";
 
 export async function PATCH(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as {
     revisionJoursSemaine?: number;
@@ -14,7 +16,7 @@ export async function PATCH(request: Request) {
   } | null;
 
   if (!body?.revisionJoursSemaine || !body.revisionMinutesJour) {
-    return NextResponse.json({ error: "Champs manquants" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.common.missingFields }, { status: 400 });
   }
 
   const { error } = await supabase

@@ -9,9 +9,11 @@ import { NavLinks } from "@/components/layout/nav-links";
 import { SettingsMenu } from "@/components/layout/settings-menu";
 import { FloatingBackButton } from "@/components/layout/floating-back-button";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   // Shared with <AppHeader /> via React's cache() — same request, same
   // underlying query fires only once regardless of how many places read it.
@@ -77,7 +79,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {user && (
           <div className="hidden md:mt-auto md:block">
             <p className="mb-2 truncate text-sm text-text-muted">
-              {profile?.prenom ? `Salut ${profile.prenom}` : ""}
+              {profile?.prenom ? t.nav.greeting(profile.prenom) : ""}
             </p>
             <SignOutButton />
           </div>

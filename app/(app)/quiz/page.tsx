@@ -8,10 +8,12 @@ import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function QuizIndexPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   // Previously gated only one level deeper (per-chapter) — elevated here
   // too so the tab itself shows the lock immediately, consistent with
@@ -55,7 +57,7 @@ export default async function QuizIndexPage() {
         id: s.id,
         nom: s.nom,
         count,
-        countLabel: `${count} chapitre${count !== 1 ? "s" : ""}`,
+        countLabel: t.quiz.chapterCount(count),
         color: colors.get(s.nom)!,
         href: `/quiz/${s.id}`,
         renameUrl: `/api/subjects/${s.id}`,
@@ -68,28 +70,18 @@ export default async function QuizIndexPage() {
       {items.length === 0 ? (
         <Card>
           <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
-            Se tester
+            {t.quiz.testYourself}
           </p>
-          <p className="mb-4 text-text-muted">
-            Choisis une matière puis un chapitre : une dizaine de questions sont préparées à partir
-            du contenu exact de tes fiches.
-          </p>
-          <EmptyState className="mb-4">
-            Crée d&apos;abord une fiche pour pouvoir te tester dessus.
-          </EmptyState>
+          <p className="mb-4 text-text-muted">{t.quiz.chooseSubjectThenChapter}</p>
+          <EmptyState className="mb-4">{t.quiz.createFicheFirst}</EmptyState>
           <Button className="w-full" disabled>
-            Générer le quiz
+            {t.quiz.generateQuizButton}
           </Button>
         </Card>
       ) : (
         <>
-          <p className="mb-6 text-sm text-text-muted">
-            Clique sur une matière pour voir ses chapitres.
-          </p>
-          <TileGrid
-            items={items}
-            emptyMessage="Aucune matière avec des fiches pour l'instant."
-          />
+          <p className="mb-6 text-sm text-text-muted">{t.quiz.clickSubjectForChapters}</p>
+          <TileGrid items={items} emptyMessage={t.quiz.noSubjectsWithFiches} />
         </>
       )}
     </div>

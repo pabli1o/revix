@@ -5,6 +5,7 @@ import Link from "next/link";
 import { IconSettings } from "@/components/ui/icons";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { SettingsModal } from "@/components/planning/settings-modal";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * Single entry point for everything that used to be two separate icon
@@ -21,6 +22,7 @@ export function SettingsMenu({
   revisionJoursSemaine: number;
   revisionMinutesJour: number;
 }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [rhythmOpen, setRhythmOpen] = useState(false);
 
@@ -29,8 +31,8 @@ export function SettingsMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Paramètres"
-        title="Paramètres"
+        aria-label={t.nav.settingsMenu.ariaLabel}
+        title={t.nav.settingsMenu.ariaLabel}
         className="flex size-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text"
       >
         <IconSettings className="size-5" />
@@ -54,7 +56,7 @@ export function SettingsMenu({
               onClick={() => setOpen(false)}
               className="block rounded-xl px-4 py-3 text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
             >
-              Paramètres du compte et abonnement
+              {t.nav.settingsMenu.accountAndSubscription}
             </Link>
             <button
               type="button"
@@ -64,7 +66,7 @@ export function SettingsMenu({
               }}
               className="block w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
             >
-              Rythme de révision
+              {t.nav.settingsMenu.rhythm}
             </button>
             <Link
               href="/corbeille"
@@ -72,7 +74,7 @@ export function SettingsMenu({
               onClick={() => setOpen(false)}
               className="block rounded-xl px-4 py-3 text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
             >
-              Corbeille
+              {t.nav.settingsMenu.corbeille}
             </Link>
             <div className="mt-1 border-t border-border pt-1">
               <SignOutButton />

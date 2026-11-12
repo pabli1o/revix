@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { CalendarPicker } from "./calendar-picker";
 import type { Importance } from "@/lib/supabase/database.types";
-
-const IMPORTANCE_OPTIONS: { value: Importance; label: string; description: string }[] = [
-  { value: "normale", label: "Normale", description: "Un contrôle comme un autre" },
-  { value: "importante", label: "Importante", description: "Compte plus dans la moyenne" },
-  { value: "tres_importante", label: "Très importante", description: "Examen décisif, type bac/partiels" },
-];
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface SubjectOption {
   id: string;
@@ -34,12 +29,19 @@ export function ExamForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [nom, setNom] = useState("");
   const [date, setDate] = useState<string | null>(null);
   const [importance, setImportance] = useState<Importance>("normale");
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const importanceOptions: { value: Importance; label: string; description: string }[] = [
+    { value: "normale", ...t.examen.importance.normale },
+    { value: "importante", ...t.examen.importance.importante },
+    { value: "tres_importante", ...t.examen.importance.tresImportante },
+  ];
 
   function toggleChapter(id: string) {
     setSelectedChapters((prev) => {
@@ -52,7 +54,7 @@ export function ExamForm({
 
   async function handleSubmit() {
     if (!nom.trim() || !date) {
-      setError("Nom et date sont requis.");
+      setError(t.examen.nameAndDateRequired);
       return;
     }
     setSubmitting(true);
@@ -71,7 +73,7 @@ export function ExamForm({
 
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? "Erreur lors de la création de l'examen.");
+      setError(data?.error ?? t.examen.createExamError);
       setSubmitting(false);
       return;
     }
@@ -84,19 +86,19 @@ export function ExamForm({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <label className="mb-1 block text-sm font-medium">Nom de l&apos;examen</label>
-        <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex : DS de maths" />
+        <label className="mb-1 block text-sm font-medium">{t.examen.examNameLabel}</label>
+        <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder={t.examen.examNamePlaceholder} />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Date</label>
+        <label className="mb-1 block text-sm font-medium">{t.examen.dateLabel}</label>
         <CalendarPicker value={date} onChange={setDate} />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Importance</label>
+        <label className="mb-1 block text-sm font-medium">{t.examen.importanceLabel}</label>
         <div className="flex flex-col gap-2">
-          {IMPORTANCE_OPTIONS.map((opt) => (
+          {importanceOptions.map((opt) => (
             <ChoiceCard
               key={opt.value}
               compact
@@ -110,10 +112,10 @@ export function ExamForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Chapitres couverts</label>
+        <label className="mb-1 block text-sm font-medium">{t.examen.chaptersCoveredLabel}</label>
         <div className="max-h-64 overflow-y-auto rounded-lg border border-border p-3">
           {subjects.length === 0 && (
-            <p className="text-sm text-text-muted">Crée d&apos;abord des fiches pour avoir des chapitres.</p>
+            <p className="text-sm text-text-muted">{t.examen.createChaptersFirst}</p>
           )}
           {subjects.map((subject) => {
             const subjectChapters = chapters.filter((c) => c.subject_id === subject.id);
@@ -143,7 +145,7 @@ export function ExamForm({
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <Button onClick={handleSubmit} disabled={submitting}>
-        {submitting ? "Création…" : "Ajouter l'examen"}
+        {submitting ? t.examen.creatingExam : t.examen.addExamButton}
       </Button>
     </div>
   );

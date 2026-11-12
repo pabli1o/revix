@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/server";
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/chapters/[chapterId]">) {
   const { chapterId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as { nom?: string } | null;
   const nom = body?.nom?.trim();
-  if (!nom) return NextResponse.json({ error: "Nom manquant" }, { status: 400 });
+  if (!nom) return NextResponse.json({ error: t.errors.common.missingName }, { status: 400 });
 
   const { data, error } = await supabase
     .from("chapters")
@@ -31,10 +33,11 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/chapters/[
 export async function DELETE(_request: Request, ctx: RouteContext<"/api/chapters/[chapterId]">) {
   const { chapterId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const { error } = await supabase
     .from("chapters")

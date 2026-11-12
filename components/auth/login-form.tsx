@@ -10,9 +10,11 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
@@ -33,9 +35,9 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
       if (signInError) {
         setError(
           signInError.message === "Email not confirmed"
-            ? "Ton adresse e-mail n'est pas encore confirmée. Vérifie ta boîte mail."
+            ? t.auth.login.errorEmailNotConfirmed
             : signInError.message === "Invalid login credentials"
-              ? "Email ou mot de passe incorrect."
+              ? t.auth.login.errorInvalidCredentials
               : signInError.message
         );
         setStatus("error");
@@ -52,11 +54,7 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
       router.replace(resume ? "/fiches/new?resume=1" : "/");
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur inattendue est survenue. Réessaie dans quelques instants."
-      );
+      setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
     }
   }
@@ -69,31 +67,29 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
           <LanguageSwitcher />
         </div>
         <p className="mt-2 text-sm text-text-muted">
-          {fromFicheCreation
-            ? "Connecte-toi pour générer ta fiche."
-            : "Tes fiches de révision, ton planning et tes quiz, générés pour toi."}
+          {fromFicheCreation ? t.auth.login.subtitleFromFiche : t.auth.login.subtitleDefault}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
           <label className="text-sm font-medium" htmlFor="email">
-            Adresse e-mail
+            {t.auth.fields.email}
           </label>
           <Input
             id="email"
             type="email"
             required
             autoComplete="email"
-            placeholder="prenom@exemple.fr"
+            placeholder={t.auth.fields.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <div className="mt-1 flex items-center justify-between">
             <label className="text-sm font-medium" htmlFor="password">
-              Mot de passe
+              {t.auth.fields.password}
             </label>
             <Link href="/forgot-password" prefetch={true} className="text-xs text-text-muted hover:text-accent">
-              Mot de passe oublié ?
+              {t.auth.login.forgotPassword}
             </Link>
           </div>
           <PasswordInput
@@ -108,13 +104,13 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <Button type="submit" disabled={status === "sending"} className="mt-2">
-            {status === "sending" ? "Connexion…" : "Se connecter"}
+            {status === "sending" ? t.auth.login.submitting : t.auth.login.submit}
           </Button>
         </form>
 
         <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
           <div className="h-px flex-1 bg-border" />
-          <span>Pas encore de compte ?</span>
+          <span>{t.auth.login.noAccount}</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
@@ -124,7 +120,7 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
           className="mt-4 block"
         >
           <Button type="button" variant="outline" className="w-full">
-            Créer un compte
+            {t.auth.login.createAccount}
           </Button>
         </Link>
       </div>

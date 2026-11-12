@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { FicheDraftResponse } from "@/lib/fiches/types";
+import { getDictionary } from "@/lib/i18n/server";
 
 export async function GET(_request: Request, ctx: RouteContext<"/api/fiches/drafts/[draftId]">) {
   const { draftId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const { data: draft } = await supabase
     .from("fiche_drafts")
@@ -18,7 +20,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/fiches/draf
     .maybeSingle();
 
   if (!draft) {
-    return NextResponse.json({ error: "Brouillon introuvable ou expiré" }, { status: 404 });
+    return NextResponse.json({ error: t.errors.fiches.draftNotFound }, { status: 404 });
   }
 
   const response: FicheDraftResponse = { id: draft.id, items: draft.items, sources: draft.sources };
@@ -31,10 +33,11 @@ export async function DELETE(
 ) {
   const { draftId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   await supabase.from("fiche_drafts").delete().eq("id", draftId).eq("user_id", user.id);
   return NextResponse.json({ ok: true });

@@ -1,4 +1,5 @@
 import { getProfile } from "@/lib/supabase/profile";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Shown at the top of every main tab (Fiches / Examen / Planning / Quiz).
@@ -28,13 +29,10 @@ import { getProfile } from "@/lib/supabase/profile";
  */
 export async function AppHeader({ variant = "compact" }: { variant?: "hero" | "compact" }) {
   const profile = await getProfile();
+  const t = await getDictionary();
   const prenom = profile?.prenom?.trim();
 
-  const intro = prenom ? (
-    <>Salut {prenom} — tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.</>
-  ) : (
-    <>Tes fiches, réparties automatiquement jusqu&apos;à l&apos;examen.</>
-  );
+  const intro = prenom ? t.nav.appHeader.introWithName(prenom) : t.nav.appHeader.introDefault;
 
   if (variant === "compact") {
     return (
@@ -47,10 +45,10 @@ export async function AppHeader({ variant = "compact" }: { variant?: "hero" | "c
   return (
     <div className="mb-8">
       <h1 className="text-[2.5rem] leading-[1.08] font-extrabold tracking-tight sm:text-6xl">
-        <span className="block text-text">Tes fiches de révision</span>
-        <span className="block text-accent">en moins de 2 min.</span>
+        <span className="block text-text">{t.nav.appHeader.heroTitleLine1}</span>
+        <span className="block text-accent">{t.nav.appHeader.heroTitleLine2}</span>
       </h1>
-      <p className="mt-3 text-base text-text-muted">Colle ton cours, ta fiche est prête.</p>
+      <p className="mt-3 text-base text-text-muted">{t.nav.appHeader.heroSubtitle}</p>
       <span
         aria-hidden
         className="mt-4 block font-heading text-4xl font-bold tracking-tight text-accent opacity-[0.06] md:text-6xl"

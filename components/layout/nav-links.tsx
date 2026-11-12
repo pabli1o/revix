@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { IconLock } from "@/components/ui/icons";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 type LockableTab = "examen" | "planning" | "quiz";
 
-const LINKS: { href: string; label: string; key: LockableTab | "fiches" }[] = [
-  { href: "/fiches", label: "Fiches", key: "fiches" },
-  { href: "/examen", label: "Examen", key: "examen" },
-  { href: "/planning", label: "Planning", key: "planning" },
-  { href: "/quiz", label: "Quiz", key: "quiz" },
+const LINK_ORDER: { href: string; key: LockableTab | "fiches" }[] = [
+  { href: "/fiches", key: "fiches" },
+  { href: "/examen", key: "examen" },
+  { href: "/planning", key: "planning" },
+  { href: "/quiz", key: "quiz" },
 ];
 
 export function NavLinks({
@@ -26,6 +27,7 @@ export function NavLinks({
   locked?: Partial<Record<LockableTab, boolean>>;
 }) {
   const pathname = usePathname();
+  const { t } = useLocale();
 
   return (
     <nav
@@ -36,7 +38,7 @@ export function NavLinks({
           : "flex flex-col gap-1 rounded-2xl p-2",
       )}
     >
-      {LINKS.map((link) => {
+      {LINK_ORDER.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         const isLocked = link.key !== "fiches" && locked[link.key];
         return (
@@ -64,7 +66,7 @@ export function NavLinks({
             )}
           >
             {isLocked && <IconLock className="mr-1.5 inline-block size-3.5 -translate-y-px align-middle" />}
-            {link.label}
+            {t.nav.tabs[link.key]}
           </Link>
         );
       })}

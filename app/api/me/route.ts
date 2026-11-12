@@ -3,13 +3,15 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo } from "@/lib/subscription/gate";
 import { PROFILE_CACHE_TAG } from "@/lib/supabase/profile";
+import { getDictionary } from "@/lib/i18n/server";
 
 export async function GET() {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const [{ data: profile }, subscription] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
@@ -25,20 +27,21 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as { prenom?: string; nom?: string } | null;
   if (!body || (body.prenom === undefined && body.nom === undefined)) {
-    return NextResponse.json({ error: "Aucun champ à mettre à jour" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.profile.noFieldsToUpdate }, { status: 400 });
   }
 
   const fields: { prenom?: string; nom?: string | null } = {};
   if (body.prenom !== undefined) {
     const trimmed = body.prenom.trim();
-    if (!trimmed) return NextResponse.json({ error: "Le prénom ne peut pas être vide" }, { status: 400 });
+    if (!trimmed) return NextResponse.json({ error: t.errors.profile.emptyFirstName }, { status: 400 });
     fields.prenom = trimmed;
   }
   if (body.nom !== undefined) {

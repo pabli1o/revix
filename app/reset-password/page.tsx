@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const [checking, setChecking] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -66,12 +68,12 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
+      setError(t.auth.resetPassword.passwordTooShort(MIN_PASSWORD_LENGTH));
       setStatus("error");
       return;
     }
     if (password !== passwordConfirm) {
-      setError("Les mots de passe ne correspondent pas.");
+      setError(t.auth.resetPassword.passwordMismatch);
       setStatus("error");
       return;
     }
@@ -94,11 +96,7 @@ export default function ResetPasswordPage() {
         router.refresh();
       }, 1200);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur inattendue est survenue. Réessaie dans quelques instants."
-      );
+      setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
     }
   }
@@ -112,45 +110,42 @@ export default function ResetPasswordPage() {
         </div>
 
         {checking ? (
-          <p className="mt-8 text-sm text-text-muted">Vérification du lien…</p>
+          <p className="mt-8 text-sm text-text-muted">{t.auth.resetPassword.checkingLink}</p>
         ) : !hasSession ? (
           <div className="mt-8">
             <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm">
-              <p className="font-medium text-danger">Ce lien n&apos;est plus valide.</p>
-              <p className="mt-1 text-text-muted">
-                Il a peut-être déjà été utilisé ou a expiré. Demande un nouveau lien de
-                réinitialisation.
-              </p>
+              <p className="font-medium text-danger">{t.auth.resetPassword.invalidLinkTitle}</p>
+              <p className="mt-1 text-text-muted">{t.auth.resetPassword.invalidLinkBody}</p>
             </div>
             <Link href="/forgot-password" prefetch={true} className="mt-4 block">
               <Button type="button" variant="outline" className="w-full">
-                Demander un nouveau lien
+                {t.auth.resetPassword.requestNewLink}
               </Button>
             </Link>
           </div>
         ) : status === "done" ? (
           <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">Mot de passe mis à jour !</p>
-            <p className="mt-1 text-text-muted">Redirection…</p>
+            <p className="font-medium text-success">{t.auth.resetPassword.updatedTitle}</p>
+            <p className="mt-1 text-text-muted">{t.auth.resetPassword.redirecting}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
-            <p className="mb-2 text-sm text-text-muted">Choisis un nouveau mot de passe.</p>
+            <p className="mb-2 text-sm text-text-muted">{t.auth.resetPassword.choosePassword}</p>
             <label className="text-sm font-medium" htmlFor="password">
-              Nouveau mot de passe
+              {t.auth.fields.newPassword}
             </label>
             <PasswordInput
               id="password"
               required
               autoComplete="new-password"
               minLength={MIN_PASSWORD_LENGTH}
-              placeholder="8 caractères minimum"
+              placeholder={t.auth.fields.minPasswordPlaceholder(MIN_PASSWORD_LENGTH)}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
 
             <label className="mt-1 text-sm font-medium" htmlFor="password-confirm">
-              Confirme le mot de passe
+              {t.auth.fields.confirmPassword}
             </label>
             <PasswordInput
               id="password-confirm"
@@ -164,7 +159,7 @@ export default function ResetPasswordPage() {
             {error && <p className="text-sm text-danger">{error}</p>}
 
             <Button type="submit" disabled={status === "saving"} className="mt-2">
-              {status === "saving" ? "Enregistrement…" : "Mettre à jour le mot de passe"}
+              {status === "saving" ? t.common.saving : t.auth.resetPassword.submit}
             </Button>
           </form>
         )}

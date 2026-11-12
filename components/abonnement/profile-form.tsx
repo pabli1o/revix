@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function ProfileForm({
   initialPrenom,
@@ -15,6 +16,7 @@ export function ProfileForm({
   initialNom: string;
   initialEmail: string;
 }) {
+  const { t } = useLocale();
   const router = useRouter();
   const [prenom, setPrenom] = useState(initialPrenom);
   const [nom, setNom] = useState(initialNom);
@@ -39,13 +41,13 @@ export function ProfileForm({
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        setError(data?.error ?? "Impossible d'enregistrer.");
+        setError(data?.error ?? t.abonnement.profileSaveError);
         return;
       }
-      setMessage("Profil mis à jour.");
+      setMessage(t.abonnement.profileUpdated);
       router.refresh();
     } catch {
-      setError("Erreur réseau.");
+      setError(t.abonnement.networkError);
     } finally {
       setSaving(false);
     }
@@ -71,11 +73,9 @@ export function ProfileForm({
         setEmailError(updateError.message);
         return;
       }
-      setEmailMessage(
-        "Vérifie ta boîte mail (l'ancienne et/ou la nouvelle adresse) pour confirmer ce changement.",
-      );
+      setEmailMessage(t.abonnement.emailChangeConfirmMessage);
     } catch {
-      setEmailError("Erreur réseau.");
+      setEmailError(t.abonnement.networkError);
     } finally {
       setSavingEmail(false);
     }
@@ -85,23 +85,23 @@ export function ProfileForm({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">Prénom</label>
+          <label className="mb-1 block text-xs font-medium text-text-muted">{t.abonnement.prenomLabel}</label>
           <Input value={prenom} onChange={(e) => setPrenom(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">Nom</label>
+          <label className="mb-1 block text-xs font-medium text-text-muted">{t.abonnement.nomLabel}</label>
           <Input value={nom} onChange={(e) => setNom(e.target.value)} />
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
         {message && <p className="text-sm text-success">{message}</p>}
         <Button size="sm" className="self-start" onClick={handleSave} disabled={saving || !prenom.trim()}>
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? t.common.saving : t.common.save}
         </Button>
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border pt-6">
         <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">Adresse e-mail</label>
+          <label className="mb-1 block text-xs font-medium text-text-muted">{t.abonnement.emailLabel}</label>
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         {emailError && <p className="text-sm text-danger">{emailError}</p>}
@@ -113,7 +113,7 @@ export function ProfileForm({
           onClick={handleSaveEmail}
           disabled={savingEmail || !email.trim() || email.trim() === initialEmail}
         >
-          {savingEmail ? "Envoi…" : "Modifier l'e-mail"}
+          {savingEmail ? t.abonnement.emailChangeSending : t.abonnement.emailChangeButton}
         </Button>
       </div>
     </div>

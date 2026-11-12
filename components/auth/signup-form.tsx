@@ -10,11 +10,13 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -26,12 +28,12 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
     setError(null);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
+      setError(t.auth.signup.passwordTooShort(MIN_PASSWORD_LENGTH));
       setStatus("error");
       return;
     }
     if (password !== passwordConfirm) {
-      setError("Les mots de passe ne correspondent pas.");
+      setError(t.auth.signup.passwordMismatch);
       setStatus("error");
       return;
     }
@@ -55,7 +57,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
       if (signUpError) {
         setError(
           signUpError.message === "User already registered"
-            ? "Un compte existe déjà avec cet e-mail. Connecte-toi plutôt."
+            ? t.auth.signup.emailAlreadyRegistered
             : signUpError.message
         );
         setStatus("error");
@@ -89,11 +91,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
       // it afterward.
       setStatus("sent");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur inattendue est survenue. Réessaie dans quelques instants."
-      );
+      setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
     }
   }
@@ -106,49 +104,44 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
           <LanguageSwitcher />
         </div>
         <p className="mt-2 text-sm text-text-muted">
-          {fromFicheCreation
-            ? "Crée ton compte pour générer ta fiche."
-            : "Crée ton compte pour commencer."}
+          {fromFicheCreation ? t.auth.signup.subtitleFromFiche : t.auth.signup.subtitleDefault}
         </p>
 
         {status === "sent" ? (
           <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">Vérifie ta boîte mail !</p>
-            <p className="mt-1 text-text-muted">
-              On a envoyé un lien de confirmation à {email}. Clique dessus (dans ce même
-              navigateur) pour activer ton compte.
-            </p>
+            <p className="font-medium text-success">{t.auth.signup.sentTitle}</p>
+            <p className="mt-1 text-text-muted">{t.auth.signup.sentBody(email)}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
             <label className="text-sm font-medium" htmlFor="email">
-              Adresse e-mail
+              {t.auth.fields.email}
             </label>
             <Input
               id="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="prenom@exemple.fr"
+              placeholder={t.auth.fields.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
 
             <label className="mt-1 text-sm font-medium" htmlFor="password">
-              Mot de passe
+              {t.auth.fields.password}
             </label>
             <PasswordInput
               id="password"
               required
               autoComplete="new-password"
               minLength={MIN_PASSWORD_LENGTH}
-              placeholder="8 caractères minimum"
+              placeholder={t.auth.fields.minPasswordPlaceholder(MIN_PASSWORD_LENGTH)}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
 
             <label className="mt-1 text-sm font-medium" htmlFor="password-confirm">
-              Confirme le mot de passe
+              {t.auth.fields.confirmPassword}
             </label>
             <PasswordInput
               id="password-confirm"
@@ -162,7 +155,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
             {error && <p className="text-sm text-danger">{error}</p>}
 
             <Button type="submit" disabled={status === "sending"} className="mt-2">
-              {status === "sending" ? "Création…" : "Créer mon compte"}
+              {status === "sending" ? t.auth.signup.submitting : t.auth.signup.submit}
             </Button>
           </form>
         )}
@@ -171,7 +164,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
           <>
             <div className="mt-6 flex items-center gap-3 text-xs text-text-muted">
               <div className="h-px flex-1 bg-border" />
-              <span>Déjà un compte ?</span>
+              <span>{t.auth.signup.alreadyAccount}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -181,7 +174,7 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
               className="mt-4 block"
             >
               <Button type="button" variant="outline" className="w-full">
-                Se connecter
+                {t.auth.signup.login}
               </Button>
             </Link>
           </>

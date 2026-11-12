@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { CreateDraftRequest, CreateDraftResponse } from "@/lib/fiches/types";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Stores the reviewed-but-not-yet-assigned fiches so they survive the full
@@ -10,19 +11,20 @@ import type { CreateDraftRequest, CreateDraftResponse } from "@/lib/fiches/types
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as CreateDraftRequest | null;
   const items = body?.items ?? [];
   if (items.length === 0) {
-    return NextResponse.json({ error: "Aucune fiche à enregistrer" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.fiches.noFicheToSave }, { status: 400 });
   }
   for (const item of items) {
     if (!item.titre?.trim() || !item.contenu) {
-      return NextResponse.json({ error: "Fiche invalide (titre ou contenu manquant)" }, { status: 400 });
+      return NextResponse.json({ error: t.errors.fiches.invalidFiche }, { status: 400 });
     }
   }
 

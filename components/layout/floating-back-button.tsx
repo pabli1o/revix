@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useCanGoBack } from "@/components/navigation/navigation-history-provider";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 // Root screens reachable directly from the sidebar nav — the user didn't
 // "arrive from elsewhere" to land there, so no back button on these.
@@ -20,6 +21,7 @@ export function FloatingBackButton() {
   const pathname = usePathname();
   const router = useRouter();
   const canGoBack = useCanGoBack();
+  const { t } = useLocale();
 
   if (TOP_LEVEL_PATHS.has(pathname)) return null;
 
@@ -37,7 +39,7 @@ export function FloatingBackButton() {
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Retour"
+      aria-label={t.nav.floatingBackButton.ariaLabel}
       className="fixed left-4 top-16 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-bg-card text-lg leading-none text-text shadow-lg transition-transform hover:border-accent active:scale-90 md:left-[272px] md:top-6"
     >
       ✕

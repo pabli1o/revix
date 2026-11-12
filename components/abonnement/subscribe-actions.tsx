@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function BuyCreditButton({
   className,
@@ -10,6 +11,7 @@ export function BuyCreditButton({
   className?: string;
   size?: "sm" | "md" | "lg";
 }) {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -20,13 +22,13 @@ export function BuyCreditButton({
       window.location.href = data.url;
     } else {
       setLoading(false);
-      window.alert(data.error ?? "Impossible de démarrer le paiement.");
+      window.alert(data.error ?? t.abonnement.buyCreditError);
     }
   }
 
   return (
     <Button onClick={handleClick} disabled={loading} className={className} size={size}>
-      {loading ? "Redirection…" : "Ajouter des crédits"}
+      {loading ? t.abonnement.redirecting : t.abonnement.addCreditsButton}
     </Button>
   );
 }
@@ -38,14 +40,11 @@ export function BuyCreditButton({
  * user a chance to back out; a direct API call doesn't unless we add one).
  */
 export function ManageSubscriptionButton() {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
-    if (
-      !window.confirm(
-        "Résilier ton abonnement ? Tu garderas l'accès jusqu'à la fin de la période en cours, puis il ne sera pas renouvelé.",
-      )
-    ) {
+    if (!window.confirm(t.abonnement.cancelConfirm)) {
       return;
     }
     setLoading(true);
@@ -55,13 +54,13 @@ export function ManageSubscriptionButton() {
       window.location.reload();
     } else {
       setLoading(false);
-      window.alert(data.error ?? "Impossible de résilier l'abonnement.");
+      window.alert(data.error ?? t.abonnement.cancelError);
     }
   }
 
   return (
     <Button onClick={handleClick} disabled={loading} variant="secondary">
-      {loading ? "Résiliation…" : "Résilier mon abonnement"}
+      {loading ? t.abonnement.cancelling : t.abonnement.cancelButton}
     </Button>
   );
 }

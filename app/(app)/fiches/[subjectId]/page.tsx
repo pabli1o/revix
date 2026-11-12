@@ -4,11 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/auth";
 import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]">) {
   const { subjectId } = await props.params;
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   const [{ data: subject }, { data: allSubjects }, { data: chapters }, { data: fiches }] =
     await Promise.all([
@@ -41,7 +43,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
       id: c.id,
       nom: c.nom,
       count,
-      countLabel: `${count} fiche${count !== 1 ? "s" : ""}`,
+      countLabel: t.fiches.ficheCount(count),
       color,
       href: `/fiches/${subjectId}/${c.id}`,
       renameUrl: `/api/chapters/${c.id}`,
@@ -52,7 +54,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
     <div>
       <p className="mb-6 text-sm text-text-muted">
         <Link href="/fiches" prefetch={true} className="hover:text-accent">
-          Mes matières
+          {t.fiches.mySubjects}
         </Link>
         <span className="mx-1.5">/</span>
         <span className="text-text">{subject.nom}</span>
@@ -68,21 +70,17 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
         </div>
         <div>
           <h1 className="font-heading text-3xl font-semibold">{subject.nom}</h1>
-          <p className="text-sm text-text-muted">
-            {items.length} chapitre{items.length !== 1 ? "s" : ""}
-          </p>
+          <p className="text-sm text-text-muted">{t.fiches.chapterCount(items.length)}</p>
         </div>
       </div>
 
-      {items.length > 0 && (
-        <p className="mb-6 text-sm text-text-muted">Clique sur un chapitre pour voir ses fiches.</p>
-      )}
+      {items.length > 0 && <p className="mb-6 text-sm text-text-muted">{t.fiches.clickChapterHint}</p>}
 
       <TileGrid
         items={items}
-        emptyMessage="Aucun chapitre pour cette matière pour l'instant."
+        emptyMessage={t.fiches.emptyChapters}
         allowDelete
-        deleteWarning="Supprimer le chapitre « {nom} » ? Toutes ses fiches seront définitivement supprimées (sans passer par la corbeille)."
+        deleteWarning={t.fiches.deleteChapterWarning}
       />
     </div>
   );

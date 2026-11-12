@@ -4,6 +4,7 @@ import { getOrGenerateQuiz } from "@/lib/quiz/get-or-generate";
 import type { QuizDifficulty } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { AiUsageCapExceededError, getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
+import { getDictionary } from "@/lib/i18n/server";
 
 const VALID_DIFFICULTIES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
@@ -16,19 +17,20 @@ export const maxDuration = 60;
 export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[chapterId]">) {
   const { chapterId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscriptionHasFeature(subscription, "quiz")) {
-    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux quiz." }, { status: 402 });
+    return NextResponse.json({ error: t.errors.subscription.quizLocked }, { status: 402 });
   }
 
   const difficulty = request.nextUrl.searchParams.get("difficulty") as QuizDifficulty | null;
   if (!difficulty || !VALID_DIFFICULTIES.includes(difficulty)) {
-    return NextResponse.json({ error: "Difficulté invalide" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.quiz.invalidDifficulty }, { status: 400 });
   }
 
   // Confirm the chapter belongs to this user (RLS-scoped read).
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[ch
     .eq("id", chapterId)
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!chapter) return NextResponse.json({ error: "Chapitre introuvable" }, { status: 404 });
+  if (!chapter) return NextResponse.json({ error: t.errors.quiz.chapterNotFound }, { status: 404 });
 
   try {
     const questions = await getOrGenerateQuiz(user.id, chapterId, difficulty);
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/quiz/[ch
     if (err instanceof AiGenerationError) {
       return NextResponse.json({ error: err.message }, { status: 502 });
     }
-    const message = err instanceof Error ? err.message : "Erreur inconnue";
+    const message = err instanceof Error ? err.message : t.errors.common.unknownError;
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

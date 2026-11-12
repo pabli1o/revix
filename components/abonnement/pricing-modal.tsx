@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SubscriptionTier } from "@/lib/subscription/constants";
 import { PricingCards } from "./pricing-cards";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * The subscription-offer picker as a popup — used wherever a user hits a paywall
@@ -21,6 +22,7 @@ export function PricingModal({
   currentTier?: SubscriptionTier | null;
   draftId?: string;
 }) {
+  const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
@@ -38,11 +40,11 @@ export function PricingModal({
         aria-modal="true"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="font-heading text-xl font-semibold">Choisis ton abonnement</h2>
+          <h2 className="font-heading text-xl font-semibold">{t.abonnement.modalTitle}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t.common.close}
             className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text-muted transition-colors hover:border-accent hover:text-accent"
           >
             ✕

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SettingsPanel } from "./settings-panel";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * SettingsPanel (the rhythm ChoiceCards — jours/semaine, minutes/jour) as a
@@ -33,6 +34,7 @@ export function SettingsModal({
   initialMinutes: number;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [jours, setJours] = useState(initialJours);
   const [minutes, setMinutes] = useState(initialMinutes);
   const [saving, setSaving] = useState(false);
@@ -80,11 +82,11 @@ export function SettingsModal({
         aria-modal="true"
       >
         <div className="flex shrink-0 items-center justify-between gap-4 p-6 pb-5">
-          <h2 className="font-heading text-xl font-semibold">Ton rythme de révision</h2>
+          <h2 className="font-heading text-xl font-semibold">{t.nav.settingsModal.title}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t.common.close}
             className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text-muted transition-colors hover:border-accent hover:text-accent"
           >
             ✕
@@ -102,7 +104,7 @@ export function SettingsModal({
 
         <div className="shrink-0 p-6 pt-5">
           <Button size="lg" className="w-full" onClick={handleValidate} disabled={saving}>
-            {saving ? "Enregistrement…" : "Valider"}
+            {saving ? t.common.saving : t.nav.settingsModal.validate}
           </Button>
         </div>
       </div>

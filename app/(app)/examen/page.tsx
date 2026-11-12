@@ -5,10 +5,12 @@ import { AppHeader } from "@/components/layout/app-header";
 import { FeatureLocked } from "@/components/abonnement/feature-locked";
 import { ExamenView } from "@/components/examen/examen-view";
 import type { ExamView } from "@/components/planning/exam-list";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function ExamenPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   // Tier-gated like quiz/planning (see lib/subscription/constants.ts) —
   // the tier0 entry plan excludes it, same as an unsubscribed visitor.
@@ -50,7 +52,7 @@ export default async function ExamenPage() {
     nom: e.nom,
     date: e.date,
     importance: e.importance,
-    chaptersLabel: (chapterNamesByExam.get(e.id) ?? []).join(", ") || "Aucun chapitre",
+    chaptersLabel: (chapterNamesByExam.get(e.id) ?? []).join(", ") || t.examen.noChapter,
   }));
 
   return (

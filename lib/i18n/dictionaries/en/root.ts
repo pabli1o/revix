@@ -6,6 +6,12 @@ export const root: RootDict = {
     "Drop in your course, get a clear study note in seconds — exam planning and quizzes included.",
   errorBoundary: {
     defaultMessage: "Something unexpected happened.",
-    reference: "Reference",
+    reference: "Reference: ",
+  },
+  limite: {
+    title: "Out of credits",
+    subtitle: "You've used all your credits for this month.",
+    description:
+      "Your credits renew automatically at your next subscription renewal. You can also add more or switch to a plan with more credits right now.",
   },
 };

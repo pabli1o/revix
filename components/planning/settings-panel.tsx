@@ -1,6 +1,7 @@
 "use client";
 
 import { ChoiceCard } from "@/components/ui/choice-card";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
@@ -22,15 +23,18 @@ export function SettingsPanel({
   onChangeJours: (value: number) => void;
   onChangeMinutes: (value: number) => void;
 }) {
+  const { t } = useLocale();
+  const p = t.nav.settingsPanel;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <label className="text-sm font-medium">Jours de révision par semaine</label>
+        <label className="text-sm font-medium">{p.daysLabel}</label>
         <div className="mt-3 flex flex-col gap-2">
           {DAYS_OPTIONS.map((d) => (
             <ChoiceCard
               key={d}
-              title={`${d} jour${d > 1 ? "s" : ""} par semaine`}
+              title={p.dayOption(d)}
               selected={jours === d}
               onClick={() => onChangeJours(d)}
             />
@@ -38,19 +42,19 @@ export function SettingsPanel({
         </div>
       </div>
       <div>
-        <label className="text-sm font-medium">Temps de révision par jour de travail</label>
+        <label className="text-sm font-medium">{p.minutesLabel}</label>
         <div className="mt-3 flex flex-col gap-2">
           {MINUTES_OPTIONS.map((m) => (
             <ChoiceCard
               key={m}
-              title={`${m} min par jour`}
+              title={p.minuteOption(m)}
               selected={minutes === m}
               onClick={() => onChangeMinutes(m)}
             />
           ))}
         </div>
       </div>
-      <p className="text-xs text-text-muted">S&apos;applique à l&apos;ensemble de tes examens.</p>
+      <p className="text-xs text-text-muted">{p.note}</p>
     </div>
   );
 }

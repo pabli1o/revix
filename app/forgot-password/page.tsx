@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export default function ForgotPasswordPage() {
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,7 @@ export default function ForgotPasswordPage() {
 
       setStatus("sent");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur inattendue est survenue. Réessaie dans quelques instants."
-      );
+      setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
     }
   }
@@ -49,30 +47,24 @@ export default function ForgotPasswordPage() {
           <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
           <LanguageSwitcher />
         </div>
-        <p className="mt-2 text-sm text-text-muted">
-          Reçois un lien par e-mail pour choisir un nouveau mot de passe.
-        </p>
+        <p className="mt-2 text-sm text-text-muted">{t.auth.forgotPassword.subtitle}</p>
 
         {status === "sent" ? (
           <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">Vérifie ta boîte mail !</p>
-            <p className="mt-1 text-text-muted">
-              Si un compte existe pour {email}, un lien de réinitialisation vient d&apos;être
-              envoyé. Clique dessus (dans ce même navigateur) pour choisir un nouveau mot de
-              passe.
-            </p>
+            <p className="font-medium text-success">{t.auth.forgotPassword.sentTitle}</p>
+            <p className="mt-1 text-text-muted">{t.auth.forgotPassword.sentBody(email)}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
             <label className="text-sm font-medium" htmlFor="email">
-              Adresse e-mail
+              {t.auth.fields.email}
             </label>
             <Input
               id="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="prenom@exemple.fr"
+              placeholder={t.auth.fields.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -80,7 +72,7 @@ export default function ForgotPasswordPage() {
             {error && <p className="text-sm text-danger">{error}</p>}
 
             <Button type="submit" disabled={status === "sending"} className="mt-2">
-              {status === "sending" ? "Envoi…" : "Envoyer le lien"}
+              {status === "sending" ? t.auth.forgotPassword.submitting : t.auth.forgotPassword.submit}
             </Button>
           </form>
         )}
@@ -90,7 +82,7 @@ export default function ForgotPasswordPage() {
           prefetch={true}
           className="mt-6 block text-center text-sm text-text-muted hover:text-accent"
         >
-          ← Retour à la connexion
+          ← {t.auth.forgotPassword.backToLogin}
         </Link>
       </div>
     </div>

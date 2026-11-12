@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { PlanningTaskPartie, PlanningTaskType } from "@/lib/supabase/database.types";
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { IntentLink } from "@/components/ui/intent-link";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface PlanningTaskView {
   id: string;
@@ -24,25 +25,9 @@ export interface PlanningTaskView {
   href: string;
 }
 
-const TYPE_LABEL: Record<PlanningTaskType, string> = {
-  decouverte: "Apprends",
-  rappel: "Relis",
-};
-
-/** Turns the task's covered fiche sections into a readable range, e.g.
- * "Réviser le point 2", "Réviser du point 1 au point 3 inclus", or
- * "Réviser les points 1, 2 et 4" when they aren't contiguous. */
-function formatRange(parties: PlanningTaskPartie[]): string {
-  if (parties.length === 0) return "Réviser tout le chapitre";
-  const numeros = [...new Set(parties.map((p) => p.numero))].sort((a, b) => a - b);
-  if (numeros.length === 1) return `Réviser le point ${numeros[0]}`;
-  const isContiguous = numeros.every((n, i) => i === 0 || n === numeros[i - 1] + 1);
-  if (isContiguous) return `Réviser du point ${numeros[0]} au point ${numeros[numeros.length - 1]} inclus`;
-  return `Réviser les points ${numeros.slice(0, -1).join(", ")} et ${numeros[numeros.length - 1]}`;
-}
-
 export function TaskRow({ task }: { task: PlanningTaskView }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [completed, setCompleted] = useState(task.completed);
 
   async function toggleCompleted() {
@@ -81,16 +66,18 @@ export function TaskRow({ task }: { task: PlanningTaskView }) {
               : undefined
           }
         >
-          {TYPE_LABEL[task.type]}
+          {t.planning.taskType[task.type]}
         </span>
         <span className={clsx("flex-1", completed && "text-text-muted line-through")}>
           {task.subjectNom} · {task.chapterNom}
         </span>
         <span className="font-mono text-xs text-text-muted">{task.dureeMinutes} min</span>
       </div>
-      <p className="text-sm text-text-muted">{formatRange(task.parties)}</p>
+      <p className="text-sm text-text-muted">
+        {t.planning.formatRange([...new Set(task.parties.map((p) => p.numero))].sort((a, b) => a - b))}
+      </p>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 text-sm font-medium text-accent">
-        Cliquer ici pour commencer à réviser →
+        {t.planning.startRevisingCta}
       </span>
     </IntentLink>
   );

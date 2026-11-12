@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface TrashedFiche {
   id: string;
@@ -13,6 +14,8 @@ export interface TrashedFiche {
   deletedAt: string;
 }
 
+// Not locale-parametrized yet — a separate pass handles date/number
+// formatting across the app.
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
   month: "long",
@@ -22,6 +25,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 
 export function TrashList({ items }: { items: TrashedFiche[] }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function restore(id: string) {
@@ -32,7 +36,7 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
   }
 
   async function deleteForever(id: string) {
-    if (!window.confirm("Supprimer définitivement cette fiche ? Cette action est irréversible.")) {
+    if (!window.confirm(t.corbeille.confirmDeleteForever)) {
       return;
     }
     setBusyId(id);
@@ -42,7 +46,7 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
   }
 
   if (items.length === 0) {
-    return <p className="text-text-muted">La corbeille est vide.</p>;
+    return <p className="text-text-muted">{t.corbeille.empty}</p>;
   }
 
   return (
@@ -52,8 +56,8 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
           <div>
             <p className="font-medium">{item.titre}</p>
             <p className="text-sm text-text-muted">
-              {item.subjectNom} / {item.chapterNom} · supprimée le{" "}
-              {DATE_FORMATTER.format(new Date(item.deletedAt))}
+              {item.subjectNom} / {item.chapterNom} ·{" "}
+              {t.corbeille.deletedOn(DATE_FORMATTER.format(new Date(item.deletedAt)))}
             </p>
           </div>
           <div className="flex gap-2">
@@ -63,7 +67,7 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
               disabled={busyId === item.id}
               onClick={() => restore(item.id)}
             >
-              Restaurer
+              {t.corbeille.restore}
             </Button>
             <Button
               size="sm"
@@ -71,7 +75,7 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
               disabled={busyId === item.id}
               onClick={() => deleteForever(item.id)}
             >
-              Supprimer définitivement
+              {t.corbeille.deleteForever}
             </Button>
           </div>
         </Card>

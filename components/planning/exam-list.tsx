@@ -6,6 +6,7 @@ import { Card, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Importance } from "@/lib/supabase/database.types";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface ExamView {
   id: string;
@@ -15,12 +16,8 @@ export interface ExamView {
   chaptersLabel: string;
 }
 
-const IMPORTANCE_LABEL: Record<Importance, string> = {
-  normale: "Normale",
-  importante: "Importante",
-  tres_importante: "Très importante",
-};
-
+// Not locale-parametrized yet — a separate pass handles date/number
+// formatting across the app.
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
@@ -29,10 +26,17 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 
 export function ExamList({ exams }: { exams: ExamView[] }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const importanceLabel: Record<Importance, string> = {
+    normale: t.examen.importance.normale.label,
+    importante: t.examen.importance.importante.label,
+    tres_importante: t.examen.importance.tresImportante.label,
+  };
+
   async function remove(id: string) {
-    if (!window.confirm("Supprimer cet examen et son planning associé ?")) return;
+    if (!window.confirm(t.examen.confirmDeleteExam)) return;
     setBusyId(id);
     await fetch(`/api/exams/${id}`, { method: "DELETE" });
     await fetch("/api/planning/generate", { method: "POST" });
@@ -41,7 +45,7 @@ export function ExamList({ exams }: { exams: ExamView[] }) {
   }
 
   if (exams.length === 0) {
-    return <EmptyState>Aucun examen ajouté pour l&apos;instant.</EmptyState>;
+    return <EmptyState>{t.examen.noExamsYet}</EmptyState>;
   }
 
   return (
@@ -55,9 +59,9 @@ export function ExamList({ exams }: { exams: ExamView[] }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge>{IMPORTANCE_LABEL[exam.importance]}</Badge>
+            <Badge>{importanceLabel[exam.importance]}</Badge>
             <Button size="sm" variant="danger" disabled={busyId === exam.id} onClick={() => remove(exam.id)}>
-              Supprimer
+              {t.common.delete}
             </Button>
           </div>
         </Card>

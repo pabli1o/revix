@@ -2,21 +2,23 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import type { Importance } from "@/lib/supabase/database.types";
+import { getDictionary } from "@/lib/i18n/server";
 
 const VALID_IMPORTANCE: Importance[] = ["normale", "importante", "tres_importante"];
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/exams/[examId]">) {
   const { examId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   // See app/api/exams/route.ts's POST for why this check is needed here too.
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscriptionHasFeature(subscription, "examen")) {
-    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux examens." }, { status: 402 });
+    return NextResponse.json({ error: t.errors.subscription.examenLocked }, { status: 402 });
   }
 
   const body = (await request.json().catch(() => null)) as {
@@ -58,14 +60,15 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/exams/[exa
 export async function DELETE(_request: Request, ctx: RouteContext<"/api/exams/[examId]">) {
   const { examId } = await ctx.params;
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const subscription = await getSubscriptionInfo(user.id);
   if (!subscriptionHasFeature(subscription, "examen")) {
-    return NextResponse.json({ error: "Ton abonnement ne donne pas accès aux examens." }, { status: 402 });
+    return NextResponse.json({ error: t.errors.subscription.examenLocked }, { status: 402 });
   }
 
   const { error } = await supabase.from("exams").delete().eq("id", examId).eq("user_id", user.id);

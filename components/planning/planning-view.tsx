@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconRefresh } from "@/components/ui/icons";
 import { TaskRow, type PlanningTaskView } from "./task-row";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface DayTasks {
   date: string;
@@ -21,6 +22,7 @@ export function PlanningView({
   hasAnyTasks: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [generating, setGenerating] = useState(false);
 
   async function regenerate() {
@@ -31,9 +33,7 @@ export function PlanningView({
   }
 
   if (!hasAnyTasks) {
-    return (
-      <EmptyState>Ajoute des fiches et une date d&apos;examen pour générer ton planning.</EmptyState>
-    );
+    return <EmptyState>{t.planning.emptyState}</EmptyState>;
   }
 
   return (
@@ -41,11 +41,11 @@ export function PlanningView({
       <div className="mb-4 flex items-center justify-end">
         <Button size="sm" variant="secondary" onClick={regenerate} disabled={generating}>
           {generating ? (
-            "Génération…"
+            t.planning.regenerating
           ) : (
             <>
               <IconRefresh className="mr-1.5 inline-block size-4 -translate-y-px align-middle" />
-              Régénérer
+              {t.planning.regenerate}
             </>
           )}
         </Button>

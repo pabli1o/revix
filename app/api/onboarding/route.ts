@@ -3,6 +3,8 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { PROFILE_CACHE_TAG } from "@/lib/supabase/profile";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
+import { getDictionary } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 interface OnboardingBody {
   prenom: string;
@@ -16,12 +18,13 @@ const VALID_CYCLES: ClasseCycle[] = ["college", "lycee", "superieur"];
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
   }
 
   const body = (await request.json()) as Partial<OnboardingBody>;
@@ -34,7 +37,7 @@ export async function POST(request: Request) {
     !body.revisionJoursSemaine ||
     !body.revisionMinutesJour
   ) {
-    return NextResponse.json({ error: "Champs manquants ou invalides" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
   }
 
   const fields = {
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
     .select("id");
 
   if (updateError) {
-    return NextResponse.json({ error: describeDbError(updateError) }, { status: 500 });
+    return NextResponse.json({ error: describeDbError(updateError, t) }, { status: 500 });
   }
 
   // No row existed yet (trigger didn't fire, or ran before this migration
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
       .insert({ id: user.id, ...fields });
 
     if (insertError) {
-      return NextResponse.json({ error: describeDbError(insertError) }, { status: 500 });
+      return NextResponse.json({ error: describeDbError(insertError, t) }, { status: 500 });
     }
   }
 
@@ -85,15 +88,15 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-function describeDbError(error: { code?: string; message: string }): string {
+function describeDbError(error: { code?: string; message: string }, t: Dictionary): string {
   // 42P01 = undefined_table: the migrations in supabase/migrations/ were
   // never applied to this Supabase project (see README "Migrations SQL").
   if (error.code === "42P01") {
-    return "La base de données n'est pas encore initialisée (migrations SQL manquantes). Contacte l'administrateur du site.";
+    return t.errors.onboarding.dbNotInitialized;
   }
   // 42501 = insufficient_privilege: an RLS policy rejected the query.
   if (error.code === "42501") {
-    return `Accès refusé par la base de données (policy manquante ou incorrecte). Détail : ${error.message}`;
+    return t.errors.onboarding.dbAccessDenied(error.message);
   }
   return error.code ? `${error.message} (code ${error.code})` : error.message;
 }

@@ -9,12 +9,12 @@ import { ChoiceCard } from "@/components/ui/choice-card";
 import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { QuizLoader } from "./quiz-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
+import { useLocale } from "@/components/i18n/locale-provider";
 
-const DIFFICULTIES: { value: QuizDifficulty; label: string }[] = [
-  { value: "facile", label: "Facile" },
-  { value: "moyen", label: "Moyen" },
-  { value: "difficile", label: "Difficile" },
-];
+// Values sent to the API and used as object keys — stay the French
+// literals the backend expects (see lib/anthropic/prompts.ts's
+// DIFFICULTY_LABEL), independent of the UI's own display locale.
+const DIFFICULTY_VALUES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
 interface Attempt {
   id: string;
@@ -23,12 +23,15 @@ interface Attempt {
   created_at: string;
 }
 
+// Not locale-parametrized yet — a separate pass handles date/number
+// formatting across the app.
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
 type Phase = "select" | "loading" | "playing" | "finished";
 
 export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapterNom: string }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [phase, setPhase] = useState<Phase>("select");
   const [difficulty, setDifficulty] = useState<QuizDifficulty | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -46,11 +49,11 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
 
   useEffect(() => {
     Promise.all(
-      DIFFICULTIES.map((d) =>
-        fetch(`/api/quiz/attempts?chapterId=${chapterId}&difficulty=${d.value}`)
+      DIFFICULTY_VALUES.map((value) =>
+        fetch(`/api/quiz/attempts?chapterId=${chapterId}&difficulty=${value}`)
           .then((r) => (r.ok ? r.json() : { attempts: [] }))
-          .then((data) => [d.value, data.attempts ?? []] as const)
-          .catch(() => [d.value, []] as const),
+          .then((data) => [value, data.attempts ?? []] as const)
+          .catch(() => [value, []] as const),
       ),
     ).then((entries) => setHistoryByDifficulty(Object.fromEntries(entries)));
   }, [chapterId]);
@@ -70,7 +73,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
           router.push("/limite");
           return;
         }
-        setError(data?.error ?? "Impossible de charger le quiz.");
+        setError(data?.error ?? t.quiz.unableToLoadQuiz);
         setPhase("select");
         return;
       }
@@ -81,7 +84,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       setConfirmed(false);
       setPhase("playing");
     } catch (err) {
-      setError(err instanceof RequestFailedError ? err.message : "Erreur réseau.");
+      setError(err instanceof RequestFailedError ? err.message : t.quiz.networkError);
       setPhase("select");
     }
   }
@@ -115,7 +118,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     });
     const data = await res.json();
     if (!res.ok || typeof data.score !== "number") {
-      setError(data.error ?? "Impossible d'enregistrer le résultat du quiz.");
+      setError(data.error ?? t.quiz.unableToSaveResult);
       setPhase("select");
       return;
     }
@@ -140,21 +143,25 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
   if (phase === "select") {
     return (
       <div>
-        <h1 className="mb-1 font-heading text-3xl font-semibold">Quiz — {chapterNom}</h1>
-        <p className="mb-6 text-text-muted">Choisis un niveau de difficulté.</p>
+        <h1 className="mb-1 font-heading text-3xl font-semibold">{t.quiz.quizTitle(chapterNom)}</h1>
+        <p className="mb-6 text-text-muted">{t.quiz.chooseDifficulty}</p>
         {error && <p className="mb-4 text-sm text-danger">{error}</p>}
         <div className="flex flex-col gap-3">
-          {DIFFICULTIES.map((d) => {
-            const history = historyByDifficulty[d.value] ?? [];
+          {DIFFICULTY_VALUES.map((value) => {
+            const history = historyByDifficulty[value] ?? [];
             const last = history[0];
             return (
               <ChoiceCard
-                key={d.value}
-                title={d.label}
+                key={value}
+                title={t.quiz.difficulties[value]}
                 description={
-                  last ? `Dernier score : ${last.score}/${last.total} — ${last.score === last.total ? "refaire pour t'entraîner" : "clique pour refaire"}` : "Pas encore tenté — clique pour commencer"
+                  last
+                    ? `${t.quiz.lastScore(last.score, last.total)} — ${
+                        last.score === last.total ? t.quiz.retryToTrain : t.quiz.clickToRetry
+                      }`
+                    : t.quiz.notAttemptedClickToStart
                 }
-                onClick={() => startQuiz(d.value)}
+                onClick={() => startQuiz(value)}
               >
                 {history.length > 1 && (
                   <ul className="mt-2 flex flex-col gap-0.5 text-xs text-text-muted">
@@ -181,9 +188,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
     const isCorrect = selected === question.reponseIndex;
     return (
       <div>
-        <p className="mb-4 text-sm text-text-muted">
-          Question {index + 1} / {questions.length}
-        </p>
+        <p className="mb-4 text-sm text-text-muted">{t.quiz.questionProgress(index + 1, questions.length)}</p>
         <Card>
           <h2 className="mb-5 font-heading text-xl font-semibold">{question.question}</h2>
           <div className="flex flex-col gap-2">
@@ -218,9 +223,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
                 isCorrect ? "border-success/50 bg-success/10" : "border-danger/50 bg-danger/10"
               }`}
             >
-              <p className="mb-1 font-semibold">
-                {isCorrect ? "Bonne réponse !" : "Pas tout à fait."}
-              </p>
+              <p className="mb-1 font-semibold">{isCorrect ? t.quiz.correctAnswer : t.quiz.wrongAnswer}</p>
               <p>{question.explication}</p>
             </div>
           )}
@@ -228,11 +231,11 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
           <div className="mt-5 flex justify-end">
             {!confirmed ? (
               <Button disabled={selected === null} onClick={confirmAnswer}>
-                Confirmer
+                {t.quiz.confirmButton}
               </Button>
             ) : (
               <Button onClick={nextQuestion}>
-                {index + 1 < questions.length ? "Question suivante" : "Voir mon score"}
+                {index + 1 < questions.length ? t.quiz.nextQuestion : t.quiz.seeScore}
               </Button>
             )}
           </div>
@@ -252,19 +255,15 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
       <h1 className="font-heading text-3xl font-semibold">
         {finalScore?.score} / {finalScore?.total}
       </h1>
-      {progress !== null && progress !== 0 && (
-        <p className="text-lg">
-          {progress > 0 ? `+${progress}` : progress} par rapport à la dernière tentative
-        </p>
-      )}
+      {progress !== null && progress !== 0 && <p className="text-lg">{t.quiz.scoreDelta(progress)}</p>}
       <div className="mt-4 flex gap-3">
         <Button variant="secondary" onClick={() => setPhase("select")}>
-          Changer de niveau
+          {t.quiz.changeDifficulty}
         </Button>
-        {difficulty && <Button onClick={() => startQuiz(difficulty)}>Refaire</Button>}
+        {difficulty && <Button onClick={() => startQuiz(difficulty)}>{t.quiz.retryQuiz}</Button>}
       </div>
       <Link href={`/fiches`} prefetch={true} className="mt-2 text-sm text-text-muted hover:text-accent">
-        Retour à mes fiches
+        {t.quiz.backToFiches}
       </Link>
     </div>
   );

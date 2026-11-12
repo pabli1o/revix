@@ -2,22 +2,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
-
-const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const MONTH_LABELS = [
-  "Janvier",
-  "Février",
-  "Mars",
-  "Avril",
-  "Mai",
-  "Juin",
-  "Juillet",
-  "Août",
-  "Septembre",
-  "Octobre",
-  "Novembre",
-  "Décembre",
-];
+import { useLocale } from "@/components/i18n/locale-provider";
 
 function toIso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -44,6 +29,7 @@ export function CalendarPicker({
   value: string | null;
   onChange: (isoDate: string) => void;
 }) {
+  const { t } = useLocale();
   const initial = value ? new Date(value) : new Date();
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
@@ -72,24 +58,24 @@ export function CalendarPicker({
           type="button"
           onClick={() => changeMonth(-1)}
           className="rounded-md px-2 py-1 text-sm hover:bg-bg-card"
-          aria-label="Mois précédent"
+          aria-label={t.examen.calendar.previousMonth}
         >
           ‹
         </button>
         <span className="font-mono text-sm font-medium">
-          {MONTH_LABELS[viewMonth]} {viewYear}
+          {t.examen.calendar.months[viewMonth]} {viewYear}
         </span>
         <button
           type="button"
           onClick={() => changeMonth(1)}
           className="rounded-md px-2 py-1 text-sm hover:bg-bg-card"
-          aria-label="Mois suivant"
+          aria-label={t.examen.calendar.nextMonth}
         >
           ›
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
-        {WEEKDAY_LABELS.map((w) => (
+        {t.examen.calendar.weekdays.map((w) => (
           <span key={w} className="py-1 font-mono text-[10px] uppercase text-text-muted">
             {w}
           </span>

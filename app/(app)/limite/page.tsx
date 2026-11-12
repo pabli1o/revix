@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Shown instead of the fiche/quiz generation screen once an active
@@ -12,27 +13,25 @@ import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
  * rules that apply here. Before the next renewal, /abonnement offers both
  * the one-time credit top-up and switching to a higher tier.
  */
-export default function LimitePage() {
+export default async function LimitePage() {
+  const t = await getDictionary();
+
   return (
     <div className="pb-28">
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 pt-10 text-center">
         <div>
-          <h1 className="mb-2 font-heading text-2xl font-semibold">Crédits épuisés</h1>
-          <p className="text-text-muted">Tu as utilisé tous tes crédits ce mois-ci.</p>
+          <h1 className="mb-2 font-heading text-2xl font-semibold">{t.root.limite.title}</h1>
+          <p className="text-text-muted">{t.root.limite.subtitle}</p>
         </div>
         <Card className="w-full text-left text-sm text-text-muted">
-          <p>
-            Tes crédits se renouvellent automatiquement à ton prochain renouvellement
-            d&apos;abonnement. Tu peux aussi en ajouter ou passer à une offre avec plus de
-            crédits dès maintenant.
-          </p>
+          <p>{t.root.limite.description}</p>
         </Card>
       </div>
 
       <FloatingBottomBar>
         <Link href="/abonnement" prefetch={true} className="block w-full">
           <Button className="w-full" size="lg">
-            Voir les abonnements
+            {t.abonnement.viewPlans}
           </Button>
         </Link>
       </FloatingBottomBar>

@@ -8,11 +8,13 @@ import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
 import { FloatingBottomBar } from "@/components/layout/floating-bottom-bar";
 import { FicheSavedToast } from "@/components/fiches/fiche-saved-toast";
+import { getDictionary } from "@/lib/i18n/server";
 
 export default async function FichesPage() {
   const supabase = await createClient();
   const user = await getAuthedUser();
   const profile = await getProfile();
+  const t = await getDictionary();
 
   const [{ data: subjects }, { data: chapters }] = user
     ? await Promise.all([
@@ -33,7 +35,7 @@ export default async function FichesPage() {
       id: s.id,
       nom: s.nom,
       count: chapterCount,
-      countLabel: `${chapterCount} chapitre${chapterCount !== 1 ? "s" : ""}`,
+      countLabel: t.fiches.chapterCount(chapterCount),
       color: colors.get(s.nom)!,
       href: `/fiches/${s.id}`,
       renameUrl: `/api/subjects/${s.id}`,
@@ -46,27 +48,23 @@ export default async function FichesPage() {
     <div className="pb-24">
       <FicheSavedToast />
       <AppHeader variant="hero" />
-      {!isEmpty && (
-        <p className="mb-6 text-sm text-text-muted">
-          Clique sur une matière pour voir ses chapitres.
-        </p>
-      )}
+      {!isEmpty && <p className="mb-6 text-sm text-text-muted">{t.fiches.clickSubjectHint}</p>}
       <TileGrid
         items={items}
-        emptyMessage="Aucune fiche pour l'instant. Appuie sur « + Créer une fiche » pour commencer."
+        emptyMessage={t.fiches.emptySubjects}
         allowDelete
-        deleteWarning="Supprimer la matière « {nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille)."
+        deleteWarning={t.fiches.deleteSubjectWarning}
       />
       {isEmpty && profile?.prenom && (
         <p className="mt-6 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-center text-sm text-success">
-          Bienvenue, {profile.prenom} ! Crée ta première fiche pour commencer.
+          {t.fiches.welcomeFirstFiche(profile.prenom)}
         </p>
       )}
 
       <FloatingBottomBar>
         <Link href="/fiches/new" prefetch={true} className="block">
           <Button size="lg" className="w-full">
-            + Créer une fiche
+            {t.fiches.createFiche}
           </Button>
         </Link>
       </FloatingBottomBar>
