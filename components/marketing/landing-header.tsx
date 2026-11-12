@@ -8,7 +8,6 @@ import { ButtonLink } from "@/components/ui/button-link";
 const NAV_LINKS = [
   { href: "#comment-ca-marche", label: "Comment ça marche" },
   { href: "#fonctionnalites", label: "Fonctionnalités" },
-  { href: "#offres", label: "Offres" },
   { href: "#faq", label: "FAQ" },
 ];
 

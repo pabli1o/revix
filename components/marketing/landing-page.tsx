@@ -8,7 +8,6 @@ import { Reveal } from "./reveal";
 import { PhoneFrame } from "./phone-frame";
 import { DemoFicheScreen, FloatingCard } from "./demo-screens";
 import { FeatureTabs } from "./feature-tabs";
-import { PricingSection } from "./pricing-section";
 import { FaqAccordion } from "./faq-accordion";
 
 const HOW_IT_WORKS = [
@@ -168,18 +167,6 @@ export function LandingPage() {
               </div>
             </Reveal>
           ))}
-        </div>
-      </section>
-
-      {/* 7. Les offres */}
-      <section id="offres" className="scroll-mt-20 pt-20 pb-4">
-        <Reveal>
-          <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">Les offres</h2>
-        </Reveal>
-        <div className="mt-10 pt-2">
-          <Reveal delay={80}>
-            <PricingSection />
-          </Reveal>
         </div>
       </section>
 
