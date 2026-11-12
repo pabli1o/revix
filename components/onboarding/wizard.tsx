@@ -8,6 +8,7 @@ import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { saveLocalOnboarding, loadLocalOnboarding } from "./local-onboarding";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
@@ -117,6 +118,9 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <ProgressBar step={STEP_ORDER.indexOf(step) + 1} total={STEP_ORDER.length} />
 
         {step === "classe" && (

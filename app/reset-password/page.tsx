@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -105,7 +106,10 @@ export default function ResetPasswordPage() {
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
-        <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+          <LanguageSwitcher />
+        </div>
 
         {checking ? (
           <p className="mt-8 text-sm text-text-muted">Vérification du lien…</p>

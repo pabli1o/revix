@@ -2,6 +2,28 @@
 
 import { useEffect } from "react";
 
+/**
+ * Replaces the entire <html> document on a crash in the root layout
+ * itself — the normal LocaleProvider (mounted BY that layout) isn't
+ * available here, so this reads the locale cookie directly instead of
+ * going through useLocale(). Kept as a tiny self-contained lookup rather
+ * than importing the full dictionary system: this is the last-resort
+ * screen when something elsewhere has already gone wrong, so it stays as
+ * dependency-free as possible.
+ */
+const STRINGS = {
+  fr: { defaultMessage: "Une erreur inattendue s'est produite.", reference: "Référence", retry: "Réessayer" },
+  en: { defaultMessage: "Something unexpected happened.", reference: "Reference", retry: "Try again" },
+  es: { defaultMessage: "Ha ocurrido un error inesperado.", reference: "Referencia", retry: "Reintentar" },
+} as const;
+
+function readLocale(): keyof typeof STRINGS {
+  if (typeof document === "undefined") return "fr";
+  const match = document.cookie.match(/(?:^|; )reviix_locale=([^;]+)/);
+  const value = match?.[1];
+  return value === "en" || value === "es" ? value : "fr";
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -13,8 +35,11 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
+  const locale = readLocale();
+  const s = STRINGS[locale];
+
   return (
-    <html lang="fr">
+    <html lang={locale}>
       <body
         style={{
           background: "#ffffff",
@@ -32,11 +57,11 @@ export default function GlobalError({
       >
         <h1 style={{ color: "#1e3a5f", fontSize: "1.5rem", fontWeight: 700 }}>Reviix</h1>
         <p style={{ maxWidth: 420, fontSize: "0.875rem", color: "#595f66" }}>
-          {error.message || "Une erreur inattendue s'est produite."}
+          {error.message || s.defaultMessage}
         </p>
         {error.digest && (
           <p style={{ fontFamily: "system-ui, sans-serif", fontSize: "0.75rem", color: "#595f66" }}>
-            Référence : {error.digest}
+            {s.reference}: {error.digest}
           </p>
         )}
         <button
@@ -51,7 +76,7 @@ export default function GlobalError({
             cursor: "pointer",
           }}
         >
-          Réessayer
+          {s.retry}
         </button>
       </body>
     </html>

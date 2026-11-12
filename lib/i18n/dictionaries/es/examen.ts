@@ -1,0 +1,48 @@
+import type { ExamenDict } from "../fr/examen";
+
+export const examen: ExamenDict = {
+  noChapter: "Ningún tema",
+  addExam: "+ Añadir un examen",
+  distributionNote:
+    "Cada examen se reparte en el tiempo que queda hasta él, priorizando las fichas más urgentes y los temas que aún no has repasado.",
+  editRhythm: "Cambiar mi ritmo de estudio",
+  yourExams: "Tus exámenes",
+  generatePlanning: "Generar el planning",
+  generatingPlanning: "Generando…",
+  confirmDeleteExam: "¿Eliminar este examen y su planning asociado?",
+  noExamsYet: "Todavía no has añadido ningún examen.",
+  importance: {
+    normale: { label: "Normal", description: "Un examen como otro cualquiera" },
+    importante: { label: "Importante", description: "Cuenta más en la nota media" },
+    tresImportante: { label: "Muy importante", description: "Examen decisivo, tipo selectividad o final" },
+  },
+  examNameLabel: "Nombre del examen",
+  examNamePlaceholder: "Ej.: Examen de matemáticas",
+  dateLabel: "Fecha",
+  importanceLabel: "Importancia",
+  chaptersCoveredLabel: "Temas incluidos",
+  createChaptersFirst: "Crea primero algunas fichas para tener temas.",
+  addExamButton: "Añadir el examen",
+  creatingExam: "Creando…",
+  nameAndDateRequired: "El nombre y la fecha son obligatorios.",
+  createExamError: "Ha ocurrido un error al crear el examen.",
+  calendar: {
+    previousMonth: "Mes anterior",
+    nextMonth: "Mes siguiente",
+    weekdays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    months: [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ],
+  },
+};

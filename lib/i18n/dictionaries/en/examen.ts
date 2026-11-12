@@ -1,0 +1,48 @@
+import type { ExamenDict } from "../fr/examen";
+
+export const examen: ExamenDict = {
+  noChapter: "No chapter",
+  addExam: "+ Add an exam",
+  distributionNote:
+    "Each exam gets spread over the time left before it, prioritizing the most urgent notes and chapters you haven't reviewed yet.",
+  editRhythm: "Change my study rhythm",
+  yourExams: "Your exams",
+  generatePlanning: "Generate the plan",
+  generatingPlanning: "Generating…",
+  confirmDeleteExam: "Delete this exam and its planning?",
+  noExamsYet: "No exam added yet.",
+  importance: {
+    normale: { label: "Normal", description: "A test like any other" },
+    importante: { label: "Important", description: "Counts more toward your grade" },
+    tresImportante: { label: "Very important", description: "A decisive exam — finals, board exams…" },
+  },
+  examNameLabel: "Exam name",
+  examNamePlaceholder: "E.g.: Math midterm",
+  dateLabel: "Date",
+  importanceLabel: "Importance",
+  chaptersCoveredLabel: "Chapters covered",
+  createChaptersFirst: "Create some notes first to get chapters.",
+  addExamButton: "Add the exam",
+  creatingExam: "Creating…",
+  nameAndDateRequired: "A name and a date are required.",
+  createExamError: "Something went wrong creating the exam.",
+  calendar: {
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    months: [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ],
+  },
+};

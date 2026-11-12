@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionTimerProvider } from "@/components/timer/session-timer-context";
 import { NavigationHistoryProvider } from "@/components/navigation/navigation-history-provider";
+import { LocaleProvider } from "@/components/i18n/locale-provider";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
 import "./globals.css";
 
 // Single font for the whole site (headings, body, buttons, tabs, labels,
@@ -14,18 +16,25 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "Reviix — Tes fiches de révision en moins de 2 min",
-  description: "Tes fiches de révision en moins de 2 min à partir de tes cours — planning et quiz inclus.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDictionary();
+  return {
+    title: t.root.siteTagline,
+    description: t.root.siteDescription,
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
+
   return (
-    <html lang="fr" className={inter.variable}>
+    <html lang={locale} className={inter.variable}>
       <body className="min-h-screen bg-bg text-text antialiased">
-        <NavigationHistoryProvider>
-          <SessionTimerProvider>{children}</SessionTimerProvider>
-        </NavigationHistoryProvider>
+        <LocaleProvider initialLocale={locale}>
+          <NavigationHistoryProvider>
+            <SessionTimerProvider>{children}</SessionTimerProvider>
+          </NavigationHistoryProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

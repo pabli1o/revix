@@ -1,0 +1,48 @@
+export const examen = {
+  noChapter: "Aucun chapitre",
+  addExam: "+ Ajouter un examen",
+  distributionNote:
+    "Chaque examen est réparti dans le temps qui lui reste, en priorisant les fiches les plus urgentes et les chapitres pas encore révisés.",
+  editRhythm: "Modifier mon temps de révision",
+  yourExams: "Tes examens",
+  generatePlanning: "Générer le planning",
+  generatingPlanning: "Génération…",
+  confirmDeleteExam: "Supprimer cet examen et son planning associé ?",
+  noExamsYet: "Aucun examen ajouté pour l'instant.",
+  importance: {
+    normale: { label: "Normale", description: "Un contrôle comme un autre" },
+    importante: { label: "Importante", description: "Compte plus dans la moyenne" },
+    tresImportante: { label: "Très importante", description: "Examen décisif, type bac/partiels" },
+  },
+  examNameLabel: "Nom de l'examen",
+  examNamePlaceholder: "Ex : DS de maths",
+  dateLabel: "Date",
+  importanceLabel: "Importance",
+  chaptersCoveredLabel: "Chapitres couverts",
+  createChaptersFirst: "Crée d'abord des fiches pour avoir des chapitres.",
+  addExamButton: "Ajouter l'examen",
+  creatingExam: "Création…",
+  nameAndDateRequired: "Nom et date sont requis.",
+  createExamError: "Erreur lors de la création de l'examen.",
+  calendar: {
+    previousMonth: "Mois précédent",
+    nextMonth: "Mois suivant",
+    weekdays: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+    months: [
+      "Janvier",
+      "Février",
+      "Mars",
+      "Avril",
+      "Mai",
+      "Juin",
+      "Juillet",
+      "Août",
+      "Septembre",
+      "Octobre",
+      "Novembre",
+      "Décembre",
+    ],
+  },
+};
+
+export type ExamenDict = typeof examen;

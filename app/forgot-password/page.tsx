@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,10 @@ export default function ForgotPasswordPage() {
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
-        <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+          <LanguageSwitcher />
+        </div>
         <p className="mt-2 text-sm text-text-muted">
           Reçois un lien par e-mail pour choisir un nouveau mot de passe.
         </p>

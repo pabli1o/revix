@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean }) {
   const router = useRouter();
@@ -63,7 +64,10 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
   return (
     <div className="notebook-paper flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-card p-8 shadow-xl">
-        <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading text-3xl font-semibold text-accent">Reviix</h1>
+          <LanguageSwitcher />
+        </div>
         <p className="mt-2 text-sm text-text-muted">
           {fromFicheCreation
             ? "Connecte-toi pour générer ta fiche."

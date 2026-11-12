@@ -2,24 +2,25 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LandingPage } from "@/components/marketing/landing-page";
+import { getDictionary } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Reviix — Tes fiches de révision en moins de 2 min",
-  description:
-    "Dépose ton cours, récupère une fiche de révision claire en quelques secondes — planning avant l'examen et quiz inclus.",
-  openGraph: {
-    title: "Reviix — Tes fiches de révision en moins de 2 min",
-    description:
-      "Dépose ton cours, récupère une fiche de révision claire en quelques secondes — planning avant l'examen et quiz inclus.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "Reviix — Tes fiches de révision en moins de 2 min",
-    description:
-      "Dépose ton cours, récupère une fiche de révision claire en quelques secondes — planning avant l'examen et quiz inclus.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDictionary();
+  return {
+    title: t.root.siteTagline,
+    description: t.root.siteDescription,
+    openGraph: {
+      title: t.root.siteTagline,
+      description: t.root.siteDescription,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: t.root.siteTagline,
+      description: t.root.siteDescription,
+    },
+  };
+}
 
 export default async function RootPage() {
   const supabase = await createClient();
