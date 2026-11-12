@@ -1,39 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChoiceCard } from "@/components/ui/choice-card";
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
 
+/**
+ * Pure, controlled rhythm picker — no state, no network call of its own.
+ * Only ever rendered inside components/planning/settings-modal.tsx, which
+ * owns the (jours, minutes) selection and only persists it when its own
+ * "Valider" button is pressed.
+ */
 export function SettingsPanel({
-  initialJours,
-  initialMinutes,
+  jours,
+  minutes,
+  onChangeJours,
+  onChangeMinutes,
 }: {
-  initialJours: number;
-  initialMinutes: number;
+  jours: number;
+  minutes: number;
+  onChangeJours: (value: number) => void;
+  onChangeMinutes: (value: number) => void;
 }) {
-  const router = useRouter();
-  const [jours, setJours] = useState(initialJours);
-  const [minutes, setMinutes] = useState(initialMinutes);
-  const [saving, setSaving] = useState(false);
-
-  async function save(nextJours: number, nextMinutes: number) {
-    setSaving(true);
-    await fetch("/api/planning/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ revisionJoursSemaine: nextJours, revisionMinutesJour: nextMinutes }),
-    });
-    await fetch("/api/planning/generate", { method: "POST" });
-    setSaving(false);
-    router.refresh();
-  }
-
   return (
-    // No own Card wrapper — only ever rendered inside
-    // components/planning/settings-modal.tsx, which already provides it.
     <div className="flex flex-col gap-6">
       <div>
         <label className="text-sm font-medium">Jours de révision par semaine</label>
@@ -43,11 +32,7 @@ export function SettingsPanel({
               key={d}
               title={`${d} jour${d > 1 ? "s" : ""} par semaine`}
               selected={jours === d}
-              disabled={saving}
-              onClick={() => {
-                setJours(d);
-                save(d, minutes);
-              }}
+              onClick={() => onChangeJours(d)}
             />
           ))}
         </div>
@@ -60,11 +45,7 @@ export function SettingsPanel({
               key={m}
               title={`${m} min par jour`}
               selected={minutes === m}
-              disabled={saving}
-              onClick={() => {
-                setMinutes(m);
-                save(jours, m);
-              }}
+              onClick={() => onChangeMinutes(m)}
             />
           ))}
         </div>
