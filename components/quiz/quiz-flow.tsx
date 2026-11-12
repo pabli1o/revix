@@ -10,10 +10,10 @@ import { fetchJson, RequestFailedError } from "@/lib/fetch-json";
 import { QuizLoader } from "./quiz-loader";
 import type { QuizDifficulty, QuizQuestion } from "@/lib/supabase/database.types";
 
-const DIFFICULTIES: { value: QuizDifficulty; label: string; emoji: string }[] = [
-  { value: "facile", label: "Facile", emoji: "🌱" },
-  { value: "moyen", label: "Moyen", emoji: "🔥" },
-  { value: "difficile", label: "Difficile", emoji: "🧠" },
+const DIFFICULTIES: { value: QuizDifficulty; label: string }[] = [
+  { value: "facile", label: "Facile" },
+  { value: "moyen", label: "Moyen" },
+  { value: "difficile", label: "Difficile" },
 ];
 
 interface Attempt {
@@ -150,12 +150,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
             return (
               <ChoiceCard
                 key={d.value}
-                title={
-                  <span className="flex items-center gap-2">
-                    <span aria-hidden>{d.emoji}</span>
-                    {d.label}
-                  </span>
-                }
+                title={d.label}
                 description={
                   last ? `Dernier score : ${last.score}/${last.total} — ${last.score === last.total ? "refaire pour t'entraîner" : "clique pour refaire"}` : "Pas encore tenté — clique pour commencer"
                 }
@@ -224,7 +219,7 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
               }`}
             >
               <p className="mb-1 font-semibold">
-                {isCorrect ? "✅ Bonne réponse !" : "❌ Pas tout à fait."}
+                {isCorrect ? "Bonne réponse !" : "Pas tout à fait."}
               </p>
               <p>{question.explication}</p>
             </div>
@@ -254,20 +249,19 @@ export function QuizFlow({ chapterId, chapterNom }: { chapterId: string; chapter
 
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
-      <div className="text-5xl">🎯</div>
       <h1 className="font-heading text-3xl font-semibold">
         {finalScore?.score} / {finalScore?.total}
       </h1>
       {progress !== null && progress !== 0 && (
         <p className="text-lg">
-          {progress > 0 ? `🎉 +${progress}` : progress} par rapport à la dernière tentative
+          {progress > 0 ? `+${progress}` : progress} par rapport à la dernière tentative
         </p>
       )}
       <div className="mt-4 flex gap-3">
         <Button variant="secondary" onClick={() => setPhase("select")}>
           Changer de niveau
         </Button>
-        {difficulty && <Button onClick={() => startQuiz(difficulty)}>🔁 Refaire</Button>}
+        {difficulty && <Button onClick={() => startQuiz(difficulty)}>Refaire</Button>}
       </div>
       <Link href={`/fiches`} prefetch={true} className="mt-2 text-sm text-text-muted hover:text-accent">
         Retour à mes fiches

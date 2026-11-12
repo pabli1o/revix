@@ -48,7 +48,7 @@ export default async function FichesPage() {
       <AppHeader variant="hero" />
       {!isEmpty && (
         <p className="mb-6 text-sm text-text-muted">
-          📚 Clique sur une matière pour voir ses chapitres.
+          Clique sur une matière pour voir ses chapitres.
         </p>
       )}
       <TileGrid

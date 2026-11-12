@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { IconLock } from "@/components/ui/icons";
 import type { SubscriptionTier } from "@/lib/subscription/constants";
 import { PricingModal } from "./pricing-modal";
 
@@ -38,7 +39,7 @@ export function FeatureLocked({
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-6 pt-10 text-center">
-      <span className="text-5xl">🔒</span>
+      <IconLock className="size-12 text-accent" />
       <div>
         <h1 className="mb-2 font-heading text-2xl font-semibold">Fonctionnalité verrouillée</h1>
         <p className="text-text-muted">{COPY[feature]}</p>

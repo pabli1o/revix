@@ -75,7 +75,7 @@ export default async function SubjectPage(props: PageProps<"/fiches/[subjectId]"
       </div>
 
       {items.length > 0 && (
-        <p className="mb-6 text-sm text-text-muted">📖 Clique sur un chapitre pour voir ses fiches.</p>
+        <p className="mb-6 text-sm text-text-muted">Clique sur un chapitre pour voir ses fiches.</p>
       )}
 
       <TileGrid

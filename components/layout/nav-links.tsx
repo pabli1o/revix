@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { IconLock } from "@/components/ui/icons";
 
 type LockableTab = "examen" | "planning" | "quiz";
 
@@ -62,7 +63,7 @@ export function NavLinks({
                 : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >
-            {isLocked && <span aria-hidden>🔒 </span>}
+            {isLocked && <IconLock className="mr-1.5 inline-block size-3.5 -translate-y-px align-middle" />}
             {link.label}
           </Link>
         );

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { useSessionTimer, formatDuration } from "@/components/timer/session-timer-context";
+import { IconPause, IconPlay } from "@/components/ui/icons";
 
 /**
  * Shown only when arriving from the planning flow (?planningTask=<id> in
@@ -64,7 +65,7 @@ export function PlanningTaskTimerBar() {
             : "bg-accent text-white hover:bg-accent-strong",
         )}
       >
-        {running ? "⏸" : "▶"}
+        {running ? <IconPause className="size-4" /> : <IconPlay className="size-4" />}
       </button>
       <div className="flex flex-col leading-tight">
         <span

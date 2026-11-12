@@ -47,7 +47,7 @@ const fetchProfileFromDb = unstable_cache(
  * React's cache() so the layout and every page's <AppHeader /> share one
  * call instead of each firing their own query.
  *
- * ⚠️ onboarding_completed gates the /onboarding redirect in
+ * Note: onboarding_completed gates the /onboarding redirect in
  * app/(app)/layout.tsx. The two places that can flip it —
  * app/api/onboarding/route.ts and app/api/me/route.ts — call
  * revalidateTag(PROFILE_CACHE_TAG) right after writing. If you add another

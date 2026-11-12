@@ -63,7 +63,7 @@ export function TrashList({ items }: { items: TrashedFiche[] }) {
               disabled={busyId === item.id}
               onClick={() => restore(item.id)}
             >
-              ↩️ Restaurer
+              Restaurer
             </Button>
             <Button
               size="sm"

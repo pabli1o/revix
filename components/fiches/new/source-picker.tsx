@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
+import { IconDocument, IconImage } from "@/components/ui/icons";
 import {
   compressImageFile,
   estimateBase64Bytes,
@@ -269,7 +270,7 @@ export function SourcePicker({
           onChange={(e) => handlePhotos(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => photoInputRef.current?.click()}>
-          📷 Ajouter des photos
+          Ajouter des photos
         </Button>
 
         <input
@@ -281,7 +282,7 @@ export function SourcePicker({
           onChange={(e) => handlePdf(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => pdfInputRef.current?.click()}>
-          📄 Ajouter un PDF
+          Ajouter un PDF
         </Button>
 
         <input
@@ -293,7 +294,7 @@ export function SourcePicker({
           onChange={(e) => handleWord(e.target.files)}
         />
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => wordInputRef.current?.click()}>
-          📝 Ajouter un Word
+          Ajouter un Word
         </Button>
       </div>
 
@@ -308,7 +309,7 @@ export function SourcePicker({
               className="flex items-center justify-between rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm"
             >
               <span className="flex items-center gap-2 truncate">
-                <span>{ICONS[s.type]}</span>
+                <SourceTypeIcon type={s.type} className="size-4 shrink-0 text-text-muted" />
                 <span className="truncate">{s.nom}</span>
               </span>
               <button
@@ -327,9 +328,6 @@ export function SourcePicker({
   );
 }
 
-const ICONS: Record<PendingSource["type"], string> = {
-  texte: "📝",
-  photo: "📷",
-  pdf: "📄",
-  word: "📝",
-};
+function SourceTypeIcon({ type, className }: { type: PendingSource["type"]; className?: string }) {
+  return type === "photo" ? <IconImage className={className} /> : <IconDocument className={className} />;
+}

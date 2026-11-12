@@ -25,7 +25,7 @@ export function TileGrid({
 }: {
   items: TileItem[];
   emptyMessage: string;
-  /** Shows a delete (🗑️) action alongside rename — only meaningful for
+  /** Shows a delete ("Supprimer") action alongside rename — only meaningful for
    * matières/chapitres: deleting them cascades to a HARD delete of their
    * fiches (see the DELETE handlers), bypassing the corbeille. Fiche
    * tiles have their own dedicated soft-delete flow (FicheViewer's
@@ -152,11 +152,9 @@ function Tile({
                   e.preventDefault();
                   setEditing(true);
                 }}
-                className="rounded-full bg-black/5 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
-                aria-label="Renommer"
-                title="Renommer"
+                className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
               >
-                ✎
+                Renommer
               </button>
               {allowDelete && (
                 <button
@@ -166,11 +164,9 @@ function Tile({
                     e.preventDefault();
                     handleDelete();
                   }}
-                  className="rounded-full bg-black/5 p-1.5 leading-none backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
-                  aria-label="Supprimer"
-                  title="Supprimer"
+                  className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-black/10 active:scale-90"
                 >
-                  {deleting ? "…" : "🗑️"}
+                  {deleting ? "…" : "Supprimer"}
                 </button>
               )}
             </div>

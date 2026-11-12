@@ -82,7 +82,7 @@ export default async function QuizSubjectPage(props: PageProps<"/quiz/[subjectId
       </div>
 
       {items.length > 0 && (
-        <p className="mb-6 text-sm text-text-muted">📖 Clique sur un chapitre pour lancer un quiz.</p>
+        <p className="mb-6 text-sm text-text-muted">Clique sur un chapitre pour lancer un quiz.</p>
       )}
 
       <TileGrid

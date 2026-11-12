@@ -14,6 +14,7 @@ import { chunkSources, estimateBase64Bytes, MAX_TOTAL_PAYLOAD_BYTES } from "./fi
 import type { GenerateSourceInput } from "@/lib/fiches/types";
 import { FicheLoader } from "@/components/ui/fiche-loader";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { IconLock } from "@/components/ui/icons";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
 import { SourcePicker, type PendingSource } from "./source-picker";
 import { uploadSourceFile } from "./upload-source";
@@ -610,9 +611,7 @@ export function CreationFlow({
       {step === "sources" && (
         freeTrialExhausted ? (
           <Card className="flex flex-col items-center gap-4 p-8 text-center">
-            <span className="text-4xl" aria-hidden>
-              🔒
-            </span>
+            <IconLock className="size-10 text-accent" />
             <div>
               <p className="font-heading text-lg font-semibold">Tu as déjà généré ta fiche d&apos;essai.</p>
               <p className="mt-1 text-text-muted">
@@ -627,7 +626,7 @@ export function CreationFlow({
           <Card>
             <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
             <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
-              Générer la fiche ✨
+              Générer la fiche
             </Button>
           </Card>
         )

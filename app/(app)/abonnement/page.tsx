@@ -44,7 +44,7 @@ export default async function AbonnementPage() {
           <Card className="mb-4">
             <div className="flex flex-col gap-3">
               <p className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
-                Abonnement {tier.label} actif ✅
+                Abonnement {tier.label} actif
               </p>
 
               <div>

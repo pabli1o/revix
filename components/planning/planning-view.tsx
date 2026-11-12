@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IconRefresh } from "@/components/ui/icons";
 import { TaskRow, type PlanningTaskView } from "./task-row";
 
 export interface DayTasks {
@@ -39,7 +40,14 @@ export function PlanningView({
     <div>
       <div className="mb-4 flex items-center justify-end">
         <Button size="sm" variant="secondary" onClick={regenerate} disabled={generating}>
-          {generating ? "Génération…" : "🔄 Régénérer"}
+          {generating ? (
+            "Génération…"
+          ) : (
+            <>
+              <IconRefresh className="mr-1.5 inline-block size-4 -translate-y-px align-middle" />
+              Régénérer
+            </>
+          )}
         </Button>
       </div>
 

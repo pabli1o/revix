@@ -3,6 +3,7 @@
 import { forwardRef, useState } from "react";
 import clsx from "clsx";
 import { Input } from "./input";
+import { IconEye, IconEyeOff } from "@/components/ui/icons";
 
 type PasswordInputProps = Omit<React.ComponentProps<typeof Input>, "type">;
 
@@ -29,7 +30,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           title={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text"
         >
-          {visible ? "🙈" : "👁️"}
+          {visible ? <IconEyeOff className="size-5" /> : <IconEye className="size-5" />}
         </button>
       </div>
     );

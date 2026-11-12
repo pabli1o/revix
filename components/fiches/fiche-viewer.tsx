@@ -119,7 +119,7 @@ export function FicheViewer({
       className="mt-10 rounded-xl border-2 border-dashed p-5"
       style={{ borderColor: "#1e3a5f99", backgroundColor: "#1e3a5f1a" }}
     >
-      <h3 className="mb-2 font-heading text-lg font-semibold text-accent">📌 À retenir</h3>
+      <h3 className="mb-2 font-heading text-lg font-semibold text-accent">À retenir</h3>
       <ul className="flex flex-col gap-1.5">
         {contenu.aRetenir.map((point, i) => (
           <li key={i} className="leading-relaxed">
@@ -213,11 +213,11 @@ export function FicheViewer({
              come out fully legible — a silent way around the paywall. */}
           {!isBlurred && (
             <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? "Préparation…" : "📥 Télécharger en image"}
+              {exporting ? "Préparation…" : "Télécharger en image"}
             </Button>
           )}
           <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-            🗑️ Corbeille
+            Corbeille
           </Button>
         </div>
         {exportError && <p className="text-sm text-danger">{exportError}</p>}

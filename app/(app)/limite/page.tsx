@@ -16,7 +16,6 @@ export default function LimitePage() {
   return (
     <div className="pb-28">
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 pt-10 text-center">
-        <span className="text-5xl">🪫</span>
         <div>
           <h1 className="mb-2 font-heading text-2xl font-semibold">Crédits épuisés</h1>
           <p className="text-text-muted">Tu as utilisé tous tes crédits ce mois-ci.</p>

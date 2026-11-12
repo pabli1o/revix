@@ -3,6 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
+import { IconCheck, IconMinus } from "@/components/ui/icons";
 import { TIERS, TIER_ORDER, type SubscriptionTier } from "@/lib/subscription/constants";
 
 const BADGE_BY_TIER: Partial<Record<SubscriptionTier, string>> = {
@@ -92,19 +93,31 @@ export function PricingCards({
 
             <ul className="flex flex-col gap-1.5 text-sm">
               <li className="flex items-center gap-2">
-                <span aria-hidden>✅</span>
+                <IconCheck className="size-4 shrink-0 text-accent" />
                 <span>Génération de fiches</span>
               </li>
               <li className="flex items-center gap-2">
-                <span aria-hidden>{tier.features.quiz ? "✅" : "❌"}</span>
+                {tier.features.quiz ? (
+                  <IconCheck className="size-4 shrink-0 text-accent" />
+                ) : (
+                  <IconMinus className="size-4 shrink-0 text-text-muted" />
+                )}
                 <span>{tier.features.quiz ? "Accès au quiz" : "Pas de quiz"}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span aria-hidden>{tier.features.planning ? "✅" : "❌"}</span>
+                {tier.features.planning ? (
+                  <IconCheck className="size-4 shrink-0 text-accent" />
+                ) : (
+                  <IconMinus className="size-4 shrink-0 text-text-muted" />
+                )}
                 <span>{tier.features.planning ? "Accès au planning" : "Pas de planning"}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span aria-hidden>{tier.features.examen ? "✅" : "❌"}</span>
+                {tier.features.examen ? (
+                  <IconCheck className="size-4 shrink-0 text-accent" />
+                ) : (
+                  <IconMinus className="size-4 shrink-0 text-text-muted" />
+                )}
                 <span>{tier.features.examen ? "Accès aux examens" : "Pas d'examens"}</span>
               </li>
             </ul>

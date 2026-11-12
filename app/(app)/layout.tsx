@@ -2,11 +2,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAuthedUser } from "@/lib/supabase/auth";
 import { getProfile } from "@/lib/supabase/profile";
+import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionInfo, subscriptionHasFeature } from "@/lib/subscription/gate";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { NavLinks } from "@/components/layout/nav-links";
-import { SettingsLink } from "@/components/layout/settings-link";
-import { CorbeilleLink } from "@/components/layout/corbeille-link";
+import { SettingsMenu } from "@/components/layout/settings-menu";
 import { FloatingBackButton } from "@/components/layout/floating-back-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -24,6 +24,25 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     redirect("/onboarding");
   }
 
+  // Not folded into getProfile()'s cached select: its revalidation tag is
+  // only busted by the onboarding/prenom-nom write paths (see
+  // lib/supabase/profile.ts), not by /api/planning/settings — adding these
+  // two columns there would make a rhythm change invisible here for up to
+  // 5 minutes. A plain, uncached read instead, same as
+  // app/(app)/examen/page.tsx already does for the same fields.
+  let revisionJoursSemaine = 3;
+  let revisionMinutesJour = 45;
+  if (user) {
+    const supabase = await createClient();
+    const { data: rhythm } = await supabase
+      .from("profiles")
+      .select("revision_jours_semaine, revision_minutes_jour")
+      .eq("id", user.id)
+      .maybeSingle();
+    revisionJoursSemaine = rhythm?.revision_jours_semaine ?? 3;
+    revisionMinutesJour = rhythm?.revision_minutes_jour ?? 45;
+  }
+
   const subscription = await getSubscriptionInfo(user?.id);
   const lockedTabs = {
     examen: !subscriptionHasFeature(subscription, "examen"),
@@ -36,13 +55,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <aside className="flex flex-row items-center justify-between border-b border-border bg-bg-elevated px-4 py-3 md:w-64 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:px-5 md:py-6">
         <div className="flex items-center justify-between md:mb-8">
           <Link href="/fiches" prefetch={true}>
-            <img src="/reviix-wordmark.png" alt="Reviix" className="h-7 w-auto" />
+            <span className="font-heading text-xl font-bold tracking-tight text-accent">Reviix</span>
           </Link>
           {user && (
-            <div className="flex items-center gap-1">
-              <CorbeilleLink />
-              <SettingsLink />
-            </div>
+            <SettingsMenu
+              revisionJoursSemaine={revisionJoursSemaine}
+              revisionMinutesJour={revisionMinutesJour}
+            />
           )}
         </div>
         <div className="hidden md:block">
@@ -54,7 +73,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {user && (
           <div className="hidden md:mt-auto md:block">
             <p className="mb-2 truncate text-sm text-text-muted">
-              {profile?.prenom ? `Salut ${profile.prenom} 👋` : ""}
+              {profile?.prenom ? `Salut ${profile.prenom}` : ""}
             </p>
             <SignOutButton />
           </div>
