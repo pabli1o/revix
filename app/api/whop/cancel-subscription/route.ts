@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWhop } from "@/lib/whop/client";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Whop has no Stripe-Billing-Portal equivalent (no hosted self-service page
@@ -11,10 +12,11 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function POST() {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const { data: sub } = await supabase
     .from("subscriptions")
@@ -23,7 +25,7 @@ export async function POST() {
     .maybeSingle();
 
   if (!sub?.whop_membership_id) {
-    return NextResponse.json({ error: "Aucun abonnement à gérer" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.whop.noSubscriptionToManage }, { status: 400 });
   }
 
   const whop = getWhop();

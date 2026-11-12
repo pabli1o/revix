@@ -2,20 +2,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { QuizDifficulty } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/server";
 
 const VALID_DIFFICULTIES: QuizDifficulty[] = ["facile", "moyen", "difficile"];
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const chapterId = request.nextUrl.searchParams.get("chapterId");
   const difficulty = request.nextUrl.searchParams.get("difficulty") as QuizDifficulty | null;
   if (!chapterId || !difficulty || !VALID_DIFFICULTIES.includes(difficulty)) {
-    return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.quiz.invalidParams }, { status: 400 });
   }
 
   const { data: attempts, error } = await supabase
@@ -33,10 +35,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const t = await getDictionary();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: t.errors.common.unauthenticated }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as {
     chapterId?: string;
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
     !VALID_DIFFICULTIES.includes(body.difficulty) ||
     !Array.isArray(body.reponses)
   ) {
-    return NextResponse.json({ error: "Paramètres invalides" }, { status: 400 });
+    return NextResponse.json({ error: t.errors.quiz.invalidParams }, { status: 400 });
   }
 
   // Use the admin client for grading so we always read the authoritative
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!quiz || quiz.status !== "ready" || quiz.questions.length === 0) {
-    return NextResponse.json({ error: "Quiz introuvable ou non prêt" }, { status: 404 });
+    return NextResponse.json({ error: t.errors.quiz.quizNotFound }, { status: 404 });
   }
 
   const total = quiz.questions.length;

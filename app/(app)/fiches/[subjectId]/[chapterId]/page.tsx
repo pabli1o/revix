@@ -6,13 +6,17 @@ import { assignSubjectColors } from "@/lib/theme/subject-colors";
 import { TileGrid, type TileItem } from "@/components/fiches/tile-grid";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "@/components/fiches/planning-task-timer-bar";
+import { getDictionary } from "@/lib/i18n/server";
 
+// TODO(i18n date formatting pass): parametrize by locale instead of
+// hardcoded "fr-FR" — see lib/i18n/format.ts's formatDate.
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
 export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/[chapterId]">) {
   const { subjectId, chapterId } = await props.params;
   const supabase = await createClient();
   const user = await getAuthedUser();
+  const t = await getDictionary();
 
   const [{ data: subject }, { data: chapter }, { data: allSubjects }, { data: fiches }] =
     await Promise.all([
@@ -56,7 +60,7 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
       <PlanningTaskTimerBar />
       <p className="mb-1 text-sm text-text-muted">
         <Link href="/fiches" prefetch={true} className="hover:text-accent">
-          Mes matières
+          {t.fiches.mySubjects}
         </Link>{" "}
         /{" "}
         <Link href={`/fiches/${subjectId}`} prefetch={true} className="hover:text-accent">
@@ -67,10 +71,10 @@ export default async function ChapterPage(props: PageProps<"/fiches/[subjectId]/
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-3xl font-semibold">{chapter.nom}</h1>
         <Link href="/fiches/new" prefetch={true}>
-          <Button>+ Nouvelle fiche</Button>
+          <Button>{t.fiches.newFiche}</Button>
         </Link>
       </div>
-      <TileGrid items={items} emptyMessage="Aucune fiche dans ce chapitre pour l'instant." />
+      <TileGrid items={items} emptyMessage={t.fiches.emptyFichesInChapter} />
     </div>
   );
 }
