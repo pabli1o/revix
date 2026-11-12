@@ -4,8 +4,9 @@ import { getProfile } from "@/lib/supabase/profile";
  * Shown at the top of every main tab (Fiches / Examen / Planning / Quiz).
  * Two variants:
  *
- * - `"hero"` (Fiches only — the app's actual home screen, and the future
- *   public homepage once it exists) reads as a real page headline: two
+ * - `"hero"` (Fiches only — the app's actual home screen; the public sales
+ *   landing page at `/` for signed-out visitors is a separate component,
+ *   components/marketing/landing-page.tsx) reads as a real page headline: two
  *   bold lines ("Tes fiches de révision" in near-black, "en moins de 2
  *   min." in navy), a short gray explanation line, then a pale "Reviix"
  *   text watermark (plain text, not the image logo — see app/(app)/layout.tsx

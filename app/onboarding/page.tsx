@@ -8,9 +8,10 @@ export default async function OnboardingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // No account yet: this is the very first screen a new visitor sees
-  // (see app/page.tsx) — answers are kept in the browser, nothing to
-  // check server-side (see OnboardingWizard's "anonymous" mode).
+  // No account yet: reached from a call to action on the landing page
+  // (see app/page.tsx / components/marketing/landing-page.tsx), never a
+  // redirect — answers are kept in the browser, nothing to check
+  // server-side (see OnboardingWizard's "anonymous" mode).
   if (!user) {
     return <OnboardingWizard mode="anonymous" />;
   }

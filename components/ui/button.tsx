@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
 import clsx from "clsx";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
-type Size = "sm" | "md" | "lg";
+export type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
+export type Size = "sm" | "md" | "lg";
 
-const VARIANT_CLASSES: Record<Variant, string> = {
+export const VARIANT_CLASSES: Record<Variant, string> = {
   // Pill shape (rounded-full, see SIZE_CLASSES) + a soft navy glow instead
   // of a plain gray shadow. Disabled uses a distinct muted slate-blue fill
   // rather than just fading the vivid navy, so a not-yet-available action
@@ -25,7 +25,7 @@ const VARIANT_CLASSES: Record<Variant, string> = {
     "bg-transparent border-2 border-accent text-accent hover:bg-accent/10 active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
 };
 
-const SIZE_CLASSES: Record<Size, string> = {
+export const SIZE_CLASSES: Record<Size, string> = {
   sm: "text-sm px-3 py-1.5 rounded-full gap-1.5",
   md: "text-sm px-4 py-2.5 rounded-full gap-2",
   lg: "text-base px-6 py-3 rounded-full gap-2",
