@@ -7,6 +7,10 @@ export const fiches: FichesDict = {
     "¿Eliminar la asignatura «{nom}»? Todos sus temas y fichas se eliminarán de forma definitiva (sin pasar por la papelera).",
   welcomeFirstFiche: (prenom: string) => `¡Bienvenido/a, ${prenom}! Crea tu primera ficha para empezar.`,
   createFiche: "+ Crear una ficha",
+  emptyStateTitle: "Empieza aquí",
+  emptyStateBody: (prenom: string | null) =>
+    prenom ? `¡Bienvenido/a, ${prenom}! Sube tu primer curso para crear tu ficha.` : "Sube tu primer curso para crear tu ficha.",
+  createFicheCta: "Crear una ficha",
 
   mySubjects: "Mis asignaturas",
   chapterCount: (n: number) => `${n} tema${n !== 1 ? "s" : ""}`,

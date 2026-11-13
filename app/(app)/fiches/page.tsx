@@ -48,26 +48,40 @@ export default async function FichesPage() {
     <div className="pb-24">
       <FicheSavedToast />
       <AppHeader variant="hero" />
-      {!isEmpty && <p className="mb-6 text-sm text-text-muted">{t.fiches.clickSubjectHint}</p>}
-      <TileGrid
-        items={items}
-        emptyMessage={t.fiches.emptySubjects}
-        allowDelete
-        deleteWarning={t.fiches.deleteSubjectWarning}
-      />
-      {isEmpty && profile?.prenom && (
-        <p className="mt-6 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-center text-sm text-success">
-          {t.fiches.welcomeFirstFiche(profile.prenom)}
-        </p>
+      {isEmpty ? (
+        // One centered card (title + one sentence + the CTA, all inside
+        // it) instead of the generic TileGrid empty state plus a separate
+        // welcome banner — see lib/i18n/dictionaries/*\/fiches.ts's
+        // emptyStateTitle/emptyStateBody/createFicheCta. The sticky
+        // bottom bar is for once fiches exist (below); here the button
+        // lives in the card itself.
+        <div className="mx-auto flex max-w-sm flex-col items-center gap-4 rounded-2xl border border-border bg-bg-card px-6 py-10 text-center">
+          <h2 className="font-heading text-xl font-semibold">{t.fiches.emptyStateTitle}</h2>
+          <p className="text-sm text-text-muted">{t.fiches.emptyStateBody(profile?.prenom ?? null)}</p>
+          <Link href="/fiches/new" prefetch={true} className="w-full">
+            <Button size="lg" className="w-full">
+              {t.fiches.createFicheCta}
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          <p className="mb-6 text-sm text-text-muted">{t.fiches.clickSubjectHint}</p>
+          <TileGrid
+            items={items}
+            emptyMessage={t.fiches.emptySubjects}
+            allowDelete
+            deleteWarning={t.fiches.deleteSubjectWarning}
+          />
+          <FloatingBottomBar>
+            <Link href="/fiches/new" prefetch={true} className="block">
+              <Button size="lg" className="w-full">
+                {t.fiches.createFiche}
+              </Button>
+            </Link>
+          </FloatingBottomBar>
+        </>
       )}
-
-      <FloatingBottomBar>
-        <Link href="/fiches/new" prefetch={true} className="block">
-          <Button size="lg" className="w-full">
-            {t.fiches.createFiche}
-          </Button>
-        </Link>
-      </FloatingBottomBar>
     </div>
   );
 }

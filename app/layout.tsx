@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SessionTimerProvider } from "@/components/timer/session-timer-context";
 import { NavigationHistoryProvider } from "@/components/navigation/navigation-history-provider";
@@ -15,6 +15,16 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
+
+// viewportFit: "cover" lets content draw under the iPhone status bar/home
+// indicator so env(safe-area-inset-*) reports real values instead of 0 —
+// used by the sticky bottom action bar (floating-bottom-bar.tsx) to clear
+// the home indicator instead of sitting under it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getDictionary();

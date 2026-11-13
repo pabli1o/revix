@@ -33,7 +33,7 @@ export function SettingsMenu({
         onClick={() => setOpen(true)}
         aria-label={t.nav.settingsMenu.ariaLabel}
         title={t.nav.settingsMenu.ariaLabel}
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text"
+        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text"
       >
         <IconSettings className="size-5" />
       </button>

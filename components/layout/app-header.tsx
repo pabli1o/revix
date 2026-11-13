@@ -44,14 +44,17 @@ export async function AppHeader({ variant = "compact" }: { variant?: "hero" | "c
 
   return (
     <div className="mb-8">
-      <h1 className="text-[2.5rem] leading-[1.08] font-extrabold tracking-tight sm:text-6xl">
+      <h1 className="text-2xl leading-[1.15] font-extrabold tracking-tight sm:text-5xl sm:leading-[1.08] md:text-6xl">
         <span className="block text-text">{t.nav.appHeader.heroTitleLine1}</span>
         <span className="block text-accent">{t.nav.appHeader.heroTitleLine2}</span>
       </h1>
       <p className="mt-3 text-base text-text-muted">{t.nav.appHeader.heroSubtitle}</p>
+      {/* Hidden on phones: a decorative watermark is dead weight on a
+         screen already tight on vertical space, see the module doc
+         comment. */}
       <span
         aria-hidden
-        className="mt-4 block font-heading text-4xl font-bold tracking-tight text-accent opacity-[0.06] md:text-6xl"
+        className="mt-4 hidden font-heading text-4xl font-bold tracking-tight text-accent opacity-[0.06] sm:block md:text-6xl"
       >
         Reviix
       </span>

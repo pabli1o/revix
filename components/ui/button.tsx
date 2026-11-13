@@ -25,10 +25,12 @@ export const VARIANT_CLASSES: Record<Variant, string> = {
     "bg-transparent border-2 border-accent text-accent hover:bg-accent/10 active:scale-[0.96] disabled:opacity-50 disabled:active:scale-100",
 };
 
+// min-h-11 (44px) on every size, not just lg — a tap target rule, not a
+// visual-density one, so it applies uniformly rather than only on mobile.
 export const SIZE_CLASSES: Record<Size, string> = {
-  sm: "text-sm px-3 py-1.5 rounded-full gap-1.5",
-  md: "text-sm px-4 py-2.5 rounded-full gap-2",
-  lg: "text-base px-6 py-3 rounded-full gap-2",
+  sm: "min-h-11 text-sm px-3 py-1.5 rounded-full gap-1.5",
+  md: "min-h-11 text-sm px-4 py-2.5 rounded-full gap-2",
+  lg: "min-h-11 text-base px-6 py-3 rounded-full gap-2",
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

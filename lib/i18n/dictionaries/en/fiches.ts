@@ -7,6 +7,10 @@ export const fiches: FichesDict = {
     "Delete the subject “{nom}”? All its chapters and notes will be permanently deleted (skipping the trash).",
   welcomeFirstFiche: (prenom: string) => `Welcome, ${prenom}! Create your first note to get started.`,
   createFiche: "+ New note",
+  emptyStateTitle: "Start here",
+  emptyStateBody: (prenom: string | null) =>
+    prenom ? `Welcome, ${prenom}! Drop in your first course to create your note.` : "Drop in your first course to create your note.",
+  createFicheCta: "New note",
 
   mySubjects: "My subjects",
   chapterCount: (n: number) => `${n} chapter${n !== 1 ? "s" : ""}`,

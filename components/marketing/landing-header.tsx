@@ -45,7 +45,7 @@ export function LandingHeader() {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? t.landing.header.closeMenu : t.landing.header.openMenu}
             aria-expanded={open}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border text-text transition-colors hover:border-accent hover:text-accent"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border text-text transition-colors hover:border-accent hover:text-accent"
           >
             {open ? <span aria-hidden className="text-lg leading-none">✕</span> : <IconMenu className="size-5" />}
           </button>

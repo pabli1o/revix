@@ -583,7 +583,7 @@ export function CreationFlow({
           href="/fiches"
           prefetch={true}
           aria-label={t.common.close}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:border-accent hover:text-accent"
         >
           ✕
         </Link>

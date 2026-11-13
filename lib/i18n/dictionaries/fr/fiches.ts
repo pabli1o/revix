@@ -6,6 +6,16 @@ export const fiches = {
     "Supprimer la matière « {nom} » ? Tous ses chapitres et toutes ses fiches seront définitivement supprimés (sans passer par la corbeille).",
   welcomeFirstFiche: (prenom: string) => `Bienvenue, ${prenom} ! Crée ta première fiche pour commencer.`,
   createFiche: "+ Créer une fiche",
+  // The merged empty-state card on app/(app)/fiches/page.tsx (title +
+  // one sentence + the button, all in one place) — distinct from
+  // emptySubjects/welcomeFirstFiche above, which TileGrid's own generic
+  // empty state and the (now-removed) separate banner used to show.
+  emptyStateTitle: "Commence ici",
+  emptyStateBody: (prenom: string | null) =>
+    prenom
+      ? `Bienvenue, ${prenom} ! Dépose ton premier cours pour créer ta fiche.`
+      : "Dépose ton premier cours pour créer ta fiche.",
+  createFicheCta: "Créer une fiche",
 
   // app/(app)/fiches/[subjectId]/page.tsx
   mySubjects: "Mes matières",

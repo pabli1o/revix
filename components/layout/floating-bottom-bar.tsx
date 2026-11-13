@@ -6,7 +6,7 @@
 export function FloatingBottomBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 md:left-64">
-      <div className="relative mx-auto max-w-xl px-4 pb-4 md:px-10">
+      <div className="relative mx-auto max-w-xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-10">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-gradient-to-t from-bg to-transparent"

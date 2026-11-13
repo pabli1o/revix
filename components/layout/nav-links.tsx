@@ -33,9 +33,12 @@ export function NavLinks({
     <nav
       className={clsx(
         "bg-bg",
-        compact
-          ? "flex items-center gap-1 overflow-x-auto rounded-full p-1.5"
-          : "flex flex-col gap-1 rounded-2xl p-2",
+        // compact (mobile header, 2nd row): 4 equal-width segments spanning
+        // the full bar — never a scrolling row of pills, so every tab is
+        // always visible without sideways scroll (see app/(app)/layout.tsx).
+        // Each cell is min-h-11 (44px), the full row height, for a tap
+        // target at least as tall as the row itself.
+        compact ? "grid grid-cols-4" : "flex flex-col gap-1 rounded-2xl p-2",
       )}
     >
       {LINK_ORDER.map((link) => {
@@ -59,14 +62,21 @@ export function NavLinks({
             // nothing.
             prefetch={true}
             className={clsx(
-              "rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+              "font-medium transition-all duration-200",
+              compact
+                ? "flex min-h-11 flex-col items-center justify-center gap-0.5 truncate px-1 text-center text-xs"
+                : "rounded-full px-4 py-2 text-sm whitespace-nowrap",
               active
-                ? "bg-accent font-bold text-white shadow-[0_2px_12px_-2px_rgba(30,58,95,0.35)]"
-                : "text-text-muted hover:bg-bg-card hover:text-text",
+                ? compact
+                  ? "border-b-2 border-accent font-bold text-accent"
+                  : "bg-accent font-bold text-white shadow-[0_2px_12px_-2px_rgba(30,58,95,0.35)]"
+                : compact
+                  ? "border-b-2 border-transparent text-text-muted"
+                  : "text-text-muted hover:bg-bg-card hover:text-text",
             )}
           >
-            {isLocked && <IconLock className="mr-1.5 inline-block size-3.5 -translate-y-px align-middle" />}
-            {t.nav.tabs[link.key]}
+            {isLocked && <IconLock className="size-3.5" />}
+            <span className="truncate">{t.nav.tabs[link.key]}</span>
           </Link>
         );
       })}

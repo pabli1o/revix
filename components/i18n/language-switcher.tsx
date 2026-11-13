@@ -37,7 +37,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         aria-label={t.languageSwitcher.label}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-9 items-center gap-1 rounded-full border border-border px-3 text-sm font-semibold text-text transition-colors hover:border-accent hover:text-accent"
+        className="flex h-11 items-center gap-1 rounded-full border border-border px-3 text-sm font-semibold text-text transition-colors hover:border-accent hover:text-accent"
       >
         {locale.toUpperCase()}
         <IconChevronDown className={clsx("size-4 transition-transform duration-150", open && "rotate-180")} />
@@ -59,7 +59,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
                 setLocale(option);
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
+              className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
             >
               {t.languageSwitcher.names[option]}
               {locale === option && <IconCheck className="size-4 shrink-0 text-accent" />}

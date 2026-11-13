@@ -55,8 +55,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex flex-row items-center justify-between border-b border-border bg-bg-elevated px-4 py-3 md:w-64 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:px-5 md:py-6">
-        <div className="flex items-center justify-between md:mb-8">
+      {/* Sticky on mobile (row 1: logo+switcher / settings, row 2: the 4
+         tabs spanning the full width — see NavLinks' compact mode) so the
+         app's whole nav stays reachable while `main` scrolls underneath;
+         a normal, non-sticky vertical sidebar from md: up, unchanged. */}
+      <aside className="sticky top-0 z-40 flex flex-col border-b border-border bg-bg-elevated md:static md:z-auto md:w-64 md:border-b-0 md:border-r md:px-5 md:py-6">
+        <div className="flex items-center justify-between px-4 py-3 md:px-0 md:py-0 md:mb-8">
           <div className="flex items-center gap-2">
             <Link href="/fiches" prefetch={true}>
               <span className="font-heading text-xl font-bold tracking-tight text-accent">Reviix</span>
@@ -73,7 +77,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <div className="hidden md:block">
           <NavLinks locked={lockedTabs} />
         </div>
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="border-t border-border md:hidden">
           <NavLinks compact locked={lockedTabs} />
         </div>
         {user && (

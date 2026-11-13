@@ -10,7 +10,9 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
     <input
       ref={ref}
       className={clsx(
-        "w-full rounded-xl border border-border px-4 py-3 text-text placeholder:text-text-muted",
+        // text-base (16px): below that, iOS Safari zooms the page in on
+        // focus. min-h-11 (44px): tap target.
+        "min-h-11 w-full rounded-xl border border-border px-4 py-3 text-base text-text placeholder:text-text-muted",
         FIELD_BG,
         "focus:outline-none focus:ring-2 focus:ring-accent/60 focus:border-accent",
         className,
@@ -28,7 +30,7 @@ export const Textarea = forwardRef<
   <textarea
     ref={ref}
     className={clsx(
-      "w-full rounded-xl border border-border px-4 py-3 text-text placeholder:text-text-muted",
+      "w-full rounded-xl border border-border px-4 py-3 text-base text-text placeholder:text-text-muted",
       FIELD_BG,
       "focus:outline-none focus:ring-2 focus:ring-accent/60 focus:border-accent",
       className,

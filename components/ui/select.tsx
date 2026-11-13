@@ -5,7 +5,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
     <div className="relative">
       <select
         className={clsx(
-          "w-full cursor-pointer appearance-none rounded-xl border border-border bg-bg-elevated px-4 py-3 pr-9 text-sm font-medium text-text transition-colors hover:border-accent focus:border-accent focus:outline-none",
+          "min-h-11 w-full cursor-pointer appearance-none rounded-xl border border-border bg-bg-elevated px-4 py-3 pr-9 text-base font-medium text-text transition-colors hover:border-accent focus:border-accent focus:outline-none",
           className,
         )}
         {...props}
