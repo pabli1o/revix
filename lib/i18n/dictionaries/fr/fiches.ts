@@ -41,6 +41,16 @@ export const fiches = {
   unlockFull: "Débloquer la fiche complète",
   aRetenir: "À retenir",
 
+  // components/fiches/highlight-legend.tsx — only shown when a fiche
+  // actually uses a non-yellow highlight (see rich-text.tsx's
+  // detectHighlightKinds), listing just the colors that appear.
+  highlightLegend: {
+    retenir: "À retenir",
+    attention: "Attention",
+    definition: "Définition",
+    exemple: "Exemple",
+  },
+
   // components/fiches/tile-grid.tsx
   rename: "Renommer",
   deleteAction: "Supprimer",

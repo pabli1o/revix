@@ -1,9 +1,9 @@
 export const root = {
   /** Document <title> (root layout default) and the landing page's own
    * title/OG/Twitter metadata — same phrase, reused by both. */
-  siteTagline: "Reviix — Tes fiches de révision en moins de 2 min",
+  siteTagline: "Reviix — Passe de 6 à 14 de moyenne",
   siteDescription:
-    "Dépose ton cours, récupère une fiche de révision claire en quelques secondes — planning avant l'examen et quiz inclus.",
+    "Reviix calcule combien réviser pour atteindre ton objectif de moyenne, et prépare tes fiches, ton planning et tes quiz.",
   errorBoundary: {
     defaultMessage: "Une erreur inattendue s'est produite.",
     // Includes its own trailing separator (French puts a space before ":")

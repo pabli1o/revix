@@ -317,3 +317,36 @@ export function daysUntil(examDateIso: string, today: Date = new Date()): number
   const examStart = Date.UTC(y, m - 1, d);
   return Math.round((examStart - todayStart) / 86_400_000);
 }
+
+// ---------------------------------------------------------------------------
+// Compares the hours/week a goal needs against the revision rhythm the
+// student has ALREADY chosen (onboarding's own jours/minutes screens, now
+// asked before the goal — see components/onboarding/wizard.tsx — or the
+// exam wizard's already-saved profile rhythm) — "Il te faut environ Xh
+// par semaine. Tu as prévu Yh : ...". Never silently rewrites that
+// rhythm; this only reports how it measures up.
+// ---------------------------------------------------------------------------
+
+/** Above this multiple of what's actually needed, a chosen rhythm reads
+ * as "more than necessary" rather than simply "enough" — e.g. needing
+ * 4h/week but having planned 8h/week (2x) is well past just "on track". */
+export const EXCESSIVE_RHYTHM_MULTIPLIER = 1.8;
+
+export type RhythmComparisonKind = "insufficient" | "sufficient" | "excessive";
+
+export interface RhythmComparison {
+  kind: RhythmComparisonKind;
+  /** neededHoursPerWeek - chosenHoursPerWeek — only meaningful (and
+   * positive) for "insufficient". */
+  gapHoursPerWeek: number;
+}
+
+export function compareRhythmToNeed(neededHoursPerWeek: number, chosenHoursPerWeek: number): RhythmComparison {
+  if (chosenHoursPerWeek < neededHoursPerWeek) {
+    return { kind: "insufficient", gapHoursPerWeek: neededHoursPerWeek - chosenHoursPerWeek };
+  }
+  if (chosenHoursPerWeek > neededHoursPerWeek * EXCESSIVE_RHYTHM_MULTIPLIER) {
+    return { kind: "excessive", gapHoursPerWeek: 0 };
+  }
+  return { kind: "sufficient", gapHoursPerWeek: 0 };
+}

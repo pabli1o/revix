@@ -6,7 +6,8 @@ import type { FicheContenu, FicheSousPoint, FichePlanSection } from "@/lib/supab
 import type { SubjectColor } from "@/lib/theme/subject-colors";
 import { computePreviewCutoff, isARetenirVisible } from "@/lib/subscription/preview";
 import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
-import { RichText } from "./rich-text";
+import { RichText, detectHighlightKinds } from "./rich-text";
+import { HighlightLegend } from "./highlight-legend";
 import { Button } from "@/components/ui/button";
 import { PlanningTaskTimerBar } from "./planning-task-timer-bar";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
@@ -72,6 +73,11 @@ export function FicheViewer({
 
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
+
+  const highlightKinds = detectHighlightKinds([
+    ...contenu.plan.flatMap((section) => section.sousPoints.map((sp) => sp.texte)),
+    ...contenu.aRetenir,
+  ]);
 
   // Splits the fiche into a fully-visible portion and a locked portion —
   // the locked one is rendered as one continuous blurred block (real,
@@ -233,7 +239,10 @@ export function FicheViewer({
         >
           {t.fiches.ficheLabel}
         </div>
-        <h1 className="mb-8 font-heading text-3xl font-semibold">{titre}</h1>
+        <h1 className={`font-heading text-3xl font-semibold ${highlightKinds.size > 0 ? "mb-4" : "mb-8"}`}>
+          {titre}
+        </h1>
+        <HighlightLegend kinds={highlightKinds} labels={t.fiches.highlightLegend} />
 
         <div className="flex flex-col gap-8">{clearSections}</div>
 

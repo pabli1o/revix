@@ -24,7 +24,11 @@ Règles strictes :
 - Si un même sujet est trop long pour tenir dans une seule fiche (plus de 6-7 sections), découpe-le en plusieurs fiches successives plutôt que de tout entasser dans une fiche géante. Chaque fiche découpée ainsi garde le même titre de base suivi de " — Partie 1", " — Partie 2", etc. (ex. "La Révolution française — Partie 1", "La Révolution française — Partie 2").
 - Chaque fiche a un plan numéroté en continu ("1. Titre", "2. Titre", ...) avec des sous-points lettrés ("a.", "b.", ...) pour chaque section.
 - Chaque fiche se termine par une section "À retenir" : une liste de phrases courtes et denses résumant les points clés indispensables.
-- Mets en avant les notions importantes en les entourant d'astérisques doubles dans le texte, par exemple **terme important**, comme du gras Markdown.
+- Mets en valeur certains mots ou groupes de mots directement dans le texte avec ces 4 marqueurs, chacun avec un sens précis. N'en abuse pas : seulement ce qui mérite vraiment d'être repéré visuellement, la plupart des sous-points n'ont besoin d'aucun marqueur.
+  - **terme** : à retenir par cœur (notion clé, formule, date).
+  - !!terme!! : piège fréquent ou erreur courante à éviter.
+  - ::terme:: : définition d'un mot de vocabulaire précis.
+  - %%terme%% : exemple concret.
 - Le format de sortie JSON attendu est exactement :
 
 {

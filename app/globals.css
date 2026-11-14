@@ -21,9 +21,19 @@
      success messages) keeps AA contrast on white — same hue family, just darker. */
   --color-danger: #a8402a;
   --color-success: #2f7a52;
-  /* The fiche "highlighter" mark (see components/fiches/rich-text.tsx) —
-     deliberately kept yellow, like a real notebook, independent of --color-accent. */
+  /* The fiche's 4 highlighter colors (see components/fiches/rich-text.tsx),
+     each with a fixed meaning: yellow = à retenir, red = attention/piège,
+     blue = définition, green = exemple. Soft tints of colors already used
+     elsewhere in the theme (danger/accent/success) rather than new hues,
+     so they read as "the same site, more colorful" instead of a clashing
+     palette — kept pale enough that --color-text (near-black) stays
+     comfortably readable on top of every one of them. Yellow is
+     deliberately its own thing (not a tint of a UI color), like a real
+     notebook highlighter, independent of --color-accent. */
   --color-highlight: rgba(253, 224, 71, 0.5);
+  --color-highlight-red: rgba(168, 64, 42, 0.22);
+  --color-highlight-blue: rgba(30, 58, 95, 0.16);
+  --color-highlight-green: rgba(47, 122, 82, 0.22);
 
   /* Single font everywhere — see app/layout.tsx for the next/font load.
      Three variable names are kept (rather than collapsing every font-heading/
@@ -50,6 +60,9 @@
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
   --color-highlight: var(--color-highlight);
+  --color-highlight-red: var(--color-highlight-red);
+  --color-highlight-blue: var(--color-highlight-blue);
+  --color-highlight-green: var(--color-highlight-green);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
@@ -224,4 +237,31 @@ h1, h2, h3, h4 {
   background: var(--color-accent);
   border: 3px solid #ffffff;
   box-shadow: 0 2px 8px rgba(30, 58, 95, 0.4);
+}
+
+/* Light confetti burst (components/ui/confetti.tsx) — each piece falls
+   from just above the viewport to just below it while rotating, fading
+   out near the end. Per-piece randomness (position, delay, duration,
+   rotation amount) comes in via inline style/custom properties; this
+   just defines the shared animation shape. prefers-reduced-motion is
+   handled in the component itself (renders nothing), not here. */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(var(--confetti-rotate, 360deg));
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: ease-in;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
 }

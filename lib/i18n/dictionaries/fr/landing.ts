@@ -10,13 +10,31 @@ export const landing = {
   },
   hero: {
     badge: "Pour les étudiants",
-    titlePrefix: "Tes",
-    titleHighlight: "fiches",
-    titleSuffix: "de révision en moins de 2 min",
-    subtitle: "Dépose ton cours — PDF, photos ou Word — et récupère une fiche claire et organisée, prête à réviser.",
-    dropCourse: "Dépose ton cours",
+    // The headline is built from 3 fixed pieces around 2 animated numbers
+    // (see components/marketing/landing-page.tsx) rather than one sentence
+    // string, so the two figures can count up and the goal number can be
+    // highlighted — same word order works across fr/en/es ("Passe de [6]
+    // à [14] de moyenne" / "Go from [30%] to [70%] average").
+    titleBefore: "Passe de",
+    titleMiddle: "à",
+    titleAfter: "de moyenne",
+    disclaimer: "Exemple d'objectif. Les résultats dépendent de ton travail.",
+    subtitle: "Reviix calcule combien réviser pour atteindre ton objectif, et prépare tes fiches, ton planning et tes quiz.",
+    ctaPrimary: "Calculer mon plan",
     essayerGratuitement: "Essayer gratuitement",
     tagline: "Fiches • Planning avant examen • Quiz",
+  },
+  /** The real, interactive "try the calculation" demo right under the
+   * hero (components/marketing/demo-calculator.tsx) — same analysis
+   * animation and real computeGeneralStudyPlan() math as the onboarding
+   * flow, sliders preset to the hero's own 6/14 example. */
+  demoCalculator: {
+    title: "Essaie le calcul, pour de vrai",
+    subtitle: "Règle les curseurs sur ta situation et regarde ce que Reviix te propose.",
+    currentLabel: "Moyenne actuelle",
+    goalLabel: "Moyenne visée",
+    launchButton: "Lancer l'analyse",
+    createPlanButton: "Créer mon plan",
   },
   howItWorks: {
     title: "Comment ça marche",

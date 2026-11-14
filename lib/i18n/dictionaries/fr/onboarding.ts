@@ -58,6 +58,7 @@ export const onboarding = {
     title: "Combien de temps par jour de travail ?",
     subtitle: "Modifiable à tout moment dans les réglages.",
     optionLabel: (m: number) => `${m} min par jour`,
+    continuer: "Continuer",
     finish: "Terminer",
     finishing: "Un instant…",
   },

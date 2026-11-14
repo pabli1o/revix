@@ -85,7 +85,6 @@ export const examen: ExamenDict = {
     goal: {
       title: (subject: string) => `Your goal in ${subject}`,
       subtitle: "Set the grade you're aiming for. Nothing is calculated until you confirm.",
-      markerNote: "Markers: 10, 14, and 16.",
       validateButton: "Confirm my goal",
     },
     analyzing: {
@@ -113,6 +112,12 @@ export const examen: ExamenDict = {
       generatePlanningButton: "Generate my plan",
       changeGoalButton: "Change my goal",
       generationError: "Something went wrong creating the exam.",
+      compareInsufficient: (needed: string, chosen: string, gap: string) =>
+        `You need about ${needed} a week. You've planned ${chosen}: that's about ${gap} short.`,
+      compareSufficient: (needed: string, chosen: string) =>
+        `You need about ${needed} a week. You've planned ${chosen}: that's plenty.`,
+      compareExcessive: (needed: string, chosen: string) =>
+        `You need about ${needed} a week. You've planned ${chosen}: more than necessary — keep that pace or ease off a bit, your call.`,
     },
     generating: {
       title: "Generating your plan…",

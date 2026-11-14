@@ -1,9 +1,9 @@
 import type { RootDict } from "../fr/root";
 
 export const root: RootDict = {
-  siteTagline: "Reviix — Your study notes in under 2 min",
+  siteTagline: "Reviix — Go from a low average to a good one",
   siteDescription:
-    "Drop in your course, get a clear study note in seconds — exam planning and quizzes included.",
+    "Reviix works out how much to review to hit your average goal, and puts together your notes, planning, and quizzes.",
   errorBoundary: {
     defaultMessage: "Something unexpected happened.",
     reference: "Reference: ",

@@ -74,6 +74,7 @@ export function ExamenView({
           averageBySubject={averageBySubject}
           gradeScaleOverride={gradeScaleOverride}
           revisionJoursSemaine={revisionJoursSemaine}
+          revisionMinutesJour={revisionMinutesJour}
           suggestedGoal20={prefillGoal ?? undefined}
           onClose={() => setShowWizard(false)}
         />

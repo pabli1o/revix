@@ -33,6 +33,13 @@ export const fiches: FichesDict = {
   unlockFull: "Desbloquear la ficha completa",
   aRetenir: "Para recordar",
 
+  highlightLegend: {
+    retenir: "Para recordar",
+    attention: "Atención",
+    definition: "Definición",
+    exemple: "Ejemplo",
+  },
+
   rename: "Renombrar",
   deleteAction: "Eliminar",
   confirmDeleteGeneric: (nom: string) => `¿Eliminar «${nom}»? Esta acción es definitiva.`,

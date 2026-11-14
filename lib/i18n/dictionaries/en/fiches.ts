@@ -33,6 +33,13 @@ export const fiches: FichesDict = {
   unlockFull: "Unlock the full note",
   aRetenir: "Key takeaways",
 
+  highlightLegend: {
+    retenir: "Key point",
+    attention: "Watch out",
+    definition: "Definition",
+    exemple: "Example",
+  },
+
   rename: "Rename",
   deleteAction: "Delete",
   confirmDeleteGeneric: (nom: string) => `Delete “${nom}”? This can't be undone.`,

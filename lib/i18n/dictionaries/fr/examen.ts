@@ -88,7 +88,6 @@ export const examen = {
     goal: {
       title: (subject: string) => `Ton objectif en ${subject}`,
       subtitle: "Fixe la note que tu veux viser. Rien n'est calculé avant que tu valides.",
-      markerNote: "Repères : 10, 14 et 16.",
       validateButton: "Valider mon objectif",
     },
     analyzing: {
@@ -116,6 +115,17 @@ export const examen = {
       generatePlanningButton: "Générer mon planning",
       changeGoalButton: "Changer mon objectif",
       generationError: "Erreur lors de la création de l'examen.",
+      // Compares the hours/semaine a goal needs against the rhythm the
+      // student already chose (onboarding's jours/minutes, or the saved
+      // profile rhythm for an exam) — never rewrites that rhythm, only
+      // reports how it measures up (lib/examen/goal-calc.ts's
+      // compareRhythmToNeed).
+      compareInsufficient: (needed: string, chosen: string, gap: string) =>
+        `Il te faut environ ${needed} par semaine. Tu as prévu ${chosen} : il manque environ ${gap}.`,
+      compareSufficient: (needed: string, chosen: string) =>
+        `Il te faut environ ${needed} par semaine. Tu as prévu ${chosen} : parfait, ça suffit largement !`,
+      compareExcessive: (needed: string, chosen: string) =>
+        `Il te faut environ ${needed} par semaine. Tu as prévu ${chosen} : plus que nécessaire, libre à toi de garder ce rythme ou d'alléger un peu.`,
     },
     generating: {
       title: "Génération de ton planning…",

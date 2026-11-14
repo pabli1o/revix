@@ -56,6 +56,7 @@ export const onboarding: OnboardingDict = {
     title: "¿Cuánto tiempo por día de estudio?",
     subtitle: "Se puede cambiar cuando quieras en los ajustes.",
     optionLabel: (m: number) => `${m} min al día`,
+    continuer: "Continuar",
     finish: "Terminar",
     finishing: "Un momento…",
   },

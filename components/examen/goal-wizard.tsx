@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { useCountUp } from "@/components/ui/use-count-up";
+import { AnalyzingScreen } from "@/components/ui/analyzing-screen";
+import { Confetti } from "@/components/ui/confetti";
 import { CalendarPicker } from "@/components/planning/calendar-picker";
 import { GradeSlider } from "@/components/examen/grade-slider";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -13,6 +15,7 @@ import { formatDate, formatNumber } from "@/lib/i18n/format";
 import { resolveGradeScale, formatGrade } from "@/lib/i18n/grade-scale";
 import type { GradeScale } from "@/lib/supabase/database.types";
 import {
+  compareRhythmToNeed,
   computeStudyPlan,
   daysUntil,
   clampGrade,
@@ -45,13 +48,6 @@ const MIN_COEFFICIENT = 0.5;
 const MAX_COEFFICIENT = 20;
 const DEFAULT_COEFFICIENT = 1;
 
-/** 3 narrative beats shown one after another during the "analysis"
- * animation, ~1.1s apart — each corresponds to a real input the
- * calculation already used (see computeStudyPlan), nothing invented. */
-const ANALYZING_STEP_DELAY_MS = 1100;
-const ANALYZING_STEP_COUNT = 3;
-const ANALYZING_HOLD_MS = 900;
-
 type Step =
   | "subject"
   | "chapters"
@@ -71,6 +67,7 @@ export function GoalWizard({
   ficheCountByChapter,
   averageBySubject,
   revisionJoursSemaine,
+  revisionMinutesJour,
   gradeScaleOverride,
   suggestedGoal20,
   onClose,
@@ -84,7 +81,12 @@ export function GoalWizard({
   /** Coefficient-weighted average of this subject's already-graded exams,
    * /20 — null when the subject has none yet. */
   averageBySubject: Record<string, number | null>;
+  /** The student's already-saved revision rhythm — this wizard no longer
+   * asks for it (per spec) and no longer silently overwrites it either;
+   * the result step only compares this against what the goal needs (see
+   * compareRhythmToNeed). */
   revisionJoursSemaine: number;
+  revisionMinutesJour: number;
   gradeScaleOverride: GradeScale | null;
   /** Part B's "remonter ma moyenne" link (lib/examen/average-calc.ts's
    * computeNeededAverage): pre-fills the goal step instead of the usual
@@ -109,7 +111,7 @@ export function GoalWizard({
   const [goal20, setGoal20] = useState(DEFAULT_CURRENT_AVERAGE + DEFAULT_GOAL_OFFSET);
 
   const [calcResult, setCalcResult] = useState<GoalCalcResult | null>(null);
-  const [visibleAnalyzingSteps, setVisibleAnalyzingSteps] = useState(0);
+  const [analysisRun, setAnalysisRun] = useState(0);
 
   const [genError, setGenError] = useState<string | null>(null);
 
@@ -208,27 +210,9 @@ export function GoalWizard({
       revisionJoursSemaine,
     });
     setCalcResult(result);
-    setVisibleAnalyzingSteps(0);
+    setAnalysisRun((n) => n + 1);
     setStep("analyzing");
   }
-
-  // Reveals the 3 analysis beats one at a time, then auto-advances to the
-  // result — purely narrative timing, the real computation already ran
-  // synchronously in validateGoal() above.
-  useEffect(() => {
-    if (step !== "analyzing") return;
-    const timers: number[] = [];
-    for (let i = 1; i <= ANALYZING_STEP_COUNT; i++) {
-      timers.push(window.setTimeout(() => setVisibleAnalyzingSteps(i), i * ANALYZING_STEP_DELAY_MS));
-    }
-    timers.push(
-      window.setTimeout(
-        () => setStep("result"),
-        ANALYZING_STEP_COUNT * ANALYZING_STEP_DELAY_MS + ANALYZING_HOLD_MS,
-      ),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [step]);
 
   function adoptSuggestedGoal(suggested: number) {
     if (!date) return;
@@ -267,15 +251,10 @@ export function GoalWizard({
       return;
     }
 
-    await fetch("/api/planning/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        revisionJoursSemaine,
-        revisionMinutesJour: Math.max(5, Math.round(calcResult.minutesPerDay)),
-      }),
-    });
-
+    // The revision rhythm is no longer touched here — it's the
+    // student's own choice (set during onboarding or from "Modifier mon
+    // temps de révision"), and the result step above only compares the
+    // goal's needs against it, never silently rewrites it.
     const planRes = await fetch("/api/planning/generate", { method: "POST" });
     if (!planRes.ok) {
       setGenError(t.examen.wizard.generating.error);
@@ -289,6 +268,11 @@ export function GoalWizard({
 
   const animatedHoursPerWeek = useCountUp(calcResult?.hoursPerWeek ?? 0);
   const animatedMinutesPerDay = useCountUp(calcResult?.minutesPerDay ?? 0);
+
+  const chosenHoursPerWeek = (revisionMinutesJour * revisionJoursSemaine) / 60;
+  const rhythmComparison = calcResult
+    ? compareRhythmToNeed(calcResult.hoursPerWeek, chosenHoursPerWeek)
+    : null;
 
   const formStepIndex = FORM_STEP_ORDER.indexOf(step as Step);
   const showProgressBar = formStepIndex >= 0;
@@ -515,10 +499,8 @@ export function GoalWizard({
                 onChange={setGoal20}
                 scale={scale}
                 locale={locale}
-                markers={[10, 14, 16]}
                 ariaLabel={t.examen.wizard.goal.title(subject.nom)}
               />
-              <p className="mt-6 text-center text-xs text-text-muted">{t.examen.wizard.goal.markerNote}</p>
             </div>
 
             <div className="mt-8">
@@ -530,31 +512,17 @@ export function GoalWizard({
         )}
 
         {step === "analyzing" && calcResult && date && (
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <h1 className="mb-8 font-heading text-xl font-semibold">{t.examen.wizard.analyzing.title}</h1>
-            <div className="flex w-full flex-col gap-4">
-              {[
-                t.examen.wizard.analyzing.step1,
-                t.examen.wizard.analyzing.step2,
-                t.examen.wizard.analyzing.step3,
-              ].map((label, i) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-bg-card px-4 py-3 transition-opacity duration-500"
-                  style={{ opacity: visibleAnalyzingSteps > i ? 1 : 0 }}
-                >
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-text">{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AnalyzingScreen
+            key={analysisRun}
+            spinnerLabel={t.examen.wizard.analyzing.title}
+            items={[t.examen.wizard.analyzing.step1, t.examen.wizard.analyzing.step2, t.examen.wizard.analyzing.step3]}
+            onDone={() => setStep("result")}
+          />
         )}
 
-        {step === "result" && calcResult && date && (
+        {step === "result" && calcResult && date && rhythmComparison && (
           <div className="flex flex-1 flex-col">
+            <Confetti key={`confetti-${analysisRun}`} />
             <div className="rounded-2xl border border-border bg-bg-card p-6">
               <p className="text-center font-heading text-xl font-semibold text-text">
                 {calcResult.kind === "already-there" &&
@@ -583,6 +551,24 @@ export function GoalWizard({
                   formatDate(date, locale, { day: "numeric", month: "long" }),
                   t.examen.wizard.result.inWeeks(Math.round(daysUntil(date) / 7)),
                 )}
+              </p>
+              <p className="mt-3 text-center text-sm text-text-muted">
+                {rhythmComparison.kind === "insufficient" &&
+                  t.examen.wizard.result.compareInsufficient(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(rhythmComparison.gapHoursPerWeek * 2) / 2),
+                  )}
+                {rhythmComparison.kind === "sufficient" &&
+                  t.examen.wizard.result.compareSufficient(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                  )}
+                {rhythmComparison.kind === "excessive" &&
+                  t.examen.wizard.result.compareExcessive(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                  )}
               </p>
               <p className="mt-4 text-center text-xs text-text-muted">{t.examen.wizard.estimateDisclaimer}</p>
             </div>

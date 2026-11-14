@@ -3,7 +3,8 @@
 import type { FicheContenu, FicheSousPoint, FichePlanSection } from "@/lib/supabase/database.types";
 import { computePreviewCutoff, isARetenirVisible } from "@/lib/subscription/preview";
 import { FREE_PREVIEW_FRACTION } from "@/lib/subscription/constants";
-import { RichText } from "@/components/fiches/rich-text";
+import { RichText, detectHighlightKinds } from "@/components/fiches/rich-text";
+import { HighlightLegend } from "@/components/fiches/highlight-legend";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/i18n/locale-provider";
 
@@ -54,6 +55,10 @@ export function ProposalPreview({
   const { t } = useLocale();
   const cutoff = isSubscribed ? null : computePreviewCutoff(contenu);
   const isBlurred = cutoff !== null;
+  const highlightKinds = detectHighlightKinds([
+    ...contenu.plan.flatMap((section) => section.sousPoints.map((sp) => sp.texte)),
+    ...contenu.aRetenir,
+  ]);
 
   // Same split-into-one-continuous-blurred-block approach as
   // components/fiches/fiche-viewer.tsx — see there for the reasoning.
@@ -109,6 +114,7 @@ export function ProposalPreview({
 
   return (
     <div className="notebook-paper-light mx-auto w-full max-w-xl min-h-[70vh] rounded-lg border border-border p-4 text-sm sm:p-6">
+      <HighlightLegend kinds={highlightKinds} labels={t.fiches.highlightLegend} />
       <div className="flex flex-col gap-4">{clearSections}</div>
 
       {isBlurred ? (

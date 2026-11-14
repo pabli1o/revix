@@ -136,18 +136,29 @@ function Tile({
 
   return (
     <div
-      className="group relative flex aspect-[4/3] flex-col justify-between rounded-2xl border-2 p-4 text-text shadow-sm transition-transform hover:-translate-y-0.5"
+      className="group relative flex min-h-36 flex-col justify-between gap-3 rounded-2xl border-2 p-4 text-text shadow-sm transition-transform hover:-translate-y-0.5"
       style={{ backgroundColor: `${item.color.bg}26`, borderColor: item.color.border }}
     >
       {!editing ? (
         <>
           <IntentLink href={href} className="absolute inset-0" aria-label={item.nom} />
-          <div className="flex items-start justify-between gap-1">
-            <span className="font-heading text-xl font-semibold leading-tight">{item.nom}</span>
+          {/* flex-wrap + min-w-0 on the title: a long name shrinks/wraps
+             within its own box instead of forcing the (shrink-0) action
+             buttons past the card's edge — and once the title takes a
+             full line on its own, the buttons simply wrap onto the next
+             line rather than overflowing (see the earlier bug report:
+             Renommer/Supprimer spilling out of the card on a long title
+             at 375/390px). min-h-36 (not aspect-[4/3]) lets the card grow
+             to fit a title that wraps, instead of clipping/overflowing a
+             fixed-ratio box. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1.5">
+            <span className="min-w-0 flex-1 break-words font-heading text-xl font-semibold leading-tight">
+              {item.nom}
+            </span>
             {/* Always visible (not hover-gated): hover has no equivalent on
                touch devices, so gating these behind group-hover made them
                practically impossible to reach on phones/tablets. */}
-            <div className="relative z-10 flex shrink-0 gap-1">
+            <div className="relative z-10 flex shrink-0 flex-wrap gap-1">
               <button
                 type="button"
                 onClick={(e) => {
@@ -190,9 +201,9 @@ function Tile({
                 setValue(item.nom);
               }
             }}
-            className="w-full rounded-md border border-black/20 bg-white/90 px-2 py-1 text-sm text-[#1A1A1A]"
+            className="w-full rounded-md border border-black/20 bg-white/90 px-2 py-1.5 text-base text-[#1A1A1A]"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={saving}

@@ -1,9 +1,9 @@
 import type { RootDict } from "../fr/root";
 
 export const root: RootDict = {
-  siteTagline: "Reviix — Tus fichas de estudio en menos de 2 min",
+  siteTagline: "Reviix — Pasa de una media baja a una buena",
   siteDescription:
-    "Sube tu curso y recibe una ficha de estudio clara en segundos — planning antes del examen y cuestionarios incluidos.",
+    "Reviix calcula cuánto necesitas estudiar para alcanzar tu objetivo de media, y prepara tus fichas, tu planning y tus cuestionarios.",
   errorBoundary: {
     defaultMessage: "Ha ocurrido un error inesperado.",
     reference: "Referencia: ",

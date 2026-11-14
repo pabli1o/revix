@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareRhythmToNeed,
   computeContentBaseHours,
   computeGapFactor,
   computeGeneralStudyPlan,
@@ -7,6 +8,7 @@ import {
   daysUntil,
   importanceFromCoefficient,
   DEFAULT_FICHE_COUNT_FALLBACK,
+  EXCESSIVE_RHYTHM_MULTIPLIER,
   GENERAL_BASE_HOURS_PER_WEEK,
   MAX_REASONABLE_HOURS_PER_DAY,
   MIN_GAP_FACTOR,
@@ -216,5 +218,28 @@ describe("daysUntil", () => {
     expect(daysUntil("2026-12-12", today)).toBe(35);
     expect(daysUntil("2026-11-07", today)).toBe(0);
     expect(daysUntil("2026-11-01", today)).toBe(-6);
+  });
+});
+
+describe("compareRhythmToNeed", () => {
+  it("flags insufficient when the chosen rhythm falls short, with the real gap", () => {
+    const result = compareRhythmToNeed(4, 3);
+    expect(result.kind).toBe("insufficient");
+    expect(result.gapHoursPerWeek).toBeCloseTo(1, 5);
+  });
+
+  it("flags sufficient when the chosen rhythm meets or modestly exceeds what's needed", () => {
+    expect(compareRhythmToNeed(4, 4).kind).toBe("sufficient");
+    expect(compareRhythmToNeed(4, 6).kind).toBe("sufficient"); // 1.5x, under the 1.8x threshold
+  });
+
+  it("flags excessive once the chosen rhythm is well beyond what's needed", () => {
+    const result = compareRhythmToNeed(4, 8); // 2x
+    expect(result.kind).toBe("excessive");
+    expect(result.gapHoursPerWeek).toBe(0);
+  });
+
+  it("treats the excessive threshold itself as still sufficient, not excessive", () => {
+    expect(compareRhythmToNeed(4, 4 * EXCESSIVE_RHYTHM_MULTIPLIER).kind).toBe("sufficient");
   });
 });

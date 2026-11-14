@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { useCountUp } from "@/components/ui/use-count-up";
+import { AnalyzingScreen } from "@/components/ui/analyzing-screen";
+import { Confetti } from "@/components/ui/confetti";
 import { GradeSlider } from "@/components/examen/grade-slider";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { saveLocalOnboarding, loadLocalOnboarding } from "./local-onboarding";
@@ -15,10 +17,10 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { resolveGradeScale, formatGrade } from "@/lib/i18n/grade-scale";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 import {
+  compareRhythmToNeed,
   computeGeneralStudyPlan,
   clampGrade,
   roundToGradeStep,
-  DEFAULT_REVISION_JOURS_SEMAINE,
   type GeneralGoalCalcResult,
 } from "@/lib/examen/goal-calc";
 
@@ -31,34 +33,25 @@ const CYCLE_VALUES: ClasseCycle[] = ["college", "lycee", "superieur"];
 const DEFAULT_GOAL_OFFSET = 2;
 const DEFAULT_STARTING_AVERAGE = 10;
 
-/** Same narrative-animation timing as the exam wizard's analysis step. */
-const ANALYZING_STEP_DELAY_MS = 1100;
-const ANALYZING_STEP_COUNT = 3;
-const ANALYZING_HOLD_MS = 900;
-
 type Step =
   | "classe"
   | "niveau"
   | "prenom"
+  | "jours"
+  | "minutes"
   | "moyenneActuelle"
   | "moyenneObjectif"
   | "analyzing"
-  | "result"
-  | "jours"
-  | "minutes";
+  | "result";
 const STEP_ORDER: Step[] = [
   "classe",
   "niveau",
   "prenom",
-  "moyenneActuelle",
-  "moyenneObjectif",
   "jours",
   "minutes",
+  "moyenneActuelle",
+  "moyenneObjectif",
 ];
-
-function nearestOption(value: number, options: number[]): number {
-  return options.reduce((best, opt) => (Math.abs(opt - value) < Math.abs(best - value) ? opt : best));
-}
 
 export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated" }) {
   const router = useRouter();
@@ -78,7 +71,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
   const [moyenneActuelle, setMoyenneActuelle] = useState(DEFAULT_STARTING_AVERAGE);
   const [moyenneObjectif, setMoyenneObjectif] = useState(DEFAULT_STARTING_AVERAGE + DEFAULT_GOAL_OFFSET);
   const [calcResult, setCalcResult] = useState<GeneralGoalCalcResult | null>(null);
-  const [visibleAnalyzingSteps, setVisibleAnalyzingSteps] = useState(0);
+  const [analysisRun, setAnalysisRun] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,42 +109,14 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
       currentAverage20: moyenneActuelle,
       goal20: moyenneObjectif,
       classeCycle: cycle,
-      revisionJoursSemaine: DEFAULT_REVISION_JOURS_SEMAINE,
+      // The rhythm was already chosen a few screens back — feed the real
+      // one in, not a placeholder default, since the result step below
+      // compares against it.
+      revisionJoursSemaine: joursSemaine,
     });
     setCalcResult(result);
-    setVisibleAnalyzingSteps(0);
+    setAnalysisRun((n) => n + 1);
     setStep("analyzing");
-  }
-
-  // Same narrative reveal as the exam wizard's analysis step — the
-  // computation above already ran synchronously, this is purely timing.
-  useEffect(() => {
-    if (step !== "analyzing") return;
-    const timers: number[] = [];
-    for (let i = 1; i <= ANALYZING_STEP_COUNT; i++) {
-      timers.push(window.setTimeout(() => setVisibleAnalyzingSteps(i), i * ANALYZING_STEP_DELAY_MS));
-    }
-    timers.push(
-      window.setTimeout(
-        () => setStep("result"),
-        ANALYZING_STEP_COUNT * ANALYZING_STEP_DELAY_MS + ANALYZING_HOLD_MS,
-      ),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [step]);
-
-  // Pre-fills the still-to-come rhythm screens with this estimate's own
-  // assumption (DEFAULT_REVISION_JOURS_SEMAINE days/week) and the closest
-  // matching minutes-a-day option, instead of the plain hardcoded
-  // defaults — the student still picks on those screens same as before,
-  // so anything they then choose there simply takes over, never
-  // overwritten back by this estimate.
-  function goToRhythmSteps() {
-    if (calcResult) {
-      setJoursSemaine(DEFAULT_REVISION_JOURS_SEMAINE);
-      setMinutesJour(nearestOption(calcResult.minutesPerDay, MINUTES_OPTIONS));
-    }
-    setStep("jours");
   }
 
   async function handleFinish() {
@@ -216,6 +181,9 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
 
   const animatedHoursPerWeek = useCountUp(calcResult?.hoursPerWeek ?? 0);
   const animatedMinutesPerDay = useCountUp(calcResult?.minutesPerDay ?? 0);
+
+  const chosenHoursPerWeek = (minutesJour * joursSemaine) / 60;
+  const rhythmComparison = calcResult ? compareRhythmToNeed(calcResult.hoursPerWeek, chosenHoursPerWeek) : null;
 
   const formStepIndex = STEP_ORDER.indexOf(step);
   const showProgressBar = formStepIndex >= 0;
@@ -303,121 +271,8 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               value={prenom}
               onChange={(e) => setPrenom(e.target.value)}
             />
-            <Button className="mt-6 w-full" disabled={!canFinish} onClick={() => setStep("moyenneActuelle")}>
+            <Button className="mt-6 w-full" disabled={!canFinish} onClick={() => setStep("jours")}>
               {t.onboarding.prenom.continuer}
-            </Button>
-          </div>
-        )}
-
-        {step === "moyenneActuelle" && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setStep("prenom")}
-              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              ← {t.common.back}
-            </button>
-            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.moyenne.actuelle.title}</h1>
-            <p className="mt-1 text-sm text-text-muted">{t.onboarding.moyenne.actuelle.subtitle}</p>
-            <div className="mt-8">
-              <GradeSlider
-                value={moyenneActuelle}
-                onChange={setMoyenneActuelle}
-                scale={scale}
-                locale={locale}
-                ariaLabel={t.onboarding.moyenne.actuelle.title}
-              />
-            </div>
-            <Button className="mt-8 w-full" onClick={goToMoyenneObjectif}>
-              {t.onboarding.moyenne.actuelle.continuer}
-            </Button>
-          </div>
-        )}
-
-        {step === "moyenneObjectif" && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setStep("moyenneActuelle")}
-              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              ← {t.common.back}
-            </button>
-            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.moyenne.objectif.title}</h1>
-            <p className="mt-1 text-sm text-text-muted">{t.onboarding.moyenne.objectif.subtitle}</p>
-            <div className="mt-8">
-              <GradeSlider
-                value={moyenneObjectif}
-                onChange={setMoyenneObjectif}
-                scale={scale}
-                locale={locale}
-                markers={[10, 14, 16]}
-                ariaLabel={t.onboarding.moyenne.objectif.title}
-              />
-            </div>
-            <Button className="mt-8 w-full" onClick={validateObjectif}>
-              {t.onboarding.moyenne.objectif.valider}
-            </Button>
-          </div>
-        )}
-
-        {step === "analyzing" && (
-          <div className="flex min-h-[20rem] flex-col items-center justify-center">
-            <h1 className="mb-8 font-heading text-xl font-semibold">{t.onboarding.moyenne.analyzing.title}</h1>
-            <div className="flex w-full flex-col gap-4">
-              {[
-                t.onboarding.moyenne.analyzing.step1,
-                t.onboarding.moyenne.analyzing.step2,
-                t.onboarding.moyenne.analyzing.step3,
-              ].map((label, i) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 transition-opacity duration-500"
-                  style={{ opacity: visibleAnalyzingSteps > i ? 1 : 0 }}
-                >
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-text">{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === "result" && calcResult && (
-          <div>
-            <div className="rounded-2xl border border-border bg-bg-elevated p-6">
-              <p className="text-center font-heading text-xl font-semibold text-text">
-                {calcResult.kind === "already-there" &&
-                  t.examen.wizard.result.alreadyThere(
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
-                  )}
-                {calcResult.kind === "normal" &&
-                  t.onboarding.moyenne.result.headline(
-                    formatGrade(moyenneActuelle, scale, locale),
-                    formatGrade(moyenneObjectif, scale, locale),
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
-                  )}
-                {calcResult.kind === "very-ambitious" &&
-                  t.examen.wizard.result.veryAmbitious(
-                    formatGrade(moyenneObjectif, scale, locale),
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
-                    formatGrade(calcResult.suggestedGoal20!, scale, locale),
-                  )}
-                {calcResult.kind === "excessive-load" &&
-                  t.examen.wizard.result.excessiveLoad(
-                    formatGrade(moyenneObjectif, scale, locale),
-                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
-                    formatGrade(calcResult.suggestedGoal20!, scale, locale),
-                  )}
-              </p>
-              <p className="mt-4 text-center text-xs text-text-muted">{t.onboarding.moyenne.result.disclaimer}</p>
-            </div>
-            <Button className="mt-6 w-full" onClick={goToRhythmSteps}>
-              {t.onboarding.moyenne.result.continuer}
             </Button>
           </div>
         )}
@@ -426,7 +281,7 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
           <div>
             <button
               type="button"
-              onClick={() => setStep("result")}
+              onClick={() => setStep("prenom")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← {t.common.back}
@@ -469,6 +324,126 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
                   onClick={() => setMinutesJour(m)}
                 />
               ))}
+            </div>
+            <Button className="mt-6 w-full" onClick={() => setStep("moyenneActuelle")}>
+              {t.onboarding.minutes.continuer}
+            </Button>
+          </div>
+        )}
+
+        {step === "moyenneActuelle" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("minutes")}
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.common.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.moyenne.actuelle.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.onboarding.moyenne.actuelle.subtitle}</p>
+            <div className="mt-8">
+              <GradeSlider
+                value={moyenneActuelle}
+                onChange={setMoyenneActuelle}
+                scale={scale}
+                locale={locale}
+                ariaLabel={t.onboarding.moyenne.actuelle.title}
+              />
+            </div>
+            <Button className="mt-8 w-full" onClick={goToMoyenneObjectif}>
+              {t.onboarding.moyenne.actuelle.continuer}
+            </Button>
+          </div>
+        )}
+
+        {step === "moyenneObjectif" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("moyenneActuelle")}
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.common.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.moyenne.objectif.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.onboarding.moyenne.objectif.subtitle}</p>
+            <div className="mt-8">
+              <GradeSlider
+                value={moyenneObjectif}
+                onChange={setMoyenneObjectif}
+                scale={scale}
+                locale={locale}
+                ariaLabel={t.onboarding.moyenne.objectif.title}
+              />
+            </div>
+            <Button className="mt-8 w-full" onClick={validateObjectif}>
+              {t.onboarding.moyenne.objectif.valider}
+            </Button>
+          </div>
+        )}
+
+        {step === "analyzing" && (
+          <AnalyzingScreen
+            key={analysisRun}
+            spinnerLabel={t.onboarding.moyenne.analyzing.title}
+            items={[
+              t.onboarding.moyenne.analyzing.step1,
+              t.onboarding.moyenne.analyzing.step2,
+              t.onboarding.moyenne.analyzing.step3,
+            ]}
+            onDone={() => setStep("result")}
+          />
+        )}
+
+        {step === "result" && calcResult && rhythmComparison && (
+          <div>
+            <Confetti key={`confetti-${analysisRun}`} />
+            <div className="rounded-2xl border border-border bg-bg-elevated p-6">
+              <p className="text-center font-heading text-xl font-semibold text-text">
+                {calcResult.kind === "already-there" &&
+                  t.examen.wizard.result.alreadyThere(
+                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+                  )}
+                {calcResult.kind === "normal" &&
+                  t.onboarding.moyenne.result.headline(
+                    formatGrade(moyenneActuelle, scale, locale),
+                    formatGrade(moyenneObjectif, scale, locale),
+                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
+                  )}
+                {calcResult.kind === "very-ambitious" &&
+                  t.examen.wizard.result.veryAmbitious(
+                    formatGrade(moyenneObjectif, scale, locale),
+                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+                    formatGrade(calcResult.suggestedGoal20!, scale, locale),
+                  )}
+                {calcResult.kind === "excessive-load" &&
+                  t.examen.wizard.result.excessiveLoad(
+                    formatGrade(moyenneObjectif, scale, locale),
+                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
+                    formatGrade(calcResult.suggestedGoal20!, scale, locale),
+                  )}
+              </p>
+              <p className="mt-3 text-center text-sm text-text-muted">
+                {rhythmComparison.kind === "insufficient" &&
+                  t.examen.wizard.result.compareInsufficient(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(rhythmComparison.gapHoursPerWeek * 2) / 2),
+                  )}
+                {rhythmComparison.kind === "sufficient" &&
+                  t.examen.wizard.result.compareSufficient(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                  )}
+                {rhythmComparison.kind === "excessive" &&
+                  t.examen.wizard.result.compareExcessive(
+                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
+                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
+                  )}
+              </p>
+              <p className="mt-4 text-center text-xs text-text-muted">{t.onboarding.moyenne.result.disclaimer}</p>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
             <Button className="mt-6 w-full" onClick={handleFinish} disabled={submitting}>
