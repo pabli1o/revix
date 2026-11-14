@@ -27,6 +27,10 @@ export const landing = {
     ctaPrimary: "Calculer mon plan",
     essayerGratuitement: "Essayer gratuitement",
     tagline: "Fiches • Planning avant examen • Quiz",
+    // Discreet "scroll down" cue at the bottom of the first screen (see
+    // landing-page.tsx's scroll-cue block) — the word, not just the
+    // chevron, since a bare arrow can read as decorative rather than a cue.
+    scrollCue: "Découvre",
   },
   // Decorative caption on the hero phone's slider preview (demo-screens.tsx's
   // DemoGradeSliderScreen) — shows the "6" starting point next to the real

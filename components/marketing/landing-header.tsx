@@ -25,18 +25,18 @@ export function LandingHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-4 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/" className="font-heading text-xl font-bold tracking-tight text-accent">
             Reviix
           </Link>
           <LanguageSwitcher />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
             href="/login"
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent"
+            className="rounded-full border border-border px-3 py-2 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent sm:px-4"
           >
             {t.landing.header.connexion}
           </Link>

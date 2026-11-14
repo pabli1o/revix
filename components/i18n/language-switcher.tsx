@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useLocale } from "./locale-provider";
 import { LOCALES } from "@/lib/i18n/locale";
 import { IconChevronDown, IconCheck } from "@/components/ui/icons";
+import { FlagIcon } from "@/components/ui/flags";
 
 /**
  * FR/EN/ES button + dropdown, meant to sit next to the logo everywhere
@@ -37,8 +38,9 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         aria-label={t.languageSwitcher.label}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-11 items-center gap-1 rounded-full border border-border px-3 text-sm font-semibold text-text transition-colors hover:border-accent hover:text-accent"
+        className="flex h-11 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold text-text transition-colors hover:border-accent hover:text-accent"
       >
+        <FlagIcon locale={locale} className="w-5" />
         {locale.toUpperCase()}
         <IconChevronDown className={clsx("size-4 transition-transform duration-150", open && "rotate-180")} />
       </button>
@@ -61,7 +63,10 @@ export function LanguageSwitcher({ className }: { className?: string }) {
               }}
               className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-bg-elevated"
             >
-              {t.languageSwitcher.names[option]}
+              <span className="flex items-center gap-2.5">
+                <FlagIcon locale={option} className="w-5" />
+                {t.languageSwitcher.names[option]}
+              </span>
               {locale === option && <IconCheck className="size-4 shrink-0 text-accent" />}
             </button>
           ))}

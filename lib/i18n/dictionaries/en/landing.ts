@@ -21,6 +21,7 @@ export const landing: LandingDict = {
     ctaPrimary: "Calculate my plan",
     essayerGratuitement: "Try it for free",
     tagline: "Notes • Pre-exam planning • Quizzes",
+    scrollCue: "Discover",
   },
   heroPhone: {
     fromCaption: (value: string) => `Start: ${value}`,

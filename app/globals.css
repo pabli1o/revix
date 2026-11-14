@@ -265,3 +265,26 @@ h1, h2, h3, h4 {
   animation-iteration-count: 1;
   animation-fill-mode: forwards;
 }
+
+/* Landing hero's "scroll down" cue (components/marketing/landing-page.tsx)
+   — a few pixels of vertical drift via transform, so it never affects
+   layout/CLS. Off entirely under prefers-reduced-motion. */
+@keyframes scroll-cue-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.scroll-cue-motion {
+  animation: scroll-cue-bounce 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue-motion {
+    animation: none;
+  }
+}
