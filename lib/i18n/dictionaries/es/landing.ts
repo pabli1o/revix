@@ -12,15 +12,18 @@ export const landing: LandingDict = {
   },
   hero: {
     badge: "Para estudiantes",
+    slogan: "Tus fichas de estudio en menos de 2 min",
     titleBefore: "Pasa de",
     titleMiddle: "a",
     titleAfter: "de media",
-    slogan: "Tus fichas de estudio en menos de 2 min",
     disclaimer: "Ejemplo de objetivo. Los resultados dependen de tu trabajo.",
     subtitle: "Reviix calcula cuánto necesitas estudiar para alcanzar tu objetivo, y prepara tus fichas, tu planning y tus cuestionarios.",
     ctaPrimary: "Calcular mi plan",
     essayerGratuitement: "Probar gratis",
     tagline: "Fichas • Planning antes del examen • Cuestionarios",
+  },
+  heroPhone: {
+    fromCaption: (value: string) => `Inicio: ${value}`,
   },
   howItWorks: {
     title: "Cómo funciona",

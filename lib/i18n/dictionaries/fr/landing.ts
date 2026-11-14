@@ -10,23 +10,29 @@ export const landing = {
   },
   hero: {
     badge: "Pour les étudiants",
-    // The headline is built from 3 fixed pieces around 2 fixed numbers
-    // (see components/marketing/landing-page.tsx) rather than one sentence
+    // `slogan` is the big <h1> (the product promise); titleBefore/
+    // titleMiddle/titleAfter build the smaller subtitle right under it
+    // (the goal) from 3 fixed pieces around 2 fixed numbers (see
+    // components/marketing/landing-page.tsx) rather than one sentence
     // string, so the goal number can be highlighted — same word order
     // works across fr/en/es ("Passe de [6] à [14] de moyenne" / "Go from
     // [30%] to [70%] average"). The numbers themselves are static (no
     // counting animation — that caused a layout jump on load).
+    slogan: "Tes fiches de révision en moins de 2 min",
     titleBefore: "Passe de",
     titleMiddle: "à",
     titleAfter: "de moyenne",
-    // The former hero title, kept as a large, distinct line right under
-    // the new one: the new title is the goal, this is the product promise.
-    slogan: "Tes fiches de révision en moins de 2 min",
     disclaimer: "Exemple d'objectif. Les résultats dépendent de ton travail.",
     subtitle: "Reviix calcule combien réviser pour atteindre ton objectif, et prépare tes fiches, ton planning et tes quiz.",
     ctaPrimary: "Calculer mon plan",
     essayerGratuitement: "Essayer gratuitement",
     tagline: "Fiches • Planning avant examen • Quiz",
+  },
+  // Decorative caption on the hero phone's slider preview (demo-screens.tsx's
+  // DemoGradeSliderScreen) — shows the "6" starting point next to the real
+  // slider's own "14" target, echoing the hero's "6 to 14" story.
+  heroPhone: {
+    fromCaption: (value: string) => `Départ : ${value}`,
   },
   howItWorks: {
     title: "Comment ça marche",

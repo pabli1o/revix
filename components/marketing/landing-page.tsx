@@ -8,7 +8,7 @@ import { IconCheck } from "@/components/ui/icons";
 import { LandingHeader } from "./landing-header";
 import { Reveal } from "./reveal";
 import { PhoneFrame } from "./phone-frame";
-import { DemoFicheScreen, FloatingCard } from "./demo-screens";
+import { DemoGradeSliderScreen, FloatingCard } from "./demo-screens";
 import { FeatureTabs } from "./feature-tabs";
 import { FaqAccordion } from "./faq-accordion";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -30,7 +30,7 @@ export function LandingPage() {
     <div>
       <LandingHeader />
 
-      {/* 1. Premier écran — la promesse "passe de 6 à 14 de moyenne" */}
+      {/* 1. Premier écran — le slogan, puis la promesse "passe de 6 à 14 de moyenne" */}
       <section className="mx-auto max-w-3xl px-4 pt-14 pb-8 text-center sm:px-6 sm:pt-20">
         <Reveal>
           <span className="inline-block rounded-full border border-border bg-bg-card px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
@@ -39,17 +39,19 @@ export function LandingPage() {
         </Reveal>
 
         <Reveal delay={80}>
-          <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
+          <h1 className="mx-auto mt-6 max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
+            {d.hero.slogan}
+          </h1>
+        </Reveal>
+
+        <Reveal delay={110}>
+          <p className="mx-auto mt-3 max-w-xl text-xl font-bold text-accent sm:text-2xl">
             {d.hero.titleBefore} {formatGradeNumber(HERO_FROM, scale, locale)} {d.hero.titleMiddle}{" "}
             <mark className="rounded-[2px] px-1 text-accent" style={{ backgroundColor: "var(--color-highlight)" }}>
               {formatGradeNumber(HERO_TO, scale, locale)}
             </mark>{" "}
             {d.hero.titleAfter}
-          </h1>
-        </Reveal>
-
-        <Reveal delay={110}>
-          <p className="mx-auto mt-3 max-w-xl text-xl font-bold text-accent sm:text-2xl">{d.hero.slogan}</p>
+          </p>
         </Reveal>
 
         <Reveal delay={140}>
@@ -76,11 +78,11 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      {/* 2. Grand téléphone + cartes flottantes */}
+      {/* 2. Grand téléphone (aperçu du curseur d'objectif de l'onboarding) + cartes flottantes */}
       <Reveal delay={100}>
         <div className="relative mx-auto mt-10 flex max-w-sm justify-center px-10 pb-4 sm:mt-14 sm:max-w-md">
           <PhoneFrame size="lg">
-            <DemoFicheScreen />
+            <DemoGradeSliderScreen />
           </PhoneFrame>
 
           <FloatingCard label={d.demo.floatingPlanningLabel} className="top-10 -left-2 rotate-[-6deg] sm:-left-8">

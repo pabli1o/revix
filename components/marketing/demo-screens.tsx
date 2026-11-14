@@ -4,6 +4,14 @@ import clsx from "clsx";
 import { RichText } from "@/components/fiches/rich-text";
 import { IconCheck } from "@/components/ui/icons";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { GradeSlider } from "@/components/examen/grade-slider";
+import { resolveGradeScale, formatGradeNumber } from "@/lib/i18n/grade-scale";
+
+/** Canonical /20 values matching the hero's own "6 to 14" example
+ * (components/marketing/landing-page.tsx's HERO_FROM/HERO_TO) — kept in
+ * sync so the phone preview tells the same story as the title above it. */
+const SLIDER_FROM = 6;
+const SLIDER_TO = 14;
 
 /** The phone-sized version of a real fiche — same visual language as
  * components/fiches/fiche-viewer.tsx (paper texture, highlighter marks,
@@ -46,6 +54,32 @@ export function DemoFicheScreen({ compact = false }: { compact?: boolean }) {
             • <RichText text={demo.aRetenirPoint} />
           </li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+/** A faithful, purely decorative recreation of the onboarding's "objectif"
+ * step (components/onboarding/wizard.tsx, moyenneObjectif step): same
+ * GradeSlider component, same onboarding copy, same plain card background
+ * (not the paper texture used by DemoFicheScreen — the real wizard card
+ * isn't on paper either). Never interactive (see GradeSlider's
+ * `interactive={false}`) and aria-hidden: it carries no accessible
+ * content of its own and never runs an analysis. */
+export function DemoGradeSliderScreen() {
+  const { t, locale } = useLocale();
+  const scale = resolveGradeScale(locale, null);
+  const step = t.onboarding.moyenne.objectif;
+
+  return (
+    <div aria-hidden className="flex h-full flex-col justify-center bg-bg-card px-5 pb-10">
+      <p className="text-[10px] font-medium text-text-muted">
+        {t.landing.heroPhone.fromCaption(formatGradeNumber(SLIDER_FROM, scale, locale))}
+      </p>
+      <h2 className="mt-1 text-[15px] font-semibold leading-snug">{step.title}</h2>
+      <p className="mt-1 text-[11px] text-text-muted">{step.subtitle}</p>
+      <div className="mt-7">
+        <GradeSlider value={SLIDER_TO} onChange={() => {}} scale={scale} locale={locale} ariaLabel="" interactive={false} />
       </div>
     </div>
   );

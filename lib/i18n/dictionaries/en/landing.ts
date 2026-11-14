@@ -12,15 +12,18 @@ export const landing: LandingDict = {
   },
   hero: {
     badge: "For students",
+    slogan: "Your study notes in under 2 min",
     titleBefore: "Go from",
     titleMiddle: "to",
     titleAfter: "average",
-    slogan: "Your study notes in under 2 min",
     disclaimer: "Example goal. Results depend on your own work.",
     subtitle: "Reviix works out how much to review to hit your goal, and puts together your notes, planning, and quizzes.",
     ctaPrimary: "Calculate my plan",
     essayerGratuitement: "Try it for free",
     tagline: "Notes • Pre-exam planning • Quizzes",
+  },
+  heroPhone: {
+    fromCaption: (value: string) => `Start: ${value}`,
   },
   howItWorks: {
     title: "How it works",
