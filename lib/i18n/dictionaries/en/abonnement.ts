@@ -26,6 +26,14 @@ export const abonnement: AbonnementDict = {
   emailChangeSending: "Sending…",
   emailChangeConfirmMessage: "Check your inbox (the old and/or new address) to confirm this change.",
 
+  gradeScaleTitle: "Grade scale",
+  gradeScaleDescription: "Choose how your grades are displayed, independent of the interface language.",
+  gradeScaleAuto: "Automatic (follows the language)",
+  gradeScaleVingt: "Out of 20",
+  gradeScaleDix: "Out of 10",
+  gradeScalePourcentage: "As a percentage",
+  gradeScaleSaveError: "Something went wrong saving the scale.",
+
   addCreditsButton: "Add credits",
   redirecting: "Redirecting…",
   buyCreditError: "Couldn't start the payment.",

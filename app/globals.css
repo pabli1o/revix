@@ -162,3 +162,66 @@ h1, h2, h3, h4 {
   background: var(--color-border);
   border-radius: 9999px;
 }
+
+/* GradeSlider (components/examen/grade-slider.tsx) — a native
+   <input type="range"> styled by hand, since range-input thumbs can only
+   be styled through vendor pseudo-elements, not Tailwind utilities. The
+   track is thin (6px) but the input itself is 44px tall (h-11, set on the
+   element in the component) so the whole row is a full-height tap target,
+   not just the visible thumb. */
+.grade-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* --slider-fill (set inline per-instance, e.g. "35%") marks how much of
+   the track reads as "filled" (navy) vs. track (border gray) — a plain
+   background on the <input> itself wouldn't show through the track
+   pseudo-element, which paints over it, so the gradient has to live on
+   the pseudo-element itself and read the value through a custom property
+   (the one thing that still crosses into a pseudo-element). */
+.grade-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent) var(--slider-fill, 0%),
+    var(--color-border) var(--slider-fill, 0%)
+  );
+}
+
+.grade-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-border);
+}
+
+.grade-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+}
+
+.grade-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -13px;
+  height: 32px;
+  width: 32px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.4);
+}
+
+.grade-slider::-moz-range-thumb {
+  height: 32px;
+  width: 32px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.4);
+}

@@ -18,7 +18,7 @@ export default async function AbonnementPage() {
 
   const [subscription, { data: profile }] = await Promise.all([
     getSubscriptionInfo(user!.id),
-    supabase.from("profiles").select("prenom, nom").eq("id", user!.id).maybeSingle(),
+    supabase.from("profiles").select("prenom, nom, echelle_note").eq("id", user!.id).maybeSingle(),
   ]);
 
   const tier = subscription.tier ? TIERS[subscription.tier] : null;
@@ -38,6 +38,7 @@ export default async function AbonnementPage() {
             initialPrenom={profile?.prenom ?? ""}
             initialNom={profile?.nom ?? ""}
             initialEmail={user!.email ?? ""}
+            initialEchelleNote={profile?.echelle_note ?? null}
           />
         </Card>
       </div>

@@ -5,6 +5,10 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type ClasseCycle = "college" | "lycee" | "superieur";
 export type Importance = "normale" | "importante" | "tres_importante";
+/** See lib/i18n/grade-scale.ts — null (profiles.echelle_note) means "use
+ * the default for the student's current language" rather than a fixed
+ * choice. */
+export type GradeScale = "vingt" | "dix" | "pourcentage";
 export type PlanningTaskType = "decouverte" | "rappel";
 export type QuizDifficulty = "facile" | "moyen" | "difficile";
 export type QuizStatus = "pending" | "ready" | "failed";
@@ -58,6 +62,10 @@ export type ProfileRow = {
   revision_jours_semaine: number;
   revision_minutes_jour: number;
   free_fiche_generated: boolean;
+  /** Overall average goal, /20 — Part B's "objectif de moyenne". */
+  objectif_moyenne: number;
+  /** Manual grade-scale override — see the GradeScale doc comment. */
+  echelle_note: GradeScale | null;
   created_at: string;
   updated_at: string;
 };
@@ -100,6 +108,20 @@ export type ExamRow = {
   nom: string;
   date: string;
   importance: Importance;
+  /** Null for an exam created before the "Objectif de note" wizard —
+   * everything created through it always sets this. */
+  subject_id: string | null;
+  coefficient: number;
+  /** The goal grade set in the "Objectif de note" wizard, /20 — null for
+   * an exam created before that existed, or if the wizard was skipped. */
+  note_visee: number | null;
+  /** The "current average in this subject" declared (or pre-filled from
+   * real grades) when the goal was set, /20. */
+  moyenne_declaree_depart: number | null;
+  /** The actual grade obtained, /20 — null = "à venir" (upcoming), never
+   * treated as a zero. */
+  note_obtenue: number | null;
+  date_saisie_note: string | null;
   created_at: string;
 };
 

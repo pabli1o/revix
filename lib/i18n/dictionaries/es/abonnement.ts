@@ -26,6 +26,14 @@ export const abonnement: AbonnementDict = {
   emailChangeSending: "Enviando…",
   emailChangeConfirmMessage: "Revisa tu correo (la dirección antigua y/o la nueva) para confirmar este cambio.",
 
+  gradeScaleTitle: "Escala de notas",
+  gradeScaleDescription: "Elige cómo se muestran tus notas, independientemente del idioma de la interfaz.",
+  gradeScaleAuto: "Automática (según el idioma)",
+  gradeScaleVingt: "Sobre 20",
+  gradeScaleDix: "Sobre 10",
+  gradeScalePourcentage: "En porcentaje",
+  gradeScaleSaveError: "Ha ocurrido un error al guardar la escala.",
+
   addCreditsButton: "Añadir créditos",
   redirecting: "Redirigiendo…",
   buyCreditError: "No se ha podido iniciar el pago.",

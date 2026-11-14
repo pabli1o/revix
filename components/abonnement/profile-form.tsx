@@ -5,16 +5,23 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ChoiceCard } from "@/components/ui/choice-card";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { GRADE_SCALES } from "@/lib/i18n/grade-scale";
+import type { GradeScale } from "@/lib/supabase/database.types";
 
 export function ProfileForm({
   initialPrenom,
   initialNom,
   initialEmail,
+  initialEchelleNote,
 }: {
   initialPrenom: string;
   initialNom: string;
   initialEmail: string;
+  /** The manual grade-scale override (lib/i18n/grade-scale.ts) — null
+   * means "follow the current language" rather than a fixed choice. */
+  initialEchelleNote: GradeScale | null;
 }) {
   const { t } = useLocale();
   const router = useRouter();
@@ -23,6 +30,35 @@ export function ProfileForm({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [echelleNote, setEchelleNote] = useState<GradeScale | null>(initialEchelleNote);
+  const [savingEchelle, setSavingEchelle] = useState(false);
+  const [echelleError, setEchelleError] = useState<string | null>(null);
+
+  const echelleLabels: Record<GradeScale, string> = {
+    vingt: t.abonnement.gradeScaleVingt,
+    dix: t.abonnement.gradeScaleDix,
+    pourcentage: t.abonnement.gradeScalePourcentage,
+  };
+
+  async function handleChangeEchelle(next: GradeScale | null) {
+    setEchelleNote(next);
+    setSavingEchelle(true);
+    setEchelleError(null);
+    const res = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ echelleNote: next }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setEchelleError(data?.error ?? t.abonnement.gradeScaleSaveError);
+      setSavingEchelle(false);
+      return;
+    }
+    setSavingEchelle(false);
+    router.refresh();
+  }
 
   const [email, setEmail] = useState(initialEmail);
   const [savingEmail, setSavingEmail] = useState(false);
@@ -115,6 +151,33 @@ export function ProfileForm({
         >
           {savingEmail ? t.abonnement.emailChangeSending : t.abonnement.emailChangeButton}
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-6">
+        <div>
+          <p className="text-sm font-medium">{t.abonnement.gradeScaleTitle}</p>
+          <p className="mt-0.5 text-xs text-text-muted">{t.abonnement.gradeScaleDescription}</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <ChoiceCard
+            compact
+            title={t.abonnement.gradeScaleAuto}
+            selected={echelleNote === null}
+            disabled={savingEchelle}
+            onClick={() => handleChangeEchelle(null)}
+          />
+          {GRADE_SCALES.map((scale) => (
+            <ChoiceCard
+              key={scale}
+              compact
+              title={echelleLabels[scale]}
+              selected={echelleNote === scale}
+              disabled={savingEchelle}
+              onClick={() => handleChangeEchelle(scale)}
+            />
+          ))}
+        </div>
+        {echelleError && <p className="text-sm text-danger">{echelleError}</p>}
       </div>
     </div>
   );

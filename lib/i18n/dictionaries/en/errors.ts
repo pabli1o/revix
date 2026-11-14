@@ -49,6 +49,11 @@ export const errors: ErrorsDict = {
     quizNotFound: "Quiz not found or not ready",
     noFicheContent: "This chapter has no note to generate a quiz from yet.",
   },
+  examen: {
+    subjectNotFound: "Subject not found",
+    examNotFound: "Exam not found",
+    invalidGrade: "Invalid grade",
+  },
   whop: {
     noSubscriptionToManage: "No subscription to manage",
     invalidOffer: "Invalid plan",

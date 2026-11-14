@@ -51,6 +51,11 @@ export const errors: ErrorsDict = {
     quizNotFound: "Cuestionario no encontrado o no disponible",
     noFicheContent: "Este tema todavía no tiene ninguna ficha a partir de la cual generar un cuestionario.",
   },
+  examen: {
+    subjectNotFound: "Asignatura no encontrada",
+    examNotFound: "Examen no encontrado",
+    invalidGrade: "Nota no válida",
+  },
   whop: {
     noSubscriptionToManage: "No hay ninguna suscripción que gestionar",
     invalidOffer: "Plan no válido",

@@ -29,6 +29,16 @@ export const abonnement = {
   emailChangeSending: "Envoi…",
   emailChangeConfirmMessage: "Vérifie ta boîte mail (l'ancienne et/ou la nouvelle adresse) pour confirmer ce changement.",
 
+  // Manual grade-scale override (lib/i18n/grade-scale.ts) — independent
+  // of the interface language.
+  gradeScaleTitle: "Échelle des notes",
+  gradeScaleDescription: "Choisis comment tes notes s'affichent, indépendamment de la langue de l'interface.",
+  gradeScaleAuto: "Automatique (selon la langue)",
+  gradeScaleVingt: "Sur 20",
+  gradeScaleDix: "Sur 10",
+  gradeScalePourcentage: "En pourcentage",
+  gradeScaleSaveError: "Erreur lors de l'enregistrement de l'échelle.",
+
   // Subscribe actions
   addCreditsButton: "Ajouter des crédits",
   redirecting: "Redirection…",

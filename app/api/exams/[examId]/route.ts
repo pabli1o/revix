@@ -6,6 +6,10 @@ import { getDictionary } from "@/lib/i18n/server";
 
 const VALID_IMPORTANCE: Importance[] = ["normale", "importante", "tres_importante"];
 
+function isValidGrade20(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 20;
+}
+
 export async function PATCH(request: Request, ctx: RouteContext<"/api/exams/[examId]">) {
   const { examId } = await ctx.params;
   const supabase = await createClient();
@@ -26,13 +30,30 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/exams/[exa
     date?: string;
     importance?: Importance;
     chapterIds?: string[];
+    /** Part B's grade-entry banner and "Ma moyenne" block's edit action —
+     * both send this, never note_visee/moyenne_declaree_depart, which are
+     * only ever set once at creation by the goal wizard. */
+    noteObtenue?: number;
   } | null;
 
-  const update: { nom?: string; date?: string; importance?: Importance } = {};
+  const update: {
+    nom?: string;
+    date?: string;
+    importance?: Importance;
+    note_obtenue?: number;
+    date_saisie_note?: string;
+  } = {};
   if (body?.nom?.trim()) update.nom = body.nom.trim();
   if (body?.date) update.date = body.date;
   if (body?.importance && VALID_IMPORTANCE.includes(body.importance)) {
     update.importance = body.importance;
+  }
+  if (body?.noteObtenue !== undefined) {
+    if (!isValidGrade20(body.noteObtenue)) {
+      return NextResponse.json({ error: t.errors.examen.invalidGrade }, { status: 400 });
+    }
+    update.note_obtenue = body.noteObtenue;
+    update.date_saisie_note = new Date().toISOString();
   }
 
   if (Object.keys(update).length > 0) {

@@ -56,6 +56,11 @@ export const errors = {
     quizNotFound: "Quiz introuvable ou non prêt",
     noFicheContent: "Ce chapitre ne contient aucune fiche à partir de laquelle générer un quiz.",
   },
+  examen: {
+    subjectNotFound: "Matière introuvable",
+    examNotFound: "Examen introuvable",
+    invalidGrade: "Note invalide",
+  },
   whop: {
     noSubscriptionToManage: "Aucun abonnement à gérer",
     invalidOffer: "Offre invalide",
