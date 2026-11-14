@@ -10,31 +10,23 @@ export const landing = {
   },
   hero: {
     badge: "Pour les étudiants",
-    // The headline is built from 3 fixed pieces around 2 animated numbers
+    // The headline is built from 3 fixed pieces around 2 fixed numbers
     // (see components/marketing/landing-page.tsx) rather than one sentence
-    // string, so the two figures can count up and the goal number can be
-    // highlighted — same word order works across fr/en/es ("Passe de [6]
-    // à [14] de moyenne" / "Go from [30%] to [70%] average").
+    // string, so the goal number can be highlighted — same word order
+    // works across fr/en/es ("Passe de [6] à [14] de moyenne" / "Go from
+    // [30%] to [70%] average"). The numbers themselves are static (no
+    // counting animation — that caused a layout jump on load).
     titleBefore: "Passe de",
     titleMiddle: "à",
     titleAfter: "de moyenne",
+    // The former hero title, kept as a large, distinct line right under
+    // the new one: the new title is the goal, this is the product promise.
+    slogan: "Tes fiches de révision en moins de 2 min",
     disclaimer: "Exemple d'objectif. Les résultats dépendent de ton travail.",
     subtitle: "Reviix calcule combien réviser pour atteindre ton objectif, et prépare tes fiches, ton planning et tes quiz.",
     ctaPrimary: "Calculer mon plan",
     essayerGratuitement: "Essayer gratuitement",
     tagline: "Fiches • Planning avant examen • Quiz",
-  },
-  /** The real, interactive "try the calculation" demo right under the
-   * hero (components/marketing/demo-calculator.tsx) — same analysis
-   * animation and real computeGeneralStudyPlan() math as the onboarding
-   * flow, sliders preset to the hero's own 6/14 example. */
-  demoCalculator: {
-    title: "Essaie le calcul, pour de vrai",
-    subtitle: "Règle les curseurs sur ta situation et regarde ce que Reviix te propose.",
-    currentLabel: "Moyenne actuelle",
-    goalLabel: "Moyenne visée",
-    launchButton: "Lancer l'analyse",
-    createPlanButton: "Créer mon plan",
   },
   howItWorks: {
     title: "Comment ça marche",

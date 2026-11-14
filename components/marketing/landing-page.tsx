@@ -5,39 +5,21 @@ import clsx from "clsx";
 import { ButtonLink } from "@/components/ui/button-link";
 import { SIZE_CLASSES } from "@/components/ui/button";
 import { IconCheck } from "@/components/ui/icons";
-import { useCountUp } from "@/components/ui/use-count-up";
 import { LandingHeader } from "./landing-header";
 import { Reveal } from "./reveal";
 import { PhoneFrame } from "./phone-frame";
 import { DemoFicheScreen, FloatingCard } from "./demo-screens";
-import { DemoCalculator } from "./demo-calculator";
 import { FeatureTabs } from "./feature-tabs";
 import { FaqAccordion } from "./faq-accordion";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { resolveGradeScale, formatGradeNumber } from "@/lib/i18n/grade-scale";
-import type { Locale } from "@/lib/i18n/locale";
-import type { GradeScale } from "@/lib/supabase/database.types";
 
-/** The hero's own "6 to 14" example — same figures the interactive demo
- * below starts from (components/marketing/demo-calculator.tsx), just
- * counted up on load instead of sat on a slider. */
+/** The hero's own "6 to 14" example — fixed numbers, no counting
+ * animation (that caused a layout jump on load: the "0" a counter starts
+ * from is narrower than "6"/"14", reflowing the title as it counted up).
+ * Still scale-aware per language (formatGradeNumber below). */
 const HERO_FROM = 6;
 const HERO_TO = 14;
-
-function AnimatedGradeNumber({
-  valueOn20,
-  scale,
-  locale,
-  className,
-}: {
-  valueOn20: number;
-  scale: GradeScale;
-  locale: Locale;
-  className?: string;
-}) {
-  const animated = useCountUp(valueOn20, 1200);
-  return <span className={className}>{formatGradeNumber(animated, scale, locale)}</span>;
-}
 
 export function LandingPage() {
   const { t, locale } = useLocale();
@@ -58,16 +40,19 @@ export function LandingPage() {
 
         <Reveal delay={80}>
           <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
-            {d.hero.titleBefore}{" "}
-            <AnimatedGradeNumber valueOn20={HERO_FROM} scale={scale} locale={locale} /> {d.hero.titleMiddle}{" "}
+            {d.hero.titleBefore} {formatGradeNumber(HERO_FROM, scale, locale)} {d.hero.titleMiddle}{" "}
             <mark className="rounded-[2px] px-1 text-accent" style={{ backgroundColor: "var(--color-highlight)" }}>
-              <AnimatedGradeNumber valueOn20={HERO_TO} scale={scale} locale={locale} />
+              {formatGradeNumber(HERO_TO, scale, locale)}
             </mark>{" "}
             {d.hero.titleAfter}
           </h1>
         </Reveal>
 
-        <Reveal delay={120}>
+        <Reveal delay={110}>
+          <p className="mx-auto mt-3 max-w-xl text-xl font-bold text-accent sm:text-2xl">{d.hero.slogan}</p>
+        </Reveal>
+
+        <Reveal delay={140}>
           <p className="mx-auto mt-3 max-w-lg text-xs text-text-muted">{d.hero.disclaimer}</p>
         </Reveal>
 
@@ -91,16 +76,9 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      {/* 2. La vraie démo interactive, calcul réel */}
-      <section className="px-4 pt-8 pb-4 sm:px-6">
-        <Reveal delay={100}>
-          <DemoCalculator />
-        </Reveal>
-      </section>
-
-      {/* 3. Grand téléphone + cartes flottantes */}
+      {/* 2. Grand téléphone + cartes flottantes */}
       <Reveal delay={100}>
-        <div className="relative mx-auto mt-14 flex max-w-sm justify-center px-10 pb-4 sm:mt-16 sm:max-w-md">
+        <div className="relative mx-auto mt-10 flex max-w-sm justify-center px-10 pb-4 sm:mt-14 sm:max-w-md">
           <PhoneFrame size="lg">
             <DemoFicheScreen />
           </PhoneFrame>
