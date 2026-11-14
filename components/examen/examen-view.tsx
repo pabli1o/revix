@@ -16,11 +16,17 @@ interface SubjectOption {
   id: string;
   nom: string;
 }
+interface ChapterOption {
+  id: string;
+  nom: string;
+  subject_id: string;
+}
 
 export function ExamenView({
   exams,
   subjects,
-  ficheCountBySubject,
+  chapters,
+  ficheCountByChapter,
   averageBySubject,
   gradeScaleOverride,
   objectifMoyenne,
@@ -29,7 +35,8 @@ export function ExamenView({
 }: {
   exams: ExamView[];
   subjects: SubjectOption[];
-  ficheCountBySubject: Record<string, number>;
+  chapters: ChapterOption[];
+  ficheCountByChapter: Record<string, number>;
   averageBySubject: Record<string, number | null>;
   gradeScaleOverride: GradeScale | null;
   objectifMoyenne: number;
@@ -62,7 +69,8 @@ export function ExamenView({
       {showWizard && (
         <GoalWizard
           subjects={subjects}
-          ficheCountBySubject={ficheCountBySubject}
+          chapters={chapters}
+          ficheCountByChapter={ficheCountByChapter}
           averageBySubject={averageBySubject}
           gradeScaleOverride={gradeScaleOverride}
           revisionJoursSemaine={revisionJoursSemaine}

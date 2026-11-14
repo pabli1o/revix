@@ -1,4 +1,4 @@
-import type { Importance } from "@/lib/supabase/database.types";
+import type { ClasseCycle, Importance } from "@/lib/supabase/database.types";
 
 /**
  * Pure, framework-free "how much should I revise to hit my goal" estimate
@@ -125,11 +125,14 @@ export interface GoalCalcResult {
   suggestedGoal20?: number;
 }
 
-function roundToGradeStep(value: number): number {
+/** Exported so components/onboarding/wizard.tsx and this module's own
+ * computeGeneralStudyPlan can round a suggested goal onto the same
+ * half-point grid as every slider in the app. */
+export function roundToGradeStep(value: number): number {
   return Math.round(value / GRADE_STEP) * GRADE_STEP;
 }
 
-function clampGrade(value: number): number {
+export function clampGrade(value: number): number {
   return Math.min(20, Math.max(0, value));
 }
 
@@ -153,7 +156,7 @@ export function computeGapFactor(gap: number): number {
  * excessive-load case. Assumes the target is above MIN_GAP_FACTOR's own
  * floor (true whenever this is actually called, since it's only reached
  * once the load is already over the threshold). */
-function gapForTargetFactor(targetFactor: number): number {
+export function gapForTargetFactor(targetFactor: number): number {
   return Math.pow(targetFactor / GAP_FACTOR_SCALE, 1 / GAP_CONVEXITY_EXPONENT);
 }
 
@@ -215,11 +218,93 @@ export function computeStudyPlan(input: GoalCalcInput): GoalCalcResult {
  * an exam weighted more heavily in the final grade also gets
  * proportionally more rappel passes/scheduling priority, unchanged from
  * how the scheduler already treats a manually-picked "très importante"
- * exam today. */
+ * exam today. Coefficients move in half-points (0.5, 1, 1.5, ...), so
+ * this is range-based rather than an exact match on 2 — a 2.5 coefficient
+ * is just as "importante" as a 2. */
 export function importanceFromCoefficient(coefficient: number): Importance {
   if (coefficient >= 3) return "tres_importante";
-  if (coefficient === 2) return "importante";
+  if (coefficient >= 1.5) return "importante";
   return "normale";
+}
+
+// ---------------------------------------------------------------------------
+// The onboarding flow's "quelle est ta moyenne générale / que veux-tu
+// atteindre ?" screens (components/onboarding/wizard.tsx) — before
+// signup, so there's no subject, no fiches, and no exam date yet to
+// scale from. A lighter sibling of computeStudyPlan() above: same convex
+// gap curve and the same 4 outcomes, but as a steady weekly rhythm
+// suggestion rather than a countdown to a deadline.
+// ---------------------------------------------------------------------------
+
+/** Weekly study hours this general estimate scales from, before the gap
+ * factor — the onboarding screen's stand-in for computeContentBaseHours'
+ * fiche count, since there's nothing to measure yet. Rises with school
+ * level: a student further along is generally expected to carry more
+ * autonomous weekly work for the same single point of average gained. */
+export const GENERAL_BASE_HOURS_PER_WEEK: Record<ClasseCycle, number> = {
+  college: 1.5,
+  lycee: 2.5,
+  superieur: 3.5,
+};
+
+export interface GeneralGoalCalcInput {
+  /** The student's current general average, /20. */
+  currentAverage20: number;
+  /** The general average they're aiming for, /20. */
+  goal20: number;
+  classeCycle: ClasseCycle;
+  /** The student's revision_jours_semaine (1-7) — not chosen yet this
+   * early in onboarding, so callers pass DEFAULT_REVISION_JOURS_SEMAINE. */
+  revisionJoursSemaine: number;
+}
+
+export interface GeneralGoalCalcResult {
+  kind: GoalCalcKind;
+  hoursPerWeek: number;
+  minutesPerDay: number;
+  gap: number;
+  suggestedGoal20?: number;
+}
+
+export function computeGeneralStudyPlan(input: GeneralGoalCalcInput): GeneralGoalCalcResult {
+  const currentAverage20 = clampGrade(input.currentAverage20);
+  const goal20 = clampGrade(input.goal20);
+  const gap = goal20 - currentAverage20;
+
+  const baseHoursPerWeek = GENERAL_BASE_HOURS_PER_WEEK[input.classeCycle];
+  const daysPerWeek =
+    input.revisionJoursSemaine > 0 ? input.revisionJoursSemaine : DEFAULT_REVISION_JOURS_SEMAINE;
+
+  if (gap <= 0) {
+    const hoursPerWeek = baseHoursPerWeek * MIN_GAP_FACTOR;
+    return { kind: "already-there", gap, hoursPerWeek, minutesPerDay: (hoursPerWeek * 60) / daysPerWeek };
+  }
+
+  const gapFactor = computeGapFactor(gap);
+  const hoursPerWeek = baseHoursPerWeek * gapFactor;
+  const minutesPerDay = (hoursPerWeek * 60) / daysPerWeek;
+
+  if (minutesPerDay / 60 > MAX_REASONABLE_HOURS_PER_DAY) {
+    const targetHoursPerWeek = (MAX_REASONABLE_HOURS_PER_DAY * 60 * daysPerWeek) / 60;
+    const targetGapFactor = Math.max(MIN_GAP_FACTOR, targetHoursPerWeek / baseHoursPerWeek);
+    const suggestedGap = gapForTargetFactor(targetGapFactor);
+    const suggestedGoal20 = roundToGradeStep(clampGrade(currentAverage20 + suggestedGap));
+
+    return {
+      kind: "excessive-load",
+      gap,
+      hoursPerWeek,
+      minutesPerDay,
+      suggestedGoal20: Math.min(suggestedGoal20, goal20 - GRADE_STEP),
+    };
+  }
+
+  if (goal20 >= AMBITIOUS_GOAL_THRESHOLD) {
+    const suggestedGoal20 = roundToGradeStep(clampGrade(goal20 - AMBITIOUS_INTERMEDIATE_STEP));
+    return { kind: "very-ambitious", gap, hoursPerWeek, minutesPerDay, suggestedGoal20 };
+  }
+
+  return { kind: "normal", gap, hoursPerWeek, minutesPerDay };
 }
 
 /** Calendar days between two ISO (yyyy-mm-dd) dates, "today" first —

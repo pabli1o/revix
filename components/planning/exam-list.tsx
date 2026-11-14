@@ -72,7 +72,7 @@ export function ExamList({ exams, gradeScaleOverride }: { exams: ExamView[]; gra
               )}
             </div>
             <div className="flex items-center gap-2">
-              {exam.coefficient > 1 && <Badge>{t.examen.coefficientBadge(exam.coefficient)}</Badge>}
+              {exam.coefficient !== 1 && <Badge>{t.examen.coefficientBadge(exam.coefficient)}</Badge>}
               <Badge>{importanceLabel[exam.importance]}</Badge>
               {exam.noteObtenue != null && (
                 <Button size="sm" variant="secondary" onClick={() => setEditingId(exam.id)}>

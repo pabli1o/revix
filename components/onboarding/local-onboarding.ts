@@ -17,6 +17,11 @@ export interface LocalOnboardingAnswers {
   classeNiveau: string;
   revisionJoursSemaine: number;
   revisionMinutesJour: number;
+  /** The new "quelle est ta moyenne générale / que veux-tu atteindre ?"
+   * screens (components/onboarding/wizard.tsx) — /20, optional only
+   * because an answer saved before those screens existed won't have them. */
+  moyenneGeneraleDepart?: number;
+  objectifMoyenne?: number;
 }
 
 const KEY = "reviix:local-onboarding";

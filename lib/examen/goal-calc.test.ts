@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   computeContentBaseHours,
   computeGapFactor,
+  computeGeneralStudyPlan,
   computeStudyPlan,
   daysUntil,
   importanceFromCoefficient,
   DEFAULT_FICHE_COUNT_FALLBACK,
+  GENERAL_BASE_HOURS_PER_WEEK,
   MAX_REASONABLE_HOURS_PER_DAY,
   MIN_GAP_FACTOR,
   MINUTES_PER_FICHE_BASE,
@@ -137,17 +139,74 @@ describe("computeStudyPlan", () => {
 });
 
 describe("importanceFromCoefficient", () => {
-  it("maps low coefficients to normale", () => {
+  it("maps low coefficients to normale, half-points included", () => {
+    expect(importanceFromCoefficient(0.5)).toBe("normale");
     expect(importanceFromCoefficient(1)).toBe("normale");
   });
 
-  it("maps a coefficient of 2 to importante", () => {
+  it("maps a coefficient of 1.5 and up (not just exactly 2) to importante", () => {
+    expect(importanceFromCoefficient(1.5)).toBe("importante");
     expect(importanceFromCoefficient(2)).toBe("importante");
+    expect(importanceFromCoefficient(2.5)).toBe("importante");
   });
 
   it("maps 3 and above to tres_importante", () => {
     expect(importanceFromCoefficient(3)).toBe("tres_importante");
     expect(importanceFromCoefficient(7)).toBe("tres_importante");
+  });
+});
+
+describe("computeGeneralStudyPlan", () => {
+  const baseInput = {
+    currentAverage20: 10,
+    goal20: 13,
+    classeCycle: "lycee" as const,
+    revisionJoursSemaine: 5,
+  };
+
+  it("returns a normal result scaled by the school-level base, with no totalHours/weeks dimension", () => {
+    const result = computeGeneralStudyPlan(baseInput);
+    expect(result.kind).toBe("normal");
+    expect(result.gap).toBe(3);
+    expect(result.hoursPerWeek).toBeGreaterThan(0);
+    expect(result.minutesPerDay).toBeCloseTo((result.hoursPerWeek * 60) / 5, 5);
+    expect((result as { totalHours?: number }).totalHours).toBeUndefined();
+  });
+
+  it("scales the base hours by school level — a higher level implies more weekly hours for the same gap", () => {
+    const college = computeGeneralStudyPlan({ ...baseInput, classeCycle: "college" });
+    const superieur = computeGeneralStudyPlan({ ...baseInput, classeCycle: "superieur" });
+    expect(superieur.hoursPerWeek).toBeGreaterThan(college.hoursPerWeek);
+    expect(GENERAL_BASE_HOURS_PER_WEEK.superieur).toBeGreaterThan(GENERAL_BASE_HOURS_PER_WEEK.college);
+  });
+
+  it("flags already-there when the goal is at or below the current average", () => {
+    const result = computeGeneralStudyPlan({ ...baseInput, goal20: 10 });
+    expect(result.kind).toBe("already-there");
+    expect(result.gap).toBe(0);
+    expect(result.hoursPerWeek).toBeGreaterThan(0); // maintenance, not zero
+  });
+
+  it("flags very-ambitious for a goal of 18+, with a lower intermediate milestone", () => {
+    const result = computeGeneralStudyPlan({ ...baseInput, currentAverage20: 15, goal20: 19 });
+    expect(result.kind).toBe("very-ambitious");
+    expect(result.suggestedGoal20).toBeDefined();
+    expect(result.suggestedGoal20!).toBeLessThan(19);
+    expect(result.suggestedGoal20!).toBeGreaterThan(15);
+  });
+
+  it("flags excessive-load for a huge gap, and proposes a lower, achievable goal", () => {
+    const result = computeGeneralStudyPlan({ ...baseInput, currentAverage20: 3, goal20: 19 });
+    expect(result.kind).toBe("excessive-load");
+    expect(result.minutesPerDay / 60).toBeGreaterThan(MAX_REASONABLE_HOURS_PER_DAY);
+    expect(result.suggestedGoal20).toBeDefined();
+    expect(result.suggestedGoal20!).toBeLessThan(19);
+  });
+
+  it("falls back to the default days/week when revisionJoursSemaine is not positive", () => {
+    const result = computeGeneralStudyPlan({ ...baseInput, revisionJoursSemaine: 0 });
+    expect(Number.isFinite(result.minutesPerDay)).toBe(true);
+    expect(result.minutesPerDay).toBeGreaterThan(0);
   });
 });
 

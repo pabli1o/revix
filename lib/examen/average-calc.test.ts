@@ -22,6 +22,15 @@ describe("computeWeightedAverage", () => {
     ]);
     expect(avg).toBeCloseTo(12, 5);
   });
+
+  it("handles half-point coefficients (0.5, 1.5, ...) the same as whole ones", () => {
+    // 12/20 at coeff 0.5, 16/20 at coeff 1.5 -> (6 + 24) / 2 = 15.
+    const avg = computeWeightedAverage([
+      { coefficient: 0.5, noteObtenue: 12 },
+      { coefficient: 1.5, noteObtenue: 16 },
+    ]);
+    expect(avg).toBeCloseTo(15, 5);
+  });
 });
 
 describe("computeNeededAverage", () => {
@@ -67,6 +76,14 @@ describe("computeNeededAverage", () => {
     // total coeff = 4, needed = (12*4 - 10) / 3 = 12.666...
     expect(result.kind).toBe("normal");
     expect(result.neededAverage20).toBeCloseTo(12.5, 5); // rounded to the 0.5 grid
+  });
+
+  it("works the same with half-point coefficients throughout", () => {
+    // 10/20 at coeff 0.5 (5 points) vs a goal of 12 over a total coeff of
+    // 2 (1.5 remaining) -> needed = (12*2 - 5) / 1.5 = 12.666... -> 12.5.
+    const result = computeNeededAverage([{ coefficient: 0.5, noteObtenue: 10 }], [1.5], 12);
+    expect(result.kind).toBe("normal");
+    expect(result.neededAverage20).toBeCloseTo(12.5, 5);
   });
 });
 

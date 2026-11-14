@@ -60,12 +60,13 @@ export default async function ExamenPage() {
 
   // Content base for the "Objectif de note" wizard's hours estimate (see
   // lib/examen/goal-calc.ts's computeContentBaseHours) — how many
-  // non-deleted fiches each subject has, via its chapters.
-  const ficheCountBySubject: Record<string, number> = {};
-  for (const subject of subjects ?? []) ficheCountBySubject[subject.id] = 0;
+  // non-deleted fiches each CHAPTER has (the wizard now picks specific
+  // chapters, not a whole subject, so this is summed over just the
+  // chosen ones rather than every chapter in the subject).
+  const ficheCountByChapter: Record<string, number> = {};
+  for (const chapter of chapters ?? []) ficheCountByChapter[chapter.id] = 0;
   for (const fiche of fiches ?? []) {
-    const subjectId = chapterById.get(fiche.chapter_id)?.subject_id;
-    if (subjectId && subjectId in ficheCountBySubject) ficheCountBySubject[subjectId] += 1;
+    if (fiche.chapter_id in ficheCountByChapter) ficheCountByChapter[fiche.chapter_id] += 1;
   }
 
   // Coefficient-weighted average of each subject's already-graded exams —
@@ -103,7 +104,8 @@ export default async function ExamenPage() {
       <ExamenView
         exams={examViews}
         subjects={subjects ?? []}
-        ficheCountBySubject={ficheCountBySubject}
+        chapters={chapters ?? []}
+        ficheCountByChapter={ficheCountByChapter}
         averageBySubject={averageBySubject}
         gradeScaleOverride={profile?.echelle_note ?? null}
         objectifMoyenne={profile?.objectif_moyenne ?? 10}

@@ -21,7 +21,12 @@ alter table public.exams
   -- migration has no subject_id and keeps working exactly as before
   -- (exam_chapters is untouched and still drives the planning scheduler).
   add column if not exists subject_id uuid references public.subjects (id) on delete set null,
-  add column if not exists coefficient int not null default 1 check (coefficient between 1 and 20),
+  -- Half-point steps (0.5, 1, 1.5, ...) so a coefficient can sit between
+  -- two whole weights — see migration 0017, which corrects this same
+  -- column to this exact type/check for a database where 0016 already
+  -- ran with the original int version; the two stay consistent so a
+  -- fresh database only ever sees this final shape.
+  add column if not exists coefficient numeric(3, 1) not null default 1 check (coefficient between 0.5 and 20),
   -- The goal grade set for this exam in the wizard (Part A) — null for any
   -- exam created before this migration, or if the wizard is ever skipped.
   add column if not exists note_visee numeric(4, 1) check (note_visee is null or note_visee between 0 and 20),

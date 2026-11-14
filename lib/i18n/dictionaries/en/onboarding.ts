@@ -23,6 +23,30 @@ export const onboarding: OnboardingDict = {
     placeholder: "E.g.: Lea, or a nickname…",
     continuer: "Continue",
   },
+  moyenne: {
+    actuelle: {
+      title: "What's your overall average?",
+      subtitle: "A rough estimate is fine, you can refine it later.",
+      continuer: "Continue",
+    },
+    objectif: {
+      title: "What average do you want to reach?",
+      subtitle: "Set a realistic goal — you can change it anytime.",
+      valider: "Confirm my goal",
+    },
+    analyzing: {
+      title: "Analyzing…",
+      step1: "Gap between your current average and your goal",
+      step2: "Factoring in your school level",
+      step3: "Building your study rhythm",
+    },
+    result: {
+      headline: (from: string, to: string, hoursPerWeek: string, minutesPerDay: string) =>
+        `To go from ${from} to ${to}, plan on about ${hoursPerWeek} a week — about ${minutesPerDay} a day.`,
+      disclaimer: "A general estimate — we'll refine it with your actual exams.",
+      continuer: "Continue",
+    },
+  },
   jours: {
     title: "How many days a week can you study?",
     subtitle: "This helps build your plan later — you can change it anytime.",

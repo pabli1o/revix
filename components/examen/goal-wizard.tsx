@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { useCountUp } from "@/components/ui/use-count-up";
 import { CalendarPicker } from "@/components/planning/calendar-picker";
 import { GradeSlider } from "@/components/examen/grade-slider";
 import { useLocale } from "@/components/i18n/locale-provider";
-import { formatDate } from "@/lib/i18n/format";
+import { formatDate, formatNumber } from "@/lib/i18n/format";
 import { resolveGradeScale, formatGrade } from "@/lib/i18n/grade-scale";
 import type { GradeScale } from "@/lib/supabase/database.types";
 import {
   computeStudyPlan,
   daysUntil,
+  clampGrade,
+  roundToGradeStep,
   type GoalCalcResult,
 } from "@/lib/examen/goal-calc";
 
@@ -21,16 +24,26 @@ interface SubjectOption {
   id: string;
   nom: string;
 }
+interface ChapterOption {
+  id: string;
+  nom: string;
+  subject_id: string;
+}
 
 /** A bit above the current average, so the goal slider never starts at
- * "no improvement" by default — per spec step 3. Purely a UI starting
- * point, not part of the hours estimate itself (see goal-calc.ts). */
+ * "no improvement" by default — per spec. Purely a UI starting point,
+ * not part of the hours estimate itself (see goal-calc.ts). */
 const DEFAULT_GOAL_OFFSET = 2;
 
 /** Used for the current-average slider when the subject has no graded
  * exams yet to pre-fill from ("Je n'ai pas encore de note") — the
  * midpoint of the /20 scale, a neutral starting guess. */
 const DEFAULT_CURRENT_AVERAGE = 10;
+
+const COEFFICIENT_STEP = 0.5;
+const MIN_COEFFICIENT = 0.5;
+const MAX_COEFFICIENT = 20;
+const DEFAULT_COEFFICIENT = 1;
 
 /** 3 narrative beats shown one after another during the "analysis"
  * animation, ~1.1s apart — each corresponds to a real input the
@@ -39,39 +52,23 @@ const ANALYZING_STEP_DELAY_MS = 1100;
 const ANALYZING_STEP_COUNT = 3;
 const ANALYZING_HOLD_MS = 900;
 
-function roundToGradeStep(value: number): number {
-  return Math.round(value * 2) / 2;
-}
-
-function clampGrade(value: number): number {
-  return Math.min(20, Math.max(0, value));
-}
-
-/** Counts a number up from 0 to `target` over `durationMs`, re-triggering
- * whenever `target` changes — the "compteurs animés" in the result step. */
-function useCountUp(target: number, durationMs = 700): number {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let frame: number;
-    const start = performance.now();
-    const from = 0;
-    function tick(now: number) {
-      const progress = Math.min(1, (now - start) / durationMs);
-      setValue(from + (target - from) * progress);
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    }
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target, durationMs]);
-  return value;
-}
-
-type Step = "info" | "average" | "goal" | "analyzing" | "result" | "generating" | "done";
-const FORM_STEP_ORDER: Step[] = ["info", "average", "goal"];
+type Step =
+  | "subject"
+  | "chapters"
+  | "date"
+  | "coefficient"
+  | "average"
+  | "goal"
+  | "analyzing"
+  | "result"
+  | "generating"
+  | "done";
+const FORM_STEP_ORDER: Step[] = ["subject", "chapters", "date", "coefficient", "average", "goal"];
 
 export function GoalWizard({
   subjects,
-  ficheCountBySubject,
+  chapters,
+  ficheCountByChapter,
   averageBySubject,
   revisionJoursSemaine,
   gradeScaleOverride,
@@ -79,9 +76,11 @@ export function GoalWizard({
   onClose,
 }: {
   subjects: SubjectOption[];
-  /** Non-deleted fiche count per subject id — the content base the hours
-   * estimate scales from (see goal-calc.ts's computeContentBaseHours). */
-  ficheCountBySubject: Record<string, number>;
+  chapters: ChapterOption[];
+  /** Non-deleted fiche count per chapter id — the content base the hours
+   * estimate scales from, summed over whichever chapters this exam
+   * covers (see goal-calc.ts's computeContentBaseHours). */
+  ficheCountByChapter: Record<string, number>;
   /** Coefficient-weighted average of this subject's already-graded exams,
    * /20 — null when the subject has none yet. */
   averageBySubject: Record<string, number | null>;
@@ -98,12 +97,13 @@ export function GoalWizard({
   const { t, locale } = useLocale();
   const scale = resolveGradeScale(locale, gradeScaleOverride);
 
-  const [step, setStep] = useState<Step>("info");
+  const [step, setStep] = useState<Step>("subject");
 
   const [subjectId, setSubjectId] = useState<string | null>(null);
+  const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
   const [date, setDate] = useState<string | null>(null);
-  const [coefficient, setCoefficient] = useState(1);
-  const [infoError, setInfoError] = useState<string | null>(null);
+  const [coefficient, setCoefficient] = useState(DEFAULT_COEFFICIENT);
+  const [stepError, setStepError] = useState<string | null>(null);
 
   const [currentAverage20, setCurrentAverage20] = useState(DEFAULT_CURRENT_AVERAGE);
   const [goal20, setGoal20] = useState(DEFAULT_CURRENT_AVERAGE + DEFAULT_GOAL_OFFSET);
@@ -114,31 +114,75 @@ export function GoalWizard({
   const [genError, setGenError] = useState<string | null>(null);
 
   const subject = subjects.find((s) => s.id === subjectId) ?? null;
+  const subjectChapters = subjectId ? chapters.filter((c) => c.subject_id === subjectId) : [];
   const hasRealAverage = subjectId ? averageBySubject[subjectId] != null : false;
+  const allChaptersSelected = subjectChapters.length > 0 && subjectChapters.every((c) => selectedChapterIds.has(c.id));
 
   function resetToInfo() {
-    setStep("info");
+    setStep("subject");
     setSubjectId(null);
+    setSelectedChapterIds(new Set());
     setDate(null);
-    setCoefficient(1);
-    setInfoError(null);
+    setCoefficient(DEFAULT_COEFFICIENT);
+    setStepError(null);
     setCurrentAverage20(DEFAULT_CURRENT_AVERAGE);
     setGoal20(DEFAULT_CURRENT_AVERAGE + DEFAULT_GOAL_OFFSET);
     setCalcResult(null);
     setGenError(null);
   }
 
-  function goToAverageStep() {
-    if (!subjectId || !date) {
-      setInfoError(t.examen.wizard.info.missingFields);
+  function chooseSubject(id: string) {
+    setSubjectId(id);
+    setSelectedChapterIds(new Set());
+  }
+
+  function toggleChapter(id: string) {
+    setSelectedChapterIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllChapters() {
+    setSelectedChapterIds(allChaptersSelected ? new Set() : new Set(subjectChapters.map((c) => c.id)));
+  }
+
+  function goToChaptersStep() {
+    if (!subjectId) {
+      setStepError(t.examen.wizard.subjectStep.missingFields);
+      return;
+    }
+    setStepError(null);
+    setStep("chapters");
+  }
+
+  function goToDateStep() {
+    if (selectedChapterIds.size === 0) {
+      setStepError(t.examen.wizard.chaptersStep.missingFields);
+      return;
+    }
+    setStepError(null);
+    setStep("date");
+  }
+
+  function goToCoefficientStep() {
+    if (!date) {
+      setStepError(t.examen.wizard.dateStep.missingFields);
       return;
     }
     const todayIso = new Date().toISOString().slice(0, 10);
     if (date < todayIso) {
-      setInfoError(t.examen.wizard.info.pastDateError);
+      setStepError(t.examen.wizard.dateStep.pastDateError);
       return;
     }
-    setInfoError(null);
+    setStepError(null);
+    setStep("coefficient");
+  }
+
+  function goToAverageStep() {
+    if (!subjectId) return;
     const real = averageBySubject[subjectId];
     const start = real ?? DEFAULT_CURRENT_AVERAGE;
     setCurrentAverage20(start);
@@ -148,12 +192,18 @@ export function GoalWizard({
     setStep("average");
   }
 
+  function ficheCountForSelection(): number {
+    let total = 0;
+    for (const id of selectedChapterIds) total += ficheCountByChapter[id] ?? 0;
+    return total;
+  }
+
   function validateGoal() {
-    if (!subjectId || !date) return;
+    if (!date) return;
     const result = computeStudyPlan({
       currentAverage20,
       goal20,
-      ficheCount: ficheCountBySubject[subjectId] ?? 0,
+      ficheCount: ficheCountForSelection(),
       daysUntilExam: daysUntil(date),
       revisionJoursSemaine,
     });
@@ -181,12 +231,12 @@ export function GoalWizard({
   }, [step]);
 
   function adoptSuggestedGoal(suggested: number) {
-    if (!subjectId || !date) return;
+    if (!date) return;
     setGoal20(suggested);
     const result = computeStudyPlan({
       currentAverage20,
       goal20: suggested,
-      ficheCount: ficheCountBySubject[subjectId] ?? 0,
+      ficheCount: ficheCountForSelection(),
       daysUntilExam: daysUntil(date),
       revisionJoursSemaine,
     });
@@ -194,7 +244,7 @@ export function GoalWizard({
   }
 
   async function handleGenerate() {
-    if (!subjectId || !date || !calcResult) return;
+    if (!subjectId || !date || !calcResult || selectedChapterIds.size === 0) return;
     setGenError(null);
     setStep("generating");
 
@@ -203,6 +253,7 @@ export function GoalWizard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         subjectId,
+        chapterIds: Array.from(selectedChapterIds),
         date,
         coefficient,
         noteVisee: goal20,
@@ -263,58 +314,142 @@ export function GoalWizard({
 
         {showProgressBar && <ProgressBar step={formStepIndex + 1} total={FORM_STEP_ORDER.length} />}
 
-        {step === "info" && (
+        {step === "subject" && (
           <div className="flex flex-1 flex-col">
-            <h1 className="font-heading text-2xl font-semibold">{t.examen.wizard.info.title}</h1>
-            <p className="mt-1 text-sm text-text-muted">{t.examen.wizard.info.subtitle}</p>
+            <h1 className="font-heading text-2xl font-semibold">{t.examen.wizard.subjectStep.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.examen.wizard.subjectStep.subtitle}</p>
 
             <div className="mt-6">
-              <label className="mb-2 block text-sm font-medium">{t.examen.wizard.info.subjectLabel}</label>
               {subjects.length === 0 ? (
-                <p className="text-sm text-text-muted">{t.examen.wizard.info.noSubjects}</p>
+                <p className="text-sm text-text-muted">{t.examen.wizard.subjectStep.noSubjects}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {subjects.map((s) => (
-                    <ChoiceCard key={s.id} compact title={s.nom} selected={subjectId === s.id} onClick={() => setSubjectId(s.id)} />
+                    <ChoiceCard key={s.id} compact title={s.nom} selected={subjectId === s.id} onClick={() => chooseSubject(s.id)} />
                   ))}
                 </div>
               )}
             </div>
 
+            {stepError && <p className="mt-4 text-sm text-danger">{stepError}</p>}
+
+            <div className="mt-8">
+              <Button size="lg" className="w-full" onClick={goToChaptersStep} disabled={subjects.length === 0}>
+                {t.examen.wizard.subjectStep.continueButton}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === "chapters" && subject && (
+          <div className="flex flex-1 flex-col">
+            <button
+              type="button"
+              onClick={() => setStep("subject")}
+              className="mb-4 w-fit rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.examen.wizard.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.examen.wizard.chaptersStep.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.examen.wizard.chaptersStep.subtitle}</p>
+
+            {subjectChapters.length === 0 ? (
+              <p className="mt-6 text-sm text-text-muted">{t.examen.wizard.chaptersStep.noChaptersYet}</p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleSelectAllChapters}
+                  className="mt-6 w-fit rounded-full border border-accent/50 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+                >
+                  {t.examen.wizard.chaptersStep.selectAllButton}
+                </button>
+                <div className="mt-3 flex flex-col gap-2">
+                  {subjectChapters.map((c) => (
+                    <ChoiceCard
+                      key={c.id}
+                      compact
+                      title={c.nom}
+                      selected={selectedChapterIds.has(c.id)}
+                      onClick={() => toggleChapter(c.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {stepError && <p className="mt-4 text-sm text-danger">{stepError}</p>}
+
+            <div className="mt-8">
+              <Button size="lg" className="w-full" onClick={goToDateStep} disabled={subjectChapters.length === 0}>
+                {t.examen.wizard.chaptersStep.continueButton}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === "date" && (
+          <div className="flex flex-1 flex-col">
+            <button
+              type="button"
+              onClick={() => setStep("chapters")}
+              className="mb-4 w-fit rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.examen.wizard.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.examen.wizard.dateStep.title}</h1>
+
             <div className="mt-6">
-              <label className="mb-2 block text-sm font-medium">{t.examen.wizard.info.dateLabel}</label>
               <CalendarPicker value={date} onChange={setDate} />
             </div>
 
-            <div className="mt-6">
-              <label className="mb-1 block text-sm font-medium">{t.examen.wizard.info.coefficientLabel}</label>
-              <p className="mb-2 text-xs text-text-muted">{t.examen.wizard.info.coefficientHint}</p>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCoefficient((c) => Math.max(1, c - 1))}
-                  aria-label="−"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border text-lg font-semibold text-text transition-colors hover:border-accent hover:text-accent"
-                >
-                  −
-                </button>
-                <span className="w-10 text-center font-heading text-xl font-semibold">{coefficient}</span>
-                <button
-                  type="button"
-                  onClick={() => setCoefficient((c) => Math.min(20, c + 1))}
-                  aria-label="+"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border text-lg font-semibold text-text transition-colors hover:border-accent hover:text-accent"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {infoError && <p className="mt-4 text-sm text-danger">{infoError}</p>}
+            {stepError && <p className="mt-4 text-sm text-danger">{stepError}</p>}
 
             <div className="mt-8">
-              <Button size="lg" className="w-full" onClick={goToAverageStep} disabled={subjects.length === 0}>
-                {t.examen.wizard.info.continueButton}
+              <Button size="lg" className="w-full" onClick={goToCoefficientStep}>
+                {t.examen.wizard.dateStep.continueButton}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === "coefficient" && (
+          <div className="flex flex-1 flex-col">
+            <button
+              type="button"
+              onClick={() => setStep("date")}
+              className="mb-4 w-fit rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.examen.wizard.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.examen.wizard.coefficientStep.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.examen.wizard.coefficientStep.subtitle}</p>
+
+            <div className="mt-8 flex items-center justify-center gap-5">
+              <button
+                type="button"
+                onClick={() => setCoefficient((c) => Math.max(MIN_COEFFICIENT, Math.round((c - COEFFICIENT_STEP) * 10) / 10))}
+                aria-label="−"
+                className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border text-2xl font-semibold text-text transition-colors hover:border-accent hover:text-accent"
+              >
+                −
+              </button>
+              <span className="w-20 text-center font-heading text-3xl font-bold text-accent">
+                {formatNumber(coefficient, locale)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCoefficient((c) => Math.min(MAX_COEFFICIENT, Math.round((c + COEFFICIENT_STEP) * 10) / 10))}
+                aria-label="+"
+                className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border text-2xl font-semibold text-text transition-colors hover:border-accent hover:text-accent"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="mt-8">
+              <Button size="lg" className="w-full" onClick={goToAverageStep}>
+                {t.examen.wizard.coefficientStep.continueButton}
               </Button>
             </div>
           </div>
@@ -324,7 +459,7 @@ export function GoalWizard({
           <div className="flex flex-1 flex-col">
             <button
               type="button"
-              onClick={() => setStep("info")}
+              onClick={() => setStep("coefficient")}
               className="mb-4 w-fit rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← {t.examen.wizard.back}

@@ -12,6 +12,15 @@ interface OnboardingBody {
   classeNiveau: string;
   revisionJoursSemaine: number;
   revisionMinutesJour: number;
+  /** The new "moyenne générale" onboarding screens — optional since an
+   * anonymous draft saved before they existed won't carry them, and the
+   * student could in principle skip them (see wizard.tsx). /20 scale. */
+  moyenneGeneraleDepart?: number;
+  objectifMoyenne?: number;
+}
+
+function isValidGrade20(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 20;
 }
 
 const VALID_CYCLES: ClasseCycle[] = ["college", "lycee", "superieur"];
@@ -39,6 +48,12 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
   }
+  if (body.moyenneGeneraleDepart !== undefined && !isValidGrade20(body.moyenneGeneraleDepart)) {
+    return NextResponse.json({ error: t.errors.examen.invalidGrade }, { status: 400 });
+  }
+  if (body.objectifMoyenne !== undefined && !isValidGrade20(body.objectifMoyenne)) {
+    return NextResponse.json({ error: t.errors.examen.invalidGrade }, { status: 400 });
+  }
 
   const fields = {
     prenom: body.prenom.trim(),
@@ -47,6 +62,8 @@ export async function POST(request: Request) {
     revision_jours_semaine: Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine))),
     revision_minutes_jour: Math.max(5, Math.round(body.revisionMinutesJour)),
     onboarding_completed: true,
+    ...(body.moyenneGeneraleDepart !== undefined ? { moyenne_generale_depart: body.moyenneGeneraleDepart } : {}),
+    ...(body.objectifMoyenne !== undefined ? { objectif_moyenne: body.objectifMoyenne } : {}),
   };
 
   // Plain UPDATE first: the `handle_new_user` trigger already created this

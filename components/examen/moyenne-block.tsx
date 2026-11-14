@@ -99,7 +99,7 @@ export function MoyenneBlock({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {exam.coefficient > 1 && <Badge>{t.examen.coefficientBadge(exam.coefficient)}</Badge>}
+                {exam.coefficient !== 1 && <Badge>{t.examen.coefficientBadge(exam.coefficient)}</Badge>}
                 {exam.noteObtenue != null ? (
                   <Badge className="border-accent/40 text-accent">{formatGrade(exam.noteObtenue, scale, locale)}</Badge>
                 ) : (

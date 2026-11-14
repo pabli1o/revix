@@ -21,6 +21,34 @@ export const onboarding = {
     placeholder: "Ex : Léa, ou un pseudo…",
     continuer: "Continuer",
   },
+  /** The "quelle est ta moyenne générale / que veux-tu atteindre ?"
+   * screens — between prenom and jours (see components/onboarding/wizard.tsx).
+   * No subject or exam yet, just a general starting point and goal fed to
+   * lib/examen/goal-calc.ts's computeGeneralStudyPlan. */
+  moyenne: {
+    actuelle: {
+      title: "Quelle est ta moyenne générale ?",
+      subtitle: "Une estimation suffit, tu pourras l'affiner plus tard.",
+      continuer: "Continuer",
+    },
+    objectif: {
+      title: "Quelle moyenne veux-tu atteindre ?",
+      subtitle: "Fixe-toi un objectif réaliste, tu pourras le changer à tout moment.",
+      valider: "Valider mon objectif",
+    },
+    analyzing: {
+      title: "Analyse en cours…",
+      step1: "Écart entre ta moyenne actuelle et ton objectif",
+      step2: "Prise en compte de ton niveau d'études",
+      step3: "Construction de ton rythme de révision",
+    },
+    result: {
+      headline: (from: string, to: string, hoursPerWeek: string, minutesPerDay: string) =>
+        `Pour passer de ${from} à ${to}, compte environ ${hoursPerWeek} par semaine, soit environ ${minutesPerDay} par jour.`,
+      disclaimer: "Estimation générale, on l'affinera avec tes examens.",
+      continuer: "Continuer",
+    },
+  },
   jours: {
     title: "Combien de jours par semaine peux-tu réviser ?",
     subtitle: "Ça sert à construire ton planning plus tard — modifiable à tout moment.",

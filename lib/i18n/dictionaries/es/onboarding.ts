@@ -23,6 +23,30 @@ export const onboarding: OnboardingDict = {
     placeholder: "Ej.: Lucía, o un apodo…",
     continuer: "Continuar",
   },
+  moyenne: {
+    actuelle: {
+      title: "¿Cuál es tu media general?",
+      subtitle: "Basta con una estimación, podrás ajustarla más adelante.",
+      continuer: "Continuar",
+    },
+    objectif: {
+      title: "¿Qué media quieres alcanzar?",
+      subtitle: "Ponte un objetivo realista, podrás cambiarlo cuando quieras.",
+      valider: "Confirmar mi objetivo",
+    },
+    analyzing: {
+      title: "Analizando…",
+      step1: "Diferencia entre tu media actual y tu objetivo",
+      step2: "Teniendo en cuenta tu nivel de estudios",
+      step3: "Construyendo tu ritmo de estudio",
+    },
+    result: {
+      headline: (from: string, to: string, hoursPerWeek: string, minutesPerDay: string) =>
+        `Para pasar de ${from} a ${to}, cuenta con unos ${hoursPerWeek} a la semana, unos ${minutesPerDay} al día.`,
+      disclaimer: "Estimación general, la afinaremos con tus exámenes.",
+      continuer: "Continuar",
+    },
+  },
   jours: {
     title: "¿Cuántos días a la semana puedes estudiar?",
     subtitle: "Esto sirve para construir tu planning más adelante — se puede cambiar cuando quieras.",

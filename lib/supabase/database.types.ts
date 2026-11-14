@@ -62,8 +62,15 @@ export type ProfileRow = {
   revision_jours_semaine: number;
   revision_minutes_jour: number;
   free_fiche_generated: boolean;
-  /** Overall average goal, /20 — Part B's "objectif de moyenne". */
+  /** Overall average goal, /20 — Part B's "objectif de moyenne", also set
+   * from the onboarding flow's "quelle moyenne veux-tu atteindre ?". */
   objectif_moyenne: number;
+  /** The onboarding flow's "quelle est ta moyenne générale ?" starting
+   * value, /20 — null for any account that onboarded before this screen
+   * existed. Purely informational (the per-subject calc still uses its
+   * own moyenne_declaree_depart/real grades), not re-used in any
+   * calculation. */
+  moyenne_generale_depart: number | null;
   /** Manual grade-scale override — see the GradeScale doc comment. */
   echelle_note: GradeScale | null;
   created_at: string;

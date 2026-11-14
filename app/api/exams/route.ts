@@ -6,13 +6,12 @@ import { getDictionary } from "@/lib/i18n/server";
 
 /**
  * Creates an exam from the "Objectif de note" wizard
- * (components/examen/goal-wizard.tsx) — picks a whole subject (not
- * individual chapters like the old ExamForm/exam-form.tsx, now removed),
- * so this links every one of that subject's chapters automatically and
- * names the exam after the subject. `importance` (still required by
- * lib/planning/scheduler.ts, unchanged) is derived from the coefficient
- * instead of asked for directly — see importanceFromCoefficient's doc
- * comment.
+ * (components/examen/goal-wizard.tsx) — picks a subject, then the
+ * specific chapters it covers (at least one), and names the exam after
+ * the subject. `importance` (still required by lib/planning/scheduler.ts,
+ * unchanged) is derived from the coefficient instead of asked for
+ * directly — see importanceFromCoefficient's doc comment. Coefficients
+ * move in half-points (0.5-20, see migration 0017).
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -29,13 +28,20 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     subjectId?: string;
+    chapterIds?: string[];
     date?: string;
     coefficient?: number;
     noteVisee?: number | null;
     moyenneDeclareeDepart?: number | null;
   } | null;
 
-  if (!body?.subjectId || !body.date || !body.coefficient || body.coefficient < 1) {
+  if (
+    !body?.subjectId ||
+    !body.chapterIds?.length ||
+    !body.date ||
+    !body.coefficient ||
+    body.coefficient < 0.5
+  ) {
     return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
   }
 
@@ -47,6 +53,19 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (subjectError) return NextResponse.json({ error: subjectError.message }, { status: 500 });
   if (!subject) return NextResponse.json({ error: t.errors.examen.subjectNotFound }, { status: 404 });
+
+  // Confirms every chosen chapter actually belongs to this subject and
+  // this user, rather than trusting the client-sent id list outright.
+  const { data: ownedChapters, error: chaptersError } = await supabase
+    .from("chapters")
+    .select("id")
+    .eq("subject_id", subject.id)
+    .eq("user_id", user.id)
+    .in("id", body.chapterIds);
+  if (chaptersError) return NextResponse.json({ error: chaptersError.message }, { status: 500 });
+  if (!ownedChapters || ownedChapters.length !== body.chapterIds.length) {
+    return NextResponse.json({ error: t.errors.examen.subjectNotFound }, { status: 404 });
+  }
 
   const { data: exam, error } = await supabase
     .from("exams")
@@ -65,19 +84,10 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data: chapters, error: chaptersError } = await supabase
-    .from("chapters")
-    .select("id")
-    .eq("subject_id", subject.id)
-    .eq("user_id", user.id);
-  if (chaptersError) return NextResponse.json({ error: chaptersError.message }, { status: 500 });
-
-  if (chapters && chapters.length > 0) {
-    const { error: linkError } = await supabase
-      .from("exam_chapters")
-      .insert(chapters.map((c) => ({ exam_id: exam.id, chapter_id: c.id })));
-    if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 });
-  }
+  const { error: linkError } = await supabase
+    .from("exam_chapters")
+    .insert(ownedChapters.map((c) => ({ exam_id: exam.id, chapter_id: c.id })));
+  if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 });
 
   return NextResponse.json({ exam }, { status: 201 });
 }
