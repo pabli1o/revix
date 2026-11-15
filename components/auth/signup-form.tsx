@@ -11,6 +11,8 @@ import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag"
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { SpamNote } from "./spam-note";
+import { useResendCooldown } from "./use-resend-cooldown";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -22,6 +24,8 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const resendCooldown = useResendCooldown();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -90,9 +94,29 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
       // (if any) stays put in localStorage until a manual login consumes
       // it afterward.
       setStatus("sent");
+      resendCooldown.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
+    }
+  }
+
+  async function handleResend() {
+    if (!resendCooldown.canResend || resending) return;
+    setResending(true);
+    try {
+      const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${siteUrl}/auth/callback?next=/login` },
+      });
+      if (!resendError) {
+        resendCooldown.start();
+      }
+    } finally {
+      setResending(false);
     }
   }
 
@@ -108,9 +132,25 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
         </p>
 
         {status === "sent" ? (
-          <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">{t.auth.signup.sentTitle}</p>
-            <p className="mt-1 text-text-muted">{t.auth.signup.sentBody(email)}</p>
+          <div className="mt-8">
+            <div className="rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
+              <p className="font-medium text-success">{t.auth.signup.sentTitle}</p>
+              <p className="mt-1 text-text-muted">{t.auth.signup.sentBody(email)}</p>
+            </div>
+            <SpamNote className="mt-3" />
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              disabled={!resendCooldown.canResend || resending}
+              onClick={handleResend}
+            >
+              {resending
+                ? t.auth.emailHelp.resending
+                : resendCooldown.canResend
+                  ? t.auth.emailHelp.resend
+                  : t.auth.emailHelp.resendIn(resendCooldown.secondsLeft)}
+            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">

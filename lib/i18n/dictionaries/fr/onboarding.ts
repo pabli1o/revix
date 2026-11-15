@@ -22,9 +22,10 @@ export const onboarding = {
     continuer: "Continuer",
   },
   /** The "quelle est ta moyenne générale / que veux-tu atteindre ?"
-   * screens — between prenom and jours (see components/onboarding/wizard.tsx).
-   * No subject or exam yet, just a general starting point and goal fed to
-   * lib/examen/goal-calc.ts's computeGeneralStudyPlan. */
+   * screens, right after signup (see components/onboarding/wizard.tsx) —
+   * no rhythm question anymore (ASSUMED_DAYS_PER_WEEK), just a general
+   * starting point and goal fed to lib/examen/goal-calc.ts's
+   * computeGeneralStudyPlan. */
   moyenne: {
     actuelle: {
       title: "Quelle est ta moyenne générale ?",
@@ -48,21 +49,9 @@ export const onboarding = {
       // render separately: minutes/day big, hours/week small underneath).
       headline: (from: string, to: string) => `Pour passer de ${from} à ${to} :`,
       disclaimer: "Estimation générale, on l'affinera avec tes examens.",
-      continuer: "Continuer",
+      finish: "Terminer",
+      finishing: "Un instant…",
     },
-  },
-  jours: {
-    title: "Combien de jours par semaine peux-tu réviser ?",
-    subtitle: "Ça sert à construire ton planning plus tard — modifiable à tout moment.",
-    optionLabel: (d: number) => `${d} jour${d > 1 ? "s" : ""} par semaine`,
-  },
-  minutes: {
-    title: "Combien de temps par jour de travail ?",
-    subtitle: "Modifiable à tout moment dans les réglages.",
-    optionLabel: (m: number) => `${m} min par jour`,
-    continuer: "Continuer",
-    finish: "Terminer",
-    finishing: "Un instant…",
   },
   genericError: "Une erreur est survenue.",
 };

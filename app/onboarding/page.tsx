@@ -21,9 +21,7 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select(
-      "onboarding_completed, prenom, classe_cycle, classe_niveau, revision_jours_semaine, revision_minutes_jour, moyenne_generale_depart, objectif_moyenne",
-    )
+    .select("onboarding_completed, prenom, classe_cycle, classe_niveau, moyenne_generale_depart, objectif_moyenne")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -32,24 +30,21 @@ export default async function OnboardingPage() {
   }
 
   // Signup now happens right after the prénom step (see
-  // components/onboarding/wizard.tsx's handlePrenomContinue), so an
-  // authenticated-but-incomplete profile always falls into one of three
-  // checkpoints:
+  // components/onboarding/wizard.tsx's handlePrenomContinue), and the
+  // flow no longer asks for a rhythm at all (see ASSUMED_DAYS_PER_WEEK),
+  // so an authenticated-but-incomplete profile always falls into one of
+  // two checkpoints:
   //  - classe_cycle still null: signup happened without ever doing
   //    onboarding at all (e.g. a direct visit to /signup) — start from
   //    the very first question.
   //  - classe_cycle set, moyenne_generale_depart still null: the normal
-  //    case right after signup — resume at "jours". revision_jours_
-  //    semaine/revision_minutes_jour can't tell "already answered" apart
-  //    from their own DB defaults (4 jours, 30 min — see
-  //    supabase/migrations/0001_init.sql), so this always re-asks them
-  //    rather than guessing; harmless, it's two taps.
+  //    case right after signup — resume at "moyenneActuelle".
   //  - moyenne_generale_depart set: only "moyenneObjectif" (and the
   //    analyzing/result screens after it) is left.
   const initialStep: Step = !profile?.classe_cycle
     ? "classe"
     : profile?.moyenne_generale_depart == null
-      ? "jours"
+      ? "moyenneActuelle"
       : "moyenneObjectif";
 
   return (
@@ -60,8 +55,6 @@ export default async function OnboardingPage() {
         prenom: profile?.prenom,
         classeCycle: profile?.classe_cycle,
         classeNiveau: profile?.classe_niveau,
-        revisionJoursSemaine: profile?.revision_jours_semaine,
-        revisionMinutesJour: profile?.revision_minutes_jour,
         moyenneGeneraleDepart: profile?.moyenne_generale_depart,
         objectifMoyenne: profile?.objectif_moyenne,
       }}

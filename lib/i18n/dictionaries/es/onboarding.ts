@@ -43,21 +43,9 @@ export const onboarding: OnboardingDict = {
     result: {
       headline: (from: string, to: string) => `Para pasar de ${from} a ${to}:`,
       disclaimer: "Estimación general, la afinaremos con tus exámenes.",
-      continuer: "Continuar",
+      finish: "Terminar",
+      finishing: "Un momento…",
     },
-  },
-  jours: {
-    title: "¿Cuántos días a la semana puedes estudiar?",
-    subtitle: "Esto sirve para construir tu planning más adelante — se puede cambiar cuando quieras.",
-    optionLabel: (d: number) => `${d} día${d > 1 ? "s" : ""} a la semana`,
-  },
-  minutes: {
-    title: "¿Cuánto tiempo por día de estudio?",
-    subtitle: "Se puede cambiar cuando quieras en los ajustes.",
-    optionLabel: (m: number) => `${m} min al día`,
-    continuer: "Continuar",
-    finish: "Terminar",
-    finishing: "Un momento…",
   },
   genericError: "Ha ocurrido un error.",
 };

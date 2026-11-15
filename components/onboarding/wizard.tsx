@@ -18,7 +18,6 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { resolveGradeScale, formatGrade } from "@/lib/i18n/grade-scale";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 import {
-  compareRhythmToNeed,
   computeGeneralStudyPlan,
   clampGrade,
   roundToGradeStep,
@@ -34,38 +33,48 @@ const CYCLE_VALUES: ClasseCycle[] = ["college", "lycee", "superieur"];
 const DEFAULT_GOAL_OFFSET = 2;
 const DEFAULT_STARTING_AVERAGE = 10;
 
+/** Onboarding no longer asks "combien de jours par semaine" — the general
+ * estimate (computeGeneralStudyPlan) still needs a days/week to turn
+ * hours/week into minutes/day, so this assumes a believable middle-ground
+ * rhythm instead. Also what gets saved as the default revision_jours_
+ * semaine at the end of onboarding (see handleFinish) — editable
+ * afterward in "Modifier mon temps de révision" like any other rhythm. */
+const ASSUMED_DAYS_PER_WEEK = 5;
+
+/** Same list components/planning/settings-panel.tsx offers in "Modifier
+ * mon temps de révision" — kept in sync manually (no shared module for
+ * one 7-value array) since this is the only other place it needs to
+ * exist: rounding the onboarding result's minutes/day onto a value the
+ * student could actually pick there (see roundToNearestMinutesOption,
+ * used by handleFinish). */
+const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
+
+function roundToNearestMinutesOption(minutes: number): number {
+  return MINUTES_OPTIONS.reduce((closest, option) =>
+    Math.abs(option - minutes) < Math.abs(closest - minutes) ? option : closest,
+  );
+}
+
 export type Step =
   | "classe"
   | "niveau"
   | "prenom"
-  | "jours"
-  | "minutes"
   | "moyenneActuelle"
   | "moyenneObjectif"
   | "analyzing"
   | "result";
-const STEP_ORDER: Step[] = [
-  "classe",
-  "niveau",
-  "prenom",
-  "jours",
-  "minutes",
-  "moyenneActuelle",
-  "moyenneObjectif",
-];
+const STEP_ORDER: Step[] = ["classe", "niveau", "prenom", "moyenneActuelle", "moyenneObjectif"];
 
 /** What the server already knows about an authenticated-but-incomplete
  * profile, so the wizard can resume exactly where the account left off
  * (see app/onboarding/page.tsx) instead of re-asking classe/niveau/prénom
  * (now saved right after the prénom step, before signup — see
- * handlePrenomContinue) or the rhythm/moyennes saved along the way. Never
- * set for mode="anonymous". */
+ * handlePrenomContinue) or the moyennes saved along the way. Never set
+ * for mode="anonymous". */
 export interface OnboardingPrefill {
   prenom?: string | null;
   classeCycle?: ClasseCycle | null;
   classeNiveau?: string | null;
-  revisionJoursSemaine?: number | null;
-  revisionMinutesJour?: number | null;
   moyenneGeneraleDepart?: number | null;
   objectifMoyenne?: number | null;
 }
@@ -84,8 +93,6 @@ export function OnboardingWizard({
   const router = useRouter();
   const { t, locale } = useLocale();
   const scale = resolveGradeScale(locale, null);
-  const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
-  const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
   const [step, setStep] = useState<Step>(initialStep ?? "classe");
 
   const [prenom, setPrenom] = useState(prefill?.prenom ?? "");
@@ -96,8 +103,6 @@ export function OnboardingWizard({
   const [superieurText, setSuperieurText] = useState(
     prefill?.classeCycle === "superieur" ? (prefill.classeNiveau ?? "") : "",
   );
-  const [joursSemaine, setJoursSemaine] = useState(prefill?.revisionJoursSemaine ?? 3);
-  const [minutesJour, setMinutesJour] = useState(prefill?.revisionMinutesJour ?? 45);
 
   const [moyenneActuelle, setMoyenneActuelle] = useState(prefill?.moyenneGeneraleDepart ?? DEFAULT_STARTING_AVERAGE);
   const [moyenneObjectif, setMoyenneObjectif] = useState(
@@ -182,30 +187,13 @@ export function OnboardingWizard({
       setError(data?.error ?? t.onboarding.genericError);
       return;
     }
-    setStep("jours");
+    setStep("moyenneActuelle");
   }
 
   /** Authenticated-only from here on (anonymous mode never reaches past
    * prénom — see handlePrenomContinue above) — each remaining screen
    * saves straight to the profile as it's answered, "au fil des écrans",
    * rather than waiting for the final "Terminer". */
-  async function handleJoursMinutesContinue() {
-    setError(null);
-    setSubmitting(true);
-    const res = await fetch("/api/onboarding", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ revisionJoursSemaine: joursSemaine, revisionMinutesJour: minutesJour }),
-    });
-    setSubmitting(false);
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? t.onboarding.genericError);
-      return;
-    }
-    setStep("moyenneActuelle");
-  }
-
   async function handleMoyenneActuelleContinue() {
     setMoyenneObjectif(roundToGradeStep(clampGrade(moyenneActuelle + DEFAULT_GOAL_OFFSET)));
     setError(null);
@@ -244,10 +232,8 @@ export function OnboardingWizard({
       currentAverage20: moyenneActuelle,
       goal20: moyenneObjectif,
       classeCycle: cycle,
-      // The rhythm was already chosen a few screens back — feed the real
-      // one in, not a placeholder default, since the result step below
-      // compares against it.
-      revisionJoursSemaine: joursSemaine,
+      // Onboarding no longer asks for a rhythm — see ASSUMED_DAYS_PER_WEEK.
+      revisionJoursSemaine: ASSUMED_DAYS_PER_WEEK,
     });
     setCalcResult(result);
     setAnalysisRun((n) => n + 1);
@@ -268,7 +254,7 @@ export function OnboardingWizard({
       currentAverage20: moyenneActuelle,
       goal20: suggested,
       classeCycle: cycle,
-      revisionJoursSemaine: joursSemaine,
+      revisionJoursSemaine: ASSUMED_DAYS_PER_WEEK,
     });
     setCalcResult(result);
     fetch("/api/onboarding", {
@@ -279,9 +265,20 @@ export function OnboardingWizard({
   }
 
   async function handleFinish() {
+    if (!calcResult) return;
     setSubmitting(true);
     setError(null);
     const finalNiveau = cycle === "superieur" ? superieurText.trim() : niveau;
+
+    // No rhythm was ever asked in this flow — seed one from the result
+    // itself so "Tu as prévu X" keeps working everywhere else (exam
+    // creation, planning) instead of comparing against nothing. For
+    // "progressive", that's the eased-in starting point (what the result
+    // screen actually told the student to begin doing), not the full
+    // target load. /api/onboarding only applies this if the profile's
+    // rhythm is still untouched — it never overwrites a real choice.
+    const defaultMinutesPerDay =
+      calcResult.kind === "progressive" ? calcResult.startMinutesPerDay ?? 20 : calcResult.minutesPerDay;
 
     const res = await fetch("/api/onboarding", {
       method: "POST",
@@ -290,8 +287,8 @@ export function OnboardingWizard({
         prenom,
         classeCycle: cycle,
         classeNiveau: finalNiveau,
-        revisionJoursSemaine: joursSemaine,
-        revisionMinutesJour: minutesJour,
+        revisionJoursSemaine: ASSUMED_DAYS_PER_WEEK,
+        revisionMinutesJour: roundToNearestMinutesOption(defaultMinutesPerDay),
         moyenneGeneraleDepart: moyenneActuelle,
         objectifMoyenne: moyenneObjectif,
         complete: true,
@@ -320,9 +317,6 @@ export function OnboardingWizard({
 
   const animatedHoursPerWeek = useCountUp(calcResult?.hoursPerWeek ?? 0);
   const animatedMinutesPerDay = useCountUp(calcResult?.minutesPerDay ?? 0);
-
-  const chosenHoursPerWeek = (minutesJour * joursSemaine) / 60;
-  const rhythmComparison = calcResult ? compareRhythmToNeed(calcResult.hoursPerWeek, chosenHoursPerWeek) : null;
 
   const formStepIndex = STEP_ORDER.indexOf(step);
   const showProgressBar = formStepIndex >= 0;
@@ -417,66 +411,11 @@ export function OnboardingWizard({
           </div>
         )}
 
-        {step === "jours" && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setStep("prenom")}
-              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              ← {t.common.back}
-            </button>
-            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.jours.title}</h1>
-            <p className="mt-2 text-sm text-text-muted">{t.onboarding.jours.subtitle}</p>
-            <div className="mt-6 flex flex-col gap-3">
-              {DAYS_OPTIONS.map((d) => (
-                <ChoiceCard
-                  key={d}
-                  title={t.onboarding.jours.optionLabel(d)}
-                  selected={joursSemaine === d}
-                  onClick={() => {
-                    setJoursSemaine(d);
-                    setStep("minutes");
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === "minutes" && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setStep("jours")}
-              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              ← {t.common.back}
-            </button>
-            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.minutes.title}</h1>
-            <p className="mt-2 text-sm text-text-muted">{t.onboarding.minutes.subtitle}</p>
-            <div className="mt-6 flex flex-col gap-3">
-              {MINUTES_OPTIONS.map((m) => (
-                <ChoiceCard
-                  key={m}
-                  title={t.onboarding.minutes.optionLabel(m)}
-                  selected={minutesJour === m}
-                  onClick={() => setMinutesJour(m)}
-                />
-              ))}
-            </div>
-            <Button className="mt-6 w-full" disabled={submitting} onClick={handleJoursMinutesContinue}>
-              {t.onboarding.minutes.continuer}
-            </Button>
-            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-          </div>
-        )}
-
         {step === "moyenneActuelle" && (
           <div>
             <button
               type="button"
-              onClick={() => setStep("minutes")}
+              onClick={() => setStep("prenom")}
               className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
             >
               ← {t.common.back}
@@ -539,7 +478,7 @@ export function OnboardingWizard({
           />
         )}
 
-        {step === "result" && calcResult && rhythmComparison && (
+        {step === "result" && calcResult && (
           <div>
             <Confetti key={`confetti-${analysisRun}`} />
             <div className="rounded-2xl border border-border bg-bg-elevated p-6">
@@ -618,24 +557,6 @@ export function OnboardingWizard({
                 </p>
               )}
 
-              <p className="mt-3 text-center text-sm text-text-muted">
-                {rhythmComparison.kind === "insufficient" &&
-                  t.examen.wizard.result.compareInsufficient(
-                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.hours(Math.round(rhythmComparison.gapHoursPerWeek * 2) / 2),
-                  )}
-                {rhythmComparison.kind === "sufficient" &&
-                  t.examen.wizard.result.compareSufficient(
-                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
-                  )}
-                {rhythmComparison.kind === "excessive" &&
-                  t.examen.wizard.result.compareExcessive(
-                    t.examen.wizard.result.hours(Math.round(calcResult.hoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.hours(Math.round(chosenHoursPerWeek * 2) / 2),
-                  )}
-              </p>
               <p className="mt-4 text-center text-xs text-text-muted">{t.onboarding.moyenne.result.disclaimer}</p>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
@@ -659,7 +580,7 @@ export function OnboardingWizard({
               onClick={handleFinish}
               disabled={submitting}
             >
-              {submitting ? t.onboarding.minutes.finishing : t.onboarding.minutes.finish}
+              {submitting ? t.onboarding.moyenne.result.finishing : t.onboarding.moyenne.result.finish}
             </Button>
           </div>
         )}

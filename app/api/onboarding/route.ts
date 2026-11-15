@@ -10,6 +10,12 @@ interface OnboardingBody {
   prenom?: string;
   classeCycle?: ClasseCycle;
   classeNiveau?: string;
+  /** Onboarding itself never asks "combien de jours/minutes" anymore (see
+   * wizard.tsx's ASSUMED_DAYS_PER_WEEK) — these two only ever arrive
+   * together, from handleFinish, as a *proposed default* computed from
+   * the result screen. Applied below only if the profile's rhythm is
+   * still untouched, so this never overwrites a real choice made through
+   * the actual rhythm editor (/api/planning/settings). */
   revisionJoursSemaine?: number;
   revisionMinutesJour?: number;
   /** The "moyenne générale" onboarding screens — /20 scale. */
@@ -18,11 +24,11 @@ interface OnboardingBody {
   /** Only true on the final "Terminer" (see wizard.tsx's handleFinish) —
    * every other call from the wizard saves one or two fields "au fil des
    * écrans" as each screen is answered (see handlePrenomContinue,
-   * handleJoursMinutesContinue, handleMoyenneActuelleContinue,
-   * handleObjectifValidate) without flipping onboarding_completed, so a
-   * reload mid-flow resumes at the right step (app/onboarding/page.tsx)
-   * instead of either restarting or being bounced out of onboarding
-   * entirely by app/(app)/layout.tsx's completed-profile redirect. */
+   * handleMoyenneActuelleContinue, handleObjectifValidate) without
+   * flipping onboarding_completed, so a reload mid-flow resumes at the
+   * right step (app/onboarding/page.tsx) instead of either restarting or
+   * being bounced out of onboarding entirely by app/(app)/layout.tsx's
+   * completed-profile redirect. */
   complete?: boolean;
 }
 
@@ -31,6 +37,13 @@ function isValidGrade20(value: unknown): value is number {
 }
 
 const VALID_CYCLES: ClasseCycle[] = ["college", "lycee", "superieur"];
+
+/** supabase/migrations/0001_init.sql's column defaults — the only signal
+ * available (no DB change for this feature) that a profile's rhythm has
+ * never been touched, used below to decide whether handleFinish's
+ * proposed default may be applied. */
+const UNTOUCHED_REVISION_JOURS_SEMAINE = 4;
+const UNTOUCHED_REVISION_MINUTES_JOUR = 30;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -88,12 +101,28 @@ export async function POST(request: Request) {
   if (body.prenom !== undefined) fields.prenom = body.prenom.trim();
   if (body.classeCycle !== undefined) fields.classe_cycle = body.classeCycle;
   if (body.classeNiveau !== undefined) fields.classe_niveau = body.classeNiveau.trim();
-  if (body.revisionJoursSemaine !== undefined) {
-    fields.revision_jours_semaine = Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine)));
+
+  if (body.revisionJoursSemaine !== undefined || body.revisionMinutesJour !== undefined) {
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("revision_jours_semaine, revision_minutes_jour")
+      .eq("id", user.id)
+      .maybeSingle();
+    const rhythmStillUntouched =
+      !current ||
+      (current.revision_jours_semaine === UNTOUCHED_REVISION_JOURS_SEMAINE &&
+        current.revision_minutes_jour === UNTOUCHED_REVISION_MINUTES_JOUR);
+
+    if (rhythmStillUntouched) {
+      if (body.revisionJoursSemaine !== undefined) {
+        fields.revision_jours_semaine = Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine)));
+      }
+      if (body.revisionMinutesJour !== undefined) {
+        fields.revision_minutes_jour = Math.max(5, Math.round(body.revisionMinutesJour));
+      }
+    }
   }
-  if (body.revisionMinutesJour !== undefined) {
-    fields.revision_minutes_jour = Math.max(5, Math.round(body.revisionMinutesJour));
-  }
+
   if (body.moyenneGeneraleDepart !== undefined) fields.moyenne_generale_depart = body.moyenneGeneraleDepart;
   if (body.objectifMoyenne !== undefined) fields.objectif_moyenne = body.objectifMoyenne;
   if (body.complete) fields.onboarding_completed = true;

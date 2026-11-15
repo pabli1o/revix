@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChoiceCard } from "@/components/ui/choice-card";
+import { SpamNote } from "@/components/auth/spam-note";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { GRADE_SCALES } from "@/lib/i18n/grade-scale";
 import type { GradeScale } from "@/lib/supabase/database.types";
@@ -141,7 +142,12 @@ export function ProfileForm({
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         {emailError && <p className="text-sm text-danger">{emailError}</p>}
-        {emailMessage && <p className="text-sm text-success">{emailMessage}</p>}
+        {emailMessage && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-success">{emailMessage}</p>
+            <SpamNote />
+          </div>
+        )}
         <Button
           size="sm"
           variant="secondary"

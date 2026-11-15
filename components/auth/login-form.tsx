@@ -11,6 +11,8 @@ import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag"
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { SpamNote } from "./spam-note";
+import { useResendCooldown } from "./use-resend-cooldown";
 
 export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean }) {
   const router = useRouter();
@@ -19,11 +21,18 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  // Set only for the "Email not confirmed" case — the one login error that
+  // isn't a dead end: the student just needs the confirmation link resent
+  // (see handleResendConfirmation below).
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
+  const [resending, setResending] = useState(false);
+  const resendCooldown = useResendCooldown();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setStatus("sending");
     setError(null);
+    setEmailNotConfirmed(false);
 
     try {
       const supabase = createClient();
@@ -33,13 +42,16 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
       });
 
       if (signInError) {
-        setError(
-          signInError.message === "Email not confirmed"
-            ? t.auth.login.errorEmailNotConfirmed
-            : signInError.message === "Invalid login credentials"
+        if (signInError.message === "Email not confirmed") {
+          setError(t.auth.login.errorEmailNotConfirmed);
+          setEmailNotConfirmed(true);
+        } else {
+          setError(
+            signInError.message === "Invalid login credentials"
               ? t.auth.login.errorInvalidCredentials
               : signInError.message
-        );
+          );
+        }
         setStatus("error");
         return;
       }
@@ -56,6 +68,25 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
+    }
+  }
+
+  async function handleResendConfirmation() {
+    if (!resendCooldown.canResend || resending) return;
+    setResending(true);
+    try {
+      const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${siteUrl}/auth/callback?next=/login` },
+      });
+      if (!resendError) {
+        resendCooldown.start();
+      }
+    } finally {
+      setResending(false);
     }
   }
 
@@ -102,6 +133,25 @@ export function LoginForm({ fromFicheCreation }: { fromFicheCreation: boolean })
           />
 
           {error && <p className="text-sm text-danger">{error}</p>}
+
+          {emailNotConfirmed && (
+            <div className="flex flex-col gap-2">
+              <SpamNote />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!resendCooldown.canResend || resending}
+                onClick={handleResendConfirmation}
+              >
+                {resending
+                  ? t.auth.emailHelp.resending
+                  : resendCooldown.canResend
+                    ? t.auth.emailHelp.resend
+                    : t.auth.emailHelp.resendIn(resendCooldown.secondsLeft)}
+              </Button>
+            </div>
+          )}
 
           <Button type="submit" disabled={status === "sending"} className="mt-2">
             {status === "sending" ? t.auth.login.submitting : t.auth.login.submit}

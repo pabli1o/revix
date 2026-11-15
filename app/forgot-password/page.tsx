@@ -7,12 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { SpamNote } from "@/components/auth/spam-note";
+import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 
 export default function ForgotPasswordPage() {
   const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const resendCooldown = useResendCooldown();
+
+  async function sendResetLink() {
+    const supabase = createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
+    });
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -20,12 +32,7 @@ export default function ForgotPasswordPage() {
     setStatus("sending");
 
     try {
-      const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
-      });
+      const { error: resetError } = await sendResetLink();
 
       if (resetError) {
         setError(resetError.message);
@@ -34,9 +41,23 @@ export default function ForgotPasswordPage() {
       }
 
       setStatus("sent");
+      resendCooldown.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.genericError);
       setStatus("error");
+    }
+  }
+
+  async function handleResend() {
+    if (!resendCooldown.canResend || resending) return;
+    setResending(true);
+    try {
+      const { error: resetError } = await sendResetLink();
+      if (!resetError) {
+        resendCooldown.start();
+      }
+    } finally {
+      setResending(false);
     }
   }
 
@@ -50,9 +71,25 @@ export default function ForgotPasswordPage() {
         <p className="mt-2 text-sm text-text-muted">{t.auth.forgotPassword.subtitle}</p>
 
         {status === "sent" ? (
-          <div className="mt-8 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
-            <p className="font-medium text-success">{t.auth.forgotPassword.sentTitle}</p>
-            <p className="mt-1 text-text-muted">{t.auth.forgotPassword.sentBody(email)}</p>
+          <div className="mt-8">
+            <div className="rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
+              <p className="font-medium text-success">{t.auth.forgotPassword.sentTitle}</p>
+              <p className="mt-1 text-text-muted">{t.auth.forgotPassword.sentBody(email)}</p>
+            </div>
+            <SpamNote className="mt-3" />
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              disabled={!resendCooldown.canResend || resending}
+              onClick={handleResend}
+            >
+              {resending
+                ? t.auth.emailHelp.resending
+                : resendCooldown.canResend
+                  ? t.auth.emailHelp.resend
+                  : t.auth.emailHelp.resendIn(resendCooldown.secondsLeft)}
+            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">

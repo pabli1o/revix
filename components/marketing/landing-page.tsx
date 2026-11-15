@@ -47,7 +47,17 @@ export function LandingPage() {
       <div className="flex min-h-[100svh] flex-col">
         <LandingHeader />
 
-        <section className="mx-auto max-w-3xl px-4 pt-10 pb-6 text-center sm:px-6 sm:pt-14">
+        {/* lg: (≥1024px, i.e. an actual desktop/laptop window, not just a
+           wide phone) deliberately shrinks every gap and caps the type
+           scale instead of letting it keep growing with sm:/md: — a
+           laptop window is wide but often SHORT (668-730px of real
+           content height once browser chrome is subtracted, at common
+           1366x768/1280x720 windows), the opposite of a tall phone, so
+           the same sizes that read well on a phone made this block alone
+           taller than the whole window and pushed the scroll-cue (and
+           the phone preview below it) off-screen. Widening the title's
+           max-width at lg: also lets it wrap to 2 lines instead of 3. */}
+        <section className="mx-auto max-w-3xl px-4 pt-10 pb-6 text-center sm:px-6 sm:pt-14 lg:pt-6 lg:pb-3">
           <Reveal>
             <span className="inline-block rounded-full border border-border bg-bg-card px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
               {d.hero.badge}
@@ -55,13 +65,13 @@ export function LandingPage() {
           </Reveal>
 
           <Reveal delay={80}>
-            <h1 className="mx-auto mt-6 max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
+            <h1 className="mx-auto mt-6 max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl lg:mt-3 lg:max-w-2xl lg:text-5xl">
               {d.hero.slogan}
             </h1>
           </Reveal>
 
           <Reveal delay={110}>
-            <p className="mx-auto mt-3 max-w-xl text-xl font-bold text-accent sm:text-2xl">
+            <p className="mx-auto mt-3 max-w-xl text-xl font-bold text-accent sm:text-2xl lg:mt-2">
               {d.hero.titleBefore} {formatGradeNumber(HERO_FROM, scale, locale)} {d.hero.titleMiddle}{" "}
               <mark className="rounded-[2px] px-1 text-accent" style={{ backgroundColor: "var(--color-highlight)" }}>
                 {formatGradeNumber(HERO_TO, scale, locale)}
@@ -71,15 +81,17 @@ export function LandingPage() {
           </Reveal>
 
           <Reveal delay={140}>
-            <p className="mx-auto mt-3 max-w-lg text-xs text-text-muted">{d.hero.disclaimer}</p>
+            <p className="mx-auto mt-3 max-w-lg text-xs text-text-muted lg:mt-1">{d.hero.disclaimer}</p>
           </Reveal>
 
           <Reveal delay={160}>
-            <p className="mx-auto mt-4 max-w-lg text-base text-text-muted sm:text-lg">{d.hero.subtitle}</p>
+            <p className="mx-auto mt-4 max-w-lg text-base text-text-muted sm:text-lg lg:mt-2 lg:text-base">
+              {d.hero.subtitle}
+            </p>
           </Reveal>
 
           <Reveal delay={220}>
-            <div className="mx-auto mt-6 flex max-w-md flex-col items-stretch gap-3 sm:mt-8 sm:flex-row sm:justify-center">
+            <div className="mx-auto mt-6 flex max-w-md flex-col items-stretch gap-3 sm:mt-8 sm:flex-row sm:justify-center lg:mt-4">
               <ButtonLink href="/onboarding?nouveau=1" size="lg" className="w-full sm:w-auto">
                 {d.hero.ctaPrimary}
               </ButtonLink>
@@ -90,7 +102,7 @@ export function LandingPage() {
           </Reveal>
 
           <Reveal delay={260}>
-            <p className="mt-3 text-sm text-text-muted sm:mt-5">{d.hero.tagline}</p>
+            <p className="mt-3 text-sm text-text-muted sm:mt-5 lg:mt-2">{d.hero.tagline}</p>
           </Reveal>
         </section>
 
@@ -99,7 +111,7 @@ export function LandingPage() {
            Léger mouvement désactivé sous prefers-reduced-motion (voir
            .scroll-cue-motion dans globals.css), transform uniquement donc
            aucun saut de mise en page. */}
-        <div aria-hidden className="flex shrink-0 justify-center py-4">
+        <div aria-hidden className="flex shrink-0 justify-center py-4 lg:py-2">
           <div className="scroll-cue-motion flex flex-col items-center gap-1 text-accent">
             <span className="text-[10px] font-semibold uppercase tracking-wide">{d.hero.scrollCue}</span>
             <IconChevronDown className="size-5" />

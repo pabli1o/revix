@@ -7,6 +7,16 @@ export const auth = {
     confirmPassword: "Confirme le mot de passe",
     minPasswordPlaceholder: (min: number) => `${min} caractères minimum`,
   },
+  /** Shared across every "va vérifier ta boîte mail" screen (signup,
+   * mot de passe oublié, l'erreur "e-mail non confirmé" à la connexion) —
+   * see components/auth/*-form.tsx and app/forgot-password/page.tsx. */
+  emailHelp: {
+    spamNote: "Pense à vérifier tes indésirables (spam) : l'e-mail s'y cache souvent.",
+    resend: "Renvoyer l'e-mail",
+    resendIn: (seconds: number) => `Renvoyer dans ${seconds} s`,
+    resending: "Envoi…",
+    resent: "E-mail renvoyé.",
+  },
   login: {
     subtitleDefault: "Tes fiches de révision, ton planning et tes quiz, générés pour toi.",
     subtitleFromFiche: "Connecte-toi pour générer ta fiche.",

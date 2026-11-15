@@ -9,6 +9,13 @@ export const auth: AuthDict = {
     confirmPassword: "Confirm your password",
     minPasswordPlaceholder: (min: number) => `At least ${min} characters`,
   },
+  emailHelp: {
+    spamNote: "Remember to check your spam/junk folder — that's often where it ends up.",
+    resend: "Resend the email",
+    resendIn: (seconds: number) => `Resend in ${seconds}s`,
+    resending: "Sending…",
+    resent: "Email resent.",
+  },
   login: {
     subtitleDefault: "Your study notes, planning, and quizzes, generated for you.",
     subtitleFromFiche: "Log in to generate your note.",
