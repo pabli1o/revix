@@ -97,8 +97,14 @@ export const examen: ExamenDict = {
       hours: (h: number) => `${nf.format(h)} h`,
       minutes: (m: number) => `${nf.format(m)} minuto${m === 1 ? "" : "s"}`,
       inWeeks: (n: number) => (n <= 0 ? "esta semana" : n === 1 ? "en 1 semana" : `en ${nf.format(n)} semanas`),
-      normalHeadline: (goal: string, hoursPerWeek: string, minutesPerDay: string) =>
-        `Para alcanzar ${goal}, tienes que estudiar ${hoursPerWeek} a la semana, unos ${minutesPerDay} al día.`,
+      normalHeadline: (goal: string) => `Para alcanzar ${goal}:`,
+      perDayLabel: "al día",
+      perWeekLine: (hoursPerWeek: string) => `unos ${hoursPerWeek} a la semana`,
+      encouragement: (minutesPerDay: number) => {
+        if (minutesPerDay <= 20) return "Es menos que un episodio de una serie, cada día.";
+        if (minutesPerDay <= 40) return "Más o menos la duración de un episodio de una serie, cada día.";
+        return "Un compromiso real, pero manejable si te organizas un poco.";
+      },
       examDateInfo: (dateLabel: string, weeksLabel: string) =>
         `Examen el ${dateLabel}, ${weeksLabel}. Estimación basada en tu media y tu objetivo.`,
       alreadyThere: (hoursPerWeek: string) =>
@@ -109,6 +115,10 @@ export const examen: ExamenDict = {
       excessiveLoad: (goal: string, dailyLoad: string, suggestedGoal: string) =>
         `Para alcanzar ${goal} tendrías que estudiar unos ${dailyLoad} al día antes del examen — no es realista en este plazo. Un objetivo más alcanzable: ${suggestedGoal}.`,
       aimForSuggestedButton: (suggestedGoal: string) => `Apuntar a ${suggestedGoal} en su lugar`,
+      progressiveIntro: (goal: string) => `Para alcanzar ${goal}, el ritmo completo es exigente.`,
+      progressiveStart: (startMinutes: string) => `Empieza con ${startMinutes} al día y ve aumentando poco a poco.`,
+      progressiveFullLoad: (hoursPerWeek: string) => `El ritmo completo representa unos ${hoursPerWeek} a la semana.`,
+      progressiveMilestone: (milestone: string) => `Para avanzar poco a poco, apunta primero a ${milestone}.`,
       generatePlanningButton: "Generar mi planning",
       changeGoalButton: "Cambiar mi objetivo",
       generationError: "Ha ocurrido un error al crear el examen.",

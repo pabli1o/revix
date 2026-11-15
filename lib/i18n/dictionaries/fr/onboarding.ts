@@ -43,8 +43,10 @@ export const onboarding = {
       step3: "Construction de ton rythme de révision",
     },
     result: {
-      headline: (from: string, to: string, hoursPerWeek: string, minutesPerDay: string) =>
-        `Pour passer de ${from} à ${to}, compte environ ${hoursPerWeek} par semaine, soit environ ${minutesPerDay} par jour.`,
+      // Short intro line above the big number — see fr/examen.ts's
+      // wizard.result.normalHeadline, which this mirrors (the numbers
+      // render separately: minutes/day big, hours/week small underneath).
+      headline: (from: string, to: string) => `Pour passer de ${from} à ${to} :`,
       disclaimer: "Estimation générale, on l'affinera avec tes examens.",
       continuer: "Continuer",
     },

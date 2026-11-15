@@ -119,6 +119,21 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
     setStep("analyzing");
   }
 
+  /** Mirrors goal-wizard.tsx's adoptSuggestedGoal — lets the student accept
+   * the easier milestone offered for "very-ambitious"/"progressive"
+   * results without leaving the result screen. */
+  function adoptSuggestedObjectif(suggested: number) {
+    if (!cycle) return;
+    setMoyenneObjectif(suggested);
+    const result = computeGeneralStudyPlan({
+      currentAverage20: moyenneActuelle,
+      goal20: suggested,
+      classeCycle: cycle,
+      revisionJoursSemaine: joursSemaine,
+    });
+    setCalcResult(result);
+  }
+
   async function handleFinish() {
     setSubmitting(true);
     setError(null);
@@ -400,31 +415,81 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
           <div>
             <Confetti key={`confetti-${analysisRun}`} />
             <div className="rounded-2xl border border-border bg-bg-elevated p-6">
-              <p className="text-center font-heading text-xl font-semibold text-text">
-                {calcResult.kind === "already-there" &&
-                  t.examen.wizard.result.alreadyThere(
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+              {calcResult.kind === "already-there" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.alreadyThere(t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2))}
+                </p>
+              )}
+
+              {calcResult.kind === "normal" && (
+                <div className="text-center">
+                  <p className="font-heading text-lg font-semibold text-text">
+                    {t.onboarding.moyenne.result.headline(
+                      formatGrade(moyenneActuelle, scale, locale),
+                      formatGrade(moyenneObjectif, scale, locale),
+                    )}
+                  </p>
+                  {/* Minutes/day is the big, motivating number; hours/week
+                     is the smaller supporting figure underneath — the
+                     reverse of the previous single-sentence layout, so the
+                     everyday-sized number is what catches the eye. */}
+                  <p className="mt-2 font-heading text-5xl font-bold text-accent">
+                    {t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay))}
+                  </p>
+                  <p className="text-sm text-text-muted">{t.examen.wizard.result.perDayLabel}</p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    {t.examen.wizard.result.perWeekLine(t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2))}
+                  </p>
+                  <p className="mt-3 text-sm font-medium text-accent">
+                    {t.examen.wizard.result.encouragement(Math.round(animatedMinutesPerDay))}
+                  </p>
+                </div>
+              )}
+
+              {calcResult.kind === "progressive" && (
+                <div className="text-center">
+                  <p className="font-heading text-lg font-semibold text-text">
+                    {t.examen.wizard.result.progressiveIntro(formatGrade(moyenneObjectif, scale, locale))}
+                  </p>
+                  <p className="mt-2 font-heading text-5xl font-bold text-accent">
+                    {t.examen.wizard.result.minutes(calcResult.startMinutesPerDay ?? 0)}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-accent">
+                    {t.examen.wizard.result.progressiveStart(t.examen.wizard.result.minutes(calcResult.startMinutesPerDay ?? 0))}
+                  </p>
+                  <p className="mt-2 text-sm text-text-muted">
+                    {t.examen.wizard.result.progressiveFullLoad(
+                      t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+                    )}
+                  </p>
+                  {calcResult.suggestedGoal20 !== undefined && (
+                    <p className="mt-1 text-sm text-text-muted">
+                      {t.examen.wizard.result.progressiveMilestone(formatGrade(calcResult.suggestedGoal20, scale, locale))}
+                    </p>
                   )}
-                {calcResult.kind === "normal" &&
-                  t.onboarding.moyenne.result.headline(
-                    formatGrade(moyenneActuelle, scale, locale),
-                    formatGrade(moyenneObjectif, scale, locale),
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
-                  )}
-                {calcResult.kind === "very-ambitious" &&
-                  t.examen.wizard.result.veryAmbitious(
+                </div>
+              )}
+
+              {calcResult.kind === "very-ambitious" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.veryAmbitious(
                     formatGrade(moyenneObjectif, scale, locale),
                     t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
                     formatGrade(calcResult.suggestedGoal20!, scale, locale),
                   )}
-                {calcResult.kind === "excessive-load" &&
-                  t.examen.wizard.result.excessiveLoad(
+                </p>
+              )}
+
+              {calcResult.kind === "excessive-load" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.excessiveLoad(
                     formatGrade(moyenneObjectif, scale, locale),
                     t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
                     formatGrade(calcResult.suggestedGoal20!, scale, locale),
                   )}
-              </p>
+                </p>
+              )}
+
               <p className="mt-3 text-center text-sm text-text-muted">
                 {rhythmComparison.kind === "insufficient" &&
                   t.examen.wizard.result.compareInsufficient(
@@ -446,7 +511,26 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               <p className="mt-4 text-center text-xs text-text-muted">{t.onboarding.moyenne.result.disclaimer}</p>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-            <Button className="mt-6 w-full" onClick={handleFinish} disabled={submitting}>
+            {(calcResult.kind === "very-ambitious" || calcResult.kind === "progressive") &&
+              calcResult.suggestedGoal20 !== undefined && (
+                <Button
+                  className="mt-6 w-full"
+                  variant="outline"
+                  onClick={() => adoptSuggestedObjectif(calcResult.suggestedGoal20!)}
+                >
+                  {t.examen.wizard.result.aimForMilestoneButton(formatGrade(calcResult.suggestedGoal20, scale, locale))}
+                </Button>
+              )}
+            <Button
+              className={
+                (calcResult.kind === "very-ambitious" || calcResult.kind === "progressive") &&
+                calcResult.suggestedGoal20 !== undefined
+                  ? "mt-3 w-full"
+                  : "mt-6 w-full"
+              }
+              onClick={handleFinish}
+              disabled={submitting}
+            >
               {submitting ? t.onboarding.minutes.finishing : t.onboarding.minutes.finish}
             </Button>
           </div>

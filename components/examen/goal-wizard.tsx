@@ -524,28 +524,78 @@ export function GoalWizard({
           <div className="flex flex-1 flex-col">
             <Confetti key={`confetti-${analysisRun}`} />
             <div className="rounded-2xl border border-border bg-bg-card p-6">
-              <p className="text-center font-heading text-xl font-semibold text-text">
-                {calcResult.kind === "already-there" &&
-                  t.examen.wizard.result.alreadyThere(t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2))}
-                {calcResult.kind === "normal" &&
-                  t.examen.wizard.result.normalHeadline(
-                    formatGrade(goal20, scale, locale),
-                    t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
-                    t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
+              {calcResult.kind === "already-there" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.alreadyThere(t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2))}
+                </p>
+              )}
+
+              {calcResult.kind === "normal" && (
+                <div className="text-center">
+                  <p className="font-heading text-lg font-semibold text-text">
+                    {t.examen.wizard.result.normalHeadline(formatGrade(goal20, scale, locale))}
+                  </p>
+                  {/* Minutes/day is the big, motivating number; hours/week
+                     is the smaller supporting figure underneath — the
+                     reverse of the previous single-sentence layout, so the
+                     everyday-sized number is what catches the eye. */}
+                  <p className="mt-2 font-heading text-5xl font-bold text-accent">
+                    {t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay))}
+                  </p>
+                  <p className="text-sm text-text-muted">{t.examen.wizard.result.perDayLabel}</p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    {t.examen.wizard.result.perWeekLine(t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2))}
+                  </p>
+                  <p className="mt-3 text-sm font-medium text-accent">
+                    {t.examen.wizard.result.encouragement(Math.round(animatedMinutesPerDay))}
+                  </p>
+                </div>
+              )}
+
+              {calcResult.kind === "progressive" && (
+                <div className="text-center">
+                  <p className="font-heading text-lg font-semibold text-text">
+                    {t.examen.wizard.result.progressiveIntro(formatGrade(goal20, scale, locale))}
+                  </p>
+                  <p className="mt-2 font-heading text-5xl font-bold text-accent">
+                    {t.examen.wizard.result.minutes(calcResult.startMinutesPerDay ?? 0)}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-accent">
+                    {t.examen.wizard.result.progressiveStart(t.examen.wizard.result.minutes(calcResult.startMinutesPerDay ?? 0))}
+                  </p>
+                  <p className="mt-2 text-sm text-text-muted">
+                    {t.examen.wizard.result.progressiveFullLoad(
+                      t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
+                    )}
+                  </p>
+                  {calcResult.suggestedGoal20 !== undefined && (
+                    <p className="mt-1 text-sm text-text-muted">
+                      {t.examen.wizard.result.progressiveMilestone(formatGrade(calcResult.suggestedGoal20, scale, locale))}
+                    </p>
                   )}
-                {calcResult.kind === "very-ambitious" &&
-                  t.examen.wizard.result.veryAmbitious(
+                </div>
+              )}
+
+              {calcResult.kind === "very-ambitious" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.veryAmbitious(
                     formatGrade(goal20, scale, locale),
                     t.examen.wizard.result.hours(Math.round(animatedHoursPerWeek * 2) / 2),
                     formatGrade(calcResult.suggestedGoal20!, scale, locale),
                   )}
-                {calcResult.kind === "excessive-load" &&
-                  t.examen.wizard.result.excessiveLoad(
+                </p>
+              )}
+
+              {calcResult.kind === "excessive-load" && (
+                <p className="text-center font-heading text-xl font-semibold text-text">
+                  {t.examen.wizard.result.excessiveLoad(
                     formatGrade(goal20, scale, locale),
                     t.examen.wizard.result.minutes(Math.round(animatedMinutesPerDay)),
                     formatGrade(calcResult.suggestedGoal20!, scale, locale),
                   )}
-              </p>
+                </p>
+              )}
+
               <p className="mt-3 text-center text-sm text-text-muted">
                 {t.examen.wizard.result.examDateInfo(
                   formatDate(date, locale, { day: "numeric", month: "long" }),
@@ -576,11 +626,12 @@ export function GoalWizard({
             {genError && <p className="mt-4 text-sm text-danger">{genError}</p>}
 
             <div className="mt-6 flex flex-col gap-3">
-              {calcResult.kind === "very-ambitious" && calcResult.suggestedGoal20 !== undefined && (
-                <Button size="lg" onClick={() => adoptSuggestedGoal(calcResult.suggestedGoal20!)}>
-                  {t.examen.wizard.result.aimForMilestoneButton(formatGrade(calcResult.suggestedGoal20, scale, locale))}
-                </Button>
-              )}
+              {(calcResult.kind === "very-ambitious" || calcResult.kind === "progressive") &&
+                calcResult.suggestedGoal20 !== undefined && (
+                  <Button size="lg" onClick={() => adoptSuggestedGoal(calcResult.suggestedGoal20!)}>
+                    {t.examen.wizard.result.aimForMilestoneButton(formatGrade(calcResult.suggestedGoal20, scale, locale))}
+                  </Button>
+                )}
               {calcResult.kind === "excessive-load" && calcResult.suggestedGoal20 !== undefined && (
                 <Button size="lg" onClick={() => adoptSuggestedGoal(calcResult.suggestedGoal20!)}>
                   {t.examen.wizard.result.aimForSuggestedButton(formatGrade(calcResult.suggestedGoal20, scale, locale))}
@@ -588,7 +639,13 @@ export function GoalWizard({
               )}
               <Button
                 size="lg"
-                variant={calcResult.kind === "very-ambitious" || calcResult.kind === "excessive-load" ? "outline" : "primary"}
+                variant={
+                  calcResult.kind === "very-ambitious" ||
+                  calcResult.kind === "excessive-load" ||
+                  calcResult.kind === "progressive"
+                    ? "outline"
+                    : "primary"
+                }
                 onClick={handleGenerate}
               >
                 {t.examen.wizard.result.generatePlanningButton}

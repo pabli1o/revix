@@ -41,8 +41,7 @@ export const onboarding: OnboardingDict = {
       step3: "Building your study rhythm",
     },
     result: {
-      headline: (from: string, to: string, hoursPerWeek: string, minutesPerDay: string) =>
-        `To go from ${from} to ${to}, plan on about ${hoursPerWeek} a week — about ${minutesPerDay} a day.`,
+      headline: (from: string, to: string) => `To go from ${from} to ${to}:`,
       disclaimer: "A general estimate — we'll refine it with your actual exams.",
       continuer: "Continue",
     },

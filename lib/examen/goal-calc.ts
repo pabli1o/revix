@@ -38,25 +38,37 @@ export const DEFAULT_FICHE_COUNT_FALLBACK = 6;
 
 /** Convexity exponent applied to the grade gap (objectif - moyenne
  * actuelle): each additional point costs progressively more effort than
- * the last, so this must be > 1. 1.6 makes an 8-point push (say 8 -> 16)
- * cost noticeably more than twice a 4-point push (12 -> 16), which
- * matches how revision actually gets harder near the top rather than
- * scaling in a straight line. */
-export const GAP_CONVEXITY_EXPONENT = 1.6;
+ * the last, so this must be > 1. Lowered from an earlier 1.6 — that value,
+ * combined with the old GAP_FACTOR_SCALE, made every estimate in the app
+ * read as discouragingly high (see GAP_FACTOR_SCALE below for the actual
+ * calibration target). 1.2 is still clearly convex (an 8-point push costs
+ * markedly more than twice a 4-point push) but without the old value's
+ * runaway growth at the high end. */
+export const GAP_CONVEXITY_EXPONENT = 1.2;
 
 /** Scales (gap ^ exponent) down to a believable hours multiplier — the
  * one knob to turn if every estimate in the app feels globally too high
- * or too low, without changing the shape of the curve. Tuned so a
- * middling 4-point gap (e.g. 10 -> 14) over a 6-fiche subject lands
- * around 7-8 total hours — a few weeks of modest, sustainable sessions,
- * not a cram. */
-export const GAP_FACTOR_SCALE = 0.35;
+ * or too low, without changing the shape of the curve. Lowered from an
+ * earlier 0.35 (which, with the old 1.6 exponent, pushed a lycée
+ * student's general estimate well past an hour a day for even a modest
+ * 3-4 point gap — discouraging rather than motivating). Tuned together
+ * with GAP_CONVEXITY_EXPONENT and GENERAL_BASE_HOURS_PER_WEEK.lycee so the
+ * onboarding's general estimate (computeGeneralStudyPlan) lands close to:
+ * ~3-point gap → ~15-20 min/day, ~6-point gap → ~35-40 min/day, ~8-point
+ * gap → ~45-55 min/day — see goal-calc.test.ts's calibration tests for the
+ * exact figures. Shared by computeStudyPlan (the per-exam estimate) too,
+ * so the same proportional cut applies there automatically. */
+export const GAP_FACTOR_SCALE = 0.145;
 
 /** Floor under the gap factor so even a goal only marginally above (or at
  * or below) the current average still implies some real revision time,
  * never literally zero. Also what "maintenance" mode (goal <= average)
- * uses directly, since there's no positive gap to raise to a power. */
-export const MIN_GAP_FACTOR = 0.4;
+ * uses directly, since there's no positive gap to raise to a power.
+ * Lowered from an earlier 0.4 in the same direction and roughly the same
+ * proportion as GAP_FACTOR_SCALE, so "barely above average" goals keep a
+ * light, believable maintenance load rather than the old scale's heavier
+ * one. */
+export const MIN_GAP_FACTOR = 0.25;
 
 /** Revision days/week used when the caller doesn't have a real value from
  * the student's profile yet (profiles.revision_jours_semaine is NOT NULL
@@ -64,13 +76,46 @@ export const MIN_GAP_FACTOR = 0.4;
  * fallback, not the normal path). */
 export const DEFAULT_REVISION_JOURS_SEMAINE = 5;
 
+/** Above this many minutes/day, the estimate stops reading as an everyday
+ * habit and starts reading as a lot to commit to outright — this is what
+ * triggers the "progressive" case (see PROGRESSIVE_PLAN_START_MINUTES_PER_DAY
+ * below): instead of showing the full number as a flat daily target, the
+ * result suggests easing into it and offers a lower first milestone. Set
+ * to 60 (rather than a lower value like 45) specifically so a lycée
+ * student's biggest "ordinary" example gap (~8 points, ~45-55 min/day
+ * under the calibration documented on GAP_FACTOR_SCALE) still reads as a
+ * normal, directly-displayed estimate rather than tipping into the
+ * progressive framing — that only kicks in once a goal is genuinely
+ * beyond what the everyday-habit framing above describes. */
+export const PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY = 60;
+
+/** The suggested starting point once the "progressive" case triggers —
+ * "commence à X minutes par jour, puis augmente peu à peu" — a genuinely
+ * light daily habit to build before working up toward the fuller load. */
+export const PROGRESSIVE_PLAN_START_MINUTES_PER_DAY = 20;
+
+/** The daily-load figure the "progressive" case's own suggested milestone
+ * goal is calibrated against — distinct from PROGRESSIVE_PLAN_START_MINUTES_PER_DAY
+ * (which is messaging: what to start doing today) and from
+ * MAX_REASONABLE_HOURS_PER_DAY (the hard ceiling below). Picked so the
+ * suggested milestone is a clearly easier goal than the original one,
+ * without being so close to the starting point that it barely moves the
+ * needle. */
+export const PROGRESSIVE_PLAN_MILESTONE_MINUTES_PER_DAY = 30;
+
 /** Above this many hours/day, the plan reads as unsustainable rather than
  * a real study rhythm — triggers the "excessive load" case (which also
  * naturally covers a too-close exam date: compressing the same total
- * hours into fewer weeks drives hours/day up past this same threshold,
- * so there's no separate "exam is too soon" check). Picked as the
- * midpoint of the spec's "3 to 4h/day" range. */
-export const MAX_REASONABLE_HOURS_PER_DAY = 3.5;
+ * hours into fewer weeks drives hours/day up past this same threshold, so
+ * there's no separate "exam is too soon" check). Lowered from an earlier
+ * 3.5 (the midpoint of a "3 to 4h/day" range) to 1.25 (1h15), per the
+ * product rule that the estimate shown at the result screen should never
+ * read as more than about an hour and a quarter a day except in a
+ * genuinely extreme case — past this point a different, lower goal is a
+ * more honest answer than "just pace yourself" (that's what the
+ * "progressive" case above is for, between PROGRESSIVE_PLAN_THRESHOLD_
+ * MINUTES_PER_DAY and this ceiling). */
+export const MAX_REASONABLE_HOURS_PER_DAY = 1.25;
 
 /** However close the exam, never divide the total hours by less than one
  * week of runway — avoids an absurd "47h this week" readout for an exam
@@ -95,7 +140,7 @@ export const GRADE_STEP = 0.5;
 
 // ---------------------------------------------------------------------------
 
-export type GoalCalcKind = "already-there" | "very-ambitious" | "excessive-load" | "normal";
+export type GoalCalcKind = "already-there" | "very-ambitious" | "excessive-load" | "progressive" | "normal";
 
 export interface GoalCalcInput {
   /** The student's current average in this subject, /20. */
@@ -120,9 +165,15 @@ export interface GoalCalcResult {
   /** goal20 - currentAverage20 (can be <= 0 for "already-there"). */
   gap: number;
   /** A more realistic goal to offer instead, only set for "excessive-load"
-   * (the highest goal that fits under MAX_REASONABLE_HOURS_PER_DAY) or
-   * "very-ambitious" (an intermediate milestone below the stated goal). */
+   * (the highest goal that fits under MAX_REASONABLE_HOURS_PER_DAY),
+   * "progressive" (an easier first milestone below the stated goal, see
+   * startMinutesPerDay), or "very-ambitious" (an intermediate milestone
+   * below the stated goal). */
   suggestedGoal20?: number;
+  /** Only set for "progressive": the suggested daily starting point
+   * (PROGRESSIVE_PLAN_START_MINUTES_PER_DAY) to ease into before building
+   * up toward the full minutesPerDay figure above. */
+  startMinutesPerDay?: number;
 }
 
 /** Exported so components/onboarding/wizard.tsx and this module's own
@@ -160,6 +211,28 @@ export function gapForTargetFactor(targetFactor: number): number {
   return Math.pow(targetFactor / GAP_FACTOR_SCALE, 1 / GAP_CONVEXITY_EXPONENT);
 }
 
+/** Shared by computeStudyPlan and computeGeneralStudyPlan: the goal that
+ * would land right at `targetMinutesPerDay`, given this same
+ * hours-per-week-to-gap relationship (a content base over some number of
+ * weeks, or a flat weekly base) — used to propose an easier milestone for
+ * both the "excessive-load" and "progressive" cases, just with a
+ * different target figure. `hoursPerWeekPerUnitGapFactor` is "hours/week
+ * if gapFactor were exactly 1", i.e. contentBaseHours/weeks for the
+ * per-exam estimate, or baseHoursPerWeek for the general one. */
+function suggestedGoalForTargetMinutesPerDay(
+  currentAverage20: number,
+  originalGoal20: number,
+  targetMinutesPerDay: number,
+  daysPerWeek: number,
+  hoursPerWeekPerUnitGapFactor: number,
+): number {
+  const targetHoursPerWeek = (targetMinutesPerDay * daysPerWeek) / 60;
+  const targetGapFactor = Math.max(MIN_GAP_FACTOR, targetHoursPerWeek / hoursPerWeekPerUnitGapFactor);
+  const suggestedGap = gapForTargetFactor(targetGapFactor);
+  const suggestedGoal20 = roundToGradeStep(clampGrade(currentAverage20 + suggestedGap));
+  return Math.min(suggestedGoal20, originalGoal20 - GRADE_STEP);
+}
+
 export function computeStudyPlan(input: GoalCalcInput): GoalCalcResult {
   const currentAverage20 = clampGrade(input.currentAverage20);
   const goal20 = clampGrade(input.goal20);
@@ -174,6 +247,7 @@ export function computeStudyPlan(input: GoalCalcInput): GoalCalcResult {
   const daysPerWeek =
     input.revisionJoursSemaine > 0 ? input.revisionJoursSemaine : DEFAULT_REVISION_JOURS_SEMAINE;
   const minutesPerDay = (hoursPerWeek * 60) / daysPerWeek;
+  const hoursPerWeekPerUnitGapFactor = contentBaseHours / weeks;
 
   const base: GoalCalcResult = { kind: "normal", totalHours, hoursPerWeek, minutesPerDay, gap };
 
@@ -186,20 +260,31 @@ export function computeStudyPlan(input: GoalCalcInput): GoalCalcResult {
     // ceiling under this same exam date and rhythm, then re-derive hours
     // from it so the displayed numbers for the *suggested* goal are
     // internally consistent (not just the original, over-budget ones).
-    const targetMinutesPerDay = MAX_REASONABLE_HOURS_PER_DAY * 60;
-    const targetHoursPerWeek = (targetMinutesPerDay * daysPerWeek) / 60;
-    const targetTotalHours = targetHoursPerWeek * weeks;
-    const targetGapFactor = Math.max(MIN_GAP_FACTOR, targetTotalHours / contentBaseHours);
-    const suggestedGap = gapForTargetFactor(targetGapFactor);
-    const suggestedGoal20 = roundToGradeStep(clampGrade(currentAverage20 + suggestedGap));
+    const suggestedGoal20 = suggestedGoalForTargetMinutesPerDay(
+      currentAverage20,
+      goal20,
+      MAX_REASONABLE_HOURS_PER_DAY * 60,
+      daysPerWeek,
+      hoursPerWeekPerUnitGapFactor,
+    );
+
+    return { kind: "excessive-load", totalHours, hoursPerWeek, minutesPerDay, gap, suggestedGoal20 };
+  }
+
+  if (minutesPerDay > PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY) {
+    const suggestedGoal20 = suggestedGoalForTargetMinutesPerDay(
+      currentAverage20,
+      goal20,
+      PROGRESSIVE_PLAN_MILESTONE_MINUTES_PER_DAY,
+      daysPerWeek,
+      hoursPerWeekPerUnitGapFactor,
+    );
 
     return {
-      kind: "excessive-load",
-      totalHours,
-      hoursPerWeek,
-      minutesPerDay,
-      gap,
-      suggestedGoal20: Math.min(suggestedGoal20, goal20 - GRADE_STEP),
+      ...base,
+      kind: "progressive",
+      suggestedGoal20,
+      startMinutesPerDay: PROGRESSIVE_PLAN_START_MINUTES_PER_DAY,
     };
   }
 
@@ -264,6 +349,8 @@ export interface GeneralGoalCalcResult {
   minutesPerDay: number;
   gap: number;
   suggestedGoal20?: number;
+  /** Only set for "progressive" — see GoalCalcResult.startMinutesPerDay. */
+  startMinutesPerDay?: number;
 }
 
 export function computeGeneralStudyPlan(input: GeneralGoalCalcInput): GeneralGoalCalcResult {
@@ -285,17 +372,33 @@ export function computeGeneralStudyPlan(input: GeneralGoalCalcInput): GeneralGoa
   const minutesPerDay = (hoursPerWeek * 60) / daysPerWeek;
 
   if (minutesPerDay / 60 > MAX_REASONABLE_HOURS_PER_DAY) {
-    const targetHoursPerWeek = (MAX_REASONABLE_HOURS_PER_DAY * 60 * daysPerWeek) / 60;
-    const targetGapFactor = Math.max(MIN_GAP_FACTOR, targetHoursPerWeek / baseHoursPerWeek);
-    const suggestedGap = gapForTargetFactor(targetGapFactor);
-    const suggestedGoal20 = roundToGradeStep(clampGrade(currentAverage20 + suggestedGap));
+    const suggestedGoal20 = suggestedGoalForTargetMinutesPerDay(
+      currentAverage20,
+      goal20,
+      MAX_REASONABLE_HOURS_PER_DAY * 60,
+      daysPerWeek,
+      baseHoursPerWeek,
+    );
+
+    return { kind: "excessive-load", gap, hoursPerWeek, minutesPerDay, suggestedGoal20 };
+  }
+
+  if (minutesPerDay > PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY) {
+    const suggestedGoal20 = suggestedGoalForTargetMinutesPerDay(
+      currentAverage20,
+      goal20,
+      PROGRESSIVE_PLAN_MILESTONE_MINUTES_PER_DAY,
+      daysPerWeek,
+      baseHoursPerWeek,
+    );
 
     return {
-      kind: "excessive-load",
+      kind: "progressive",
       gap,
       hoursPerWeek,
       minutesPerDay,
-      suggestedGoal20: Math.min(suggestedGoal20, goal20 - GRADE_STEP),
+      suggestedGoal20,
+      startMinutesPerDay: PROGRESSIVE_PLAN_START_MINUTES_PER_DAY,
     };
   }
 

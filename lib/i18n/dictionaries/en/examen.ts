@@ -97,8 +97,14 @@ export const examen: ExamenDict = {
       hours: (h: number) => `${nf.format(h)} hr${h === 1 ? "" : "s"}`,
       minutes: (m: number) => `${nf.format(m)} minute${m === 1 ? "" : "s"}`,
       inWeeks: (n: number) => (n <= 0 ? "this week" : n === 1 ? "in 1 week" : `in ${nf.format(n)} weeks`),
-      normalHeadline: (goal: string, hoursPerWeek: string, minutesPerDay: string) =>
-        `To reach ${goal}, plan on ${hoursPerWeek} a week — about ${minutesPerDay} a day.`,
+      normalHeadline: (goal: string) => `To reach ${goal}:`,
+      perDayLabel: "a day",
+      perWeekLine: (hoursPerWeek: string) => `about ${hoursPerWeek} a week`,
+      encouragement: (minutesPerDay: number) => {
+        if (minutesPerDay <= 20) return "That's less than one episode of a show, every day.";
+        if (minutesPerDay <= 40) return "About the length of one episode of a show, every day.";
+        return "A real commitment, but still manageable with a bit of organizing.";
+      },
       examDateInfo: (dateLabel: string, weeksLabel: string) =>
         `Exam on ${dateLabel}, ${weeksLabel}. Estimate based on your average and your goal.`,
       alreadyThere: (hoursPerWeek: string) =>
@@ -109,6 +115,10 @@ export const examen: ExamenDict = {
       excessiveLoad: (goal: string, dailyLoad: string, suggestedGoal: string) =>
         `Reaching ${goal} would mean about ${dailyLoad} a day before the exam — not realistic in this timeframe. A more realistic goal: ${suggestedGoal}.`,
       aimForSuggestedButton: (suggestedGoal: string) => `Aim for ${suggestedGoal} instead`,
+      progressiveIntro: (goal: string) => `To reach ${goal}, the full rhythm is a lot.`,
+      progressiveStart: (startMinutes: string) => `Start at ${startMinutes} a day, then build up gradually.`,
+      progressiveFullLoad: (hoursPerWeek: string) => `The full rhythm is about ${hoursPerWeek} a week.`,
+      progressiveMilestone: (milestone: string) => `To ease into it, aim for ${milestone} first.`,
       generatePlanningButton: "Generate my plan",
       changeGoalButton: "Change my goal",
       generationError: "Something went wrong creating the exam.",

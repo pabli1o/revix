@@ -13,6 +13,8 @@ import {
   MAX_REASONABLE_HOURS_PER_DAY,
   MIN_GAP_FACTOR,
   MINUTES_PER_FICHE_BASE,
+  PROGRESSIVE_PLAN_START_MINUTES_PER_DAY,
+  PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY,
 } from "./goal-calc";
 
 describe("computeContentBaseHours", () => {
@@ -100,13 +102,28 @@ describe("computeStudyPlan", () => {
     expect(result.suggestedGoal20!).toBeGreaterThan(15);
   });
 
-  it("flags excessive-load for a huge gap, and proposes a lower, achievable goal", () => {
-    const result = computeStudyPlan({ ...baseInput, currentAverage20: 4, goal20: 19 });
+  it("flags excessive-load for a huge gap over a short timeframe, and proposes a lower, achievable goal", () => {
+    // A 15-point gap over the baseline's full 5 weeks is only "progressive"
+    // under the current calibration (see the "flags progressive" test
+    // below) — compressing the same gap into 2 weeks is what pushes it
+    // past the excessive-load ceiling.
+    const result = computeStudyPlan({ ...baseInput, currentAverage20: 2, goal20: 19, daysUntilExam: 14 });
     expect(result.kind).toBe("excessive-load");
     expect(result.minutesPerDay / 60).toBeGreaterThan(MAX_REASONABLE_HOURS_PER_DAY);
     expect(result.suggestedGoal20).toBeDefined();
     expect(result.suggestedGoal20!).toBeLessThan(19);
-    expect(result.suggestedGoal20!).toBeGreaterThanOrEqual(4);
+    expect(result.suggestedGoal20!).toBeGreaterThanOrEqual(2);
+  });
+
+  it("flags progressive for a demanding-but-not-extreme gap, with a starting point and an easier milestone", () => {
+    const result = computeStudyPlan({ ...baseInput, currentAverage20: 4, goal20: 19, daysUntilExam: 21 });
+    expect(result.kind).toBe("progressive");
+    expect(result.minutesPerDay).toBeGreaterThan(PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY);
+    expect(result.minutesPerDay / 60).toBeLessThanOrEqual(MAX_REASONABLE_HOURS_PER_DAY);
+    expect(result.startMinutesPerDay).toBe(PROGRESSIVE_PLAN_START_MINUTES_PER_DAY);
+    expect(result.suggestedGoal20).toBeDefined();
+    expect(result.suggestedGoal20!).toBeLessThan(19);
+    expect(result.suggestedGoal20!).toBeGreaterThan(4);
   });
 
   it("flags excessive-load for an exam that's too close, given a real gap to close", () => {
@@ -203,6 +220,17 @@ describe("computeGeneralStudyPlan", () => {
     expect(result.minutesPerDay / 60).toBeGreaterThan(MAX_REASONABLE_HOURS_PER_DAY);
     expect(result.suggestedGoal20).toBeDefined();
     expect(result.suggestedGoal20!).toBeLessThan(19);
+  });
+
+  it("flags progressive for a demanding-but-not-extreme gap, with a starting point and an easier milestone", () => {
+    const result = computeGeneralStudyPlan({ ...baseInput, currentAverage20: 8, goal20: 18 });
+    expect(result.kind).toBe("progressive");
+    expect(result.minutesPerDay).toBeGreaterThan(PROGRESSIVE_PLAN_THRESHOLD_MINUTES_PER_DAY);
+    expect(result.minutesPerDay / 60).toBeLessThanOrEqual(MAX_REASONABLE_HOURS_PER_DAY);
+    expect(result.startMinutesPerDay).toBe(PROGRESSIVE_PLAN_START_MINUTES_PER_DAY);
+    expect(result.suggestedGoal20).toBeDefined();
+    expect(result.suggestedGoal20!).toBeLessThan(18);
+    expect(result.suggestedGoal20!).toBeGreaterThan(8);
   });
 
   it("falls back to the default days/week when revisionJoursSemaine is not positive", () => {

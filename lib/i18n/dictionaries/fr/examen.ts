@@ -100,8 +100,23 @@ export const examen = {
       hours: (h: number) => `${nf.format(h)} h`,
       minutes: (m: number) => `${nf.format(m)} minute${m === 1 ? "" : "s"}`,
       inWeeks: (n: number) => (n <= 0 ? "cette semaine" : n === 1 ? "dans 1 semaine" : `dans ${nf.format(n)} semaines`),
-      normalHeadline: (goal: string, hoursPerWeek: string, minutesPerDay: string) =>
-        `Pour atteindre ${goal}, tu dois réviser ${hoursPerWeek} par semaine, soit environ ${minutesPerDay} par jour.`,
+      // Short intro line above the big number (see components/examen/
+      // goal-wizard.tsx and components/onboarding/wizard.tsx's result
+      // step) — the numbers themselves render separately: minutes/day
+      // big, hours/week small underneath, so this sentence no longer
+      // embeds either figure.
+      normalHeadline: (goal: string) => `Pour atteindre ${goal} :`,
+      perDayLabel: "par jour",
+      perWeekLine: (hoursPerWeek: string) => `soit environ ${hoursPerWeek} par semaine`,
+      // The positive line under the big number — always framed as an
+      // estimate's everyday feel, never a promise about the grade itself.
+      // Bucketed by minutes/day; only used for "normal" results (the
+      // other kinds have their own dedicated messaging below).
+      encouragement: (minutesPerDay: number): string => {
+        if (minutesPerDay <= 20) return "C'est moins qu'un épisode de série, chaque jour.";
+        if (minutesPerDay <= 40) return "À peu près la durée d'un épisode de série, chaque jour.";
+        return "Un vrai rythme, mais qui reste accessible en t'organisant un peu.";
+      },
       examDateInfo: (dateLabel: string, weeksLabel: string) =>
         `Examen le ${dateLabel}, ${weeksLabel}. Estimation basée sur ta moyenne et ton objectif.`,
       alreadyThere: (hoursPerWeek: string) =>
@@ -112,6 +127,17 @@ export const examen = {
       excessiveLoad: (goal: string, dailyLoad: string, suggestedGoal: string) =>
         `Pour atteindre ${goal}, il faudrait réviser environ ${dailyLoad} par jour avant l'examen — ce n'est pas tenable sur ce délai. Objectif plus réaliste : ${suggestedGoal}.`,
       aimForSuggestedButton: (suggestedGoal: string) => `Viser ${suggestedGoal} à la place`,
+      // The "progressive" case (lib/examen/goal-calc.ts's PROGRESSIVE_PLAN_*
+      // constants): the full rhythm a goal needs is demanding enough that
+      // showing it as a flat daily target outright would discourage more
+      // than motivate, so the result leads with a light starting point
+      // instead and offers an easier first milestone — aimForMilestoneButton
+      // above is reused for that milestone's button.
+      progressiveIntro: (goal: string) => `Pour atteindre ${goal}, le rythme complet est soutenu.`,
+      progressiveStart: (startMinutes: string) => `Commence à ${startMinutes} par jour, puis augmente peu à peu.`,
+      progressiveFullLoad: (hoursPerWeek: string) =>
+        `Le rythme complet représente environ ${hoursPerWeek} par semaine.`,
+      progressiveMilestone: (milestone: string) => `Pour avancer en douceur, vise d'abord ${milestone}.`,
       generatePlanningButton: "Générer mon planning",
       changeGoalButton: "Changer mon objectif",
       generationError: "Erreur lors de la création de l'examen.",
