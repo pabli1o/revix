@@ -65,7 +65,7 @@ export function LandingHeader() {
                 {link.label}
               </a>
             ))}
-            <ButtonLink href="/onboarding" size="lg" className="mt-2 w-full" onClick={() => setOpen(false)}>
+            <ButtonLink href="/onboarding?nouveau=1" size="lg" className="mt-2 w-full" onClick={() => setOpen(false)}>
               {t.landing.header.essayerGratuitement}
             </ButtonLink>
           </nav>

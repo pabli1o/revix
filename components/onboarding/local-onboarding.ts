@@ -10,16 +10,21 @@ import type { ClasseCycle } from "@/lib/supabase/database.types";
  * nothing to attach them to before that. localStorage is enough here
  * (a handful of small fields, unlike the fiche draft's files — see
  * components/fiches/new/local-draft.ts, which needs IndexedDB).
+ *
+ * Signup happens right after the prénom step (see wizard.tsx's
+ * handlePrenomContinue), so in practice this only ever holds that trio —
+ * everything asked afterward (rhythm, moyennes) is authenticated by then
+ * and saved straight to the profile instead. The remaining fields stay
+ * optional rather than being removed, so a stale entry saved by an older
+ * build of this file (full answer set, saved at the very end) still
+ * loads and applies cleanly instead of being silently dropped.
  */
 export interface LocalOnboardingAnswers {
   prenom: string;
   classeCycle: ClasseCycle;
   classeNiveau: string;
-  revisionJoursSemaine: number;
-  revisionMinutesJour: number;
-  /** The new "quelle est ta moyenne générale / que veux-tu atteindre ?"
-   * screens (components/onboarding/wizard.tsx) — /20, optional only
-   * because an answer saved before those screens existed won't have them. */
+  revisionJoursSemaine?: number;
+  revisionMinutesJour?: number;
   moyenneGeneraleDepart?: number;
   objectifMoyenne?: number;
 }

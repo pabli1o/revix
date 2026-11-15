@@ -7,16 +7,23 @@ import { getDictionary } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 interface OnboardingBody {
-  prenom: string;
-  classeCycle: ClasseCycle;
-  classeNiveau: string;
-  revisionJoursSemaine: number;
-  revisionMinutesJour: number;
-  /** The new "moyenne générale" onboarding screens — optional since an
-   * anonymous draft saved before they existed won't carry them, and the
-   * student could in principle skip them (see wizard.tsx). /20 scale. */
+  prenom?: string;
+  classeCycle?: ClasseCycle;
+  classeNiveau?: string;
+  revisionJoursSemaine?: number;
+  revisionMinutesJour?: number;
+  /** The "moyenne générale" onboarding screens — /20 scale. */
   moyenneGeneraleDepart?: number;
   objectifMoyenne?: number;
+  /** Only true on the final "Terminer" (see wizard.tsx's handleFinish) —
+   * every other call from the wizard saves one or two fields "au fil des
+   * écrans" as each screen is answered (see handlePrenomContinue,
+   * handleJoursMinutesContinue, handleMoyenneActuelleContinue,
+   * handleObjectifValidate) without flipping onboarding_completed, so a
+   * reload mid-flow resumes at the right step (app/onboarding/page.tsx)
+   * instead of either restarting or being bounced out of onboarding
+   * entirely by app/(app)/layout.tsx's completed-profile redirect. */
+  complete?: boolean;
 }
 
 function isValidGrade20(value: unknown): value is number {
@@ -38,14 +45,27 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as Partial<OnboardingBody>;
 
+  // "complete" (the final "Terminer") still requires the full set, exactly
+  // as this route always has — every other call is a deliberately partial,
+  // one-or-two-field save and skips this check entirely.
   if (
-    !body.prenom?.trim() ||
-    !body.classeCycle ||
-    !VALID_CYCLES.includes(body.classeCycle) ||
-    !body.classeNiveau?.trim() ||
-    !body.revisionJoursSemaine ||
-    !body.revisionMinutesJour
+    body.complete &&
+    (!body.prenom?.trim() ||
+      !body.classeCycle ||
+      !VALID_CYCLES.includes(body.classeCycle) ||
+      !body.classeNiveau?.trim() ||
+      !body.revisionJoursSemaine ||
+      !body.revisionMinutesJour)
   ) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
+  if (body.classeCycle !== undefined && !VALID_CYCLES.includes(body.classeCycle)) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
+  if (body.prenom !== undefined && !body.prenom.trim()) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
+  if (body.classeNiveau !== undefined && !body.classeNiveau.trim()) {
     return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
   }
   if (body.moyenneGeneraleDepart !== undefined && !isValidGrade20(body.moyenneGeneraleDepart)) {
@@ -55,16 +75,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t.errors.examen.invalidGrade }, { status: 400 });
   }
 
-  const fields = {
-    prenom: body.prenom.trim(),
-    classe_cycle: body.classeCycle,
-    classe_niveau: body.classeNiveau.trim(),
-    revision_jours_semaine: Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine))),
-    revision_minutes_jour: Math.max(5, Math.round(body.revisionMinutesJour)),
-    onboarding_completed: true,
-    ...(body.moyenneGeneraleDepart !== undefined ? { moyenne_generale_depart: body.moyenneGeneraleDepart } : {}),
-    ...(body.objectifMoyenne !== undefined ? { objectif_moyenne: body.objectifMoyenne } : {}),
-  };
+  const fields: {
+    prenom?: string;
+    classe_cycle?: ClasseCycle;
+    classe_niveau?: string;
+    revision_jours_semaine?: number;
+    revision_minutes_jour?: number;
+    moyenne_generale_depart?: number;
+    objectif_moyenne?: number;
+    onboarding_completed?: boolean;
+  } = {};
+  if (body.prenom !== undefined) fields.prenom = body.prenom.trim();
+  if (body.classeCycle !== undefined) fields.classe_cycle = body.classeCycle;
+  if (body.classeNiveau !== undefined) fields.classe_niveau = body.classeNiveau.trim();
+  if (body.revisionJoursSemaine !== undefined) {
+    fields.revision_jours_semaine = Math.min(7, Math.max(1, Math.round(body.revisionJoursSemaine)));
+  }
+  if (body.revisionMinutesJour !== undefined) {
+    fields.revision_minutes_jour = Math.max(5, Math.round(body.revisionMinutesJour));
+  }
+  if (body.moyenneGeneraleDepart !== undefined) fields.moyenne_generale_depart = body.moyenneGeneraleDepart;
+  if (body.objectifMoyenne !== undefined) fields.objectif_moyenne = body.objectifMoyenne;
+  if (body.complete) fields.onboarding_completed = true;
+
+  if (Object.keys(fields).length === 0) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
 
   // Plain UPDATE first: the `handle_new_user` trigger already created this
   // row at signup, and only requires the UPDATE RLS policy. We deliberately
@@ -93,13 +129,14 @@ export async function POST(request: Request) {
     }
   }
 
-  // Both branches above just flipped onboarding_completed to true.
-  // { expire: 0 } is deliberate, not the recommended "max" profile:
-  // "max" serves stale content during background revalidation, so the
-  // very next read (the layout's redirect check, hit immediately after
-  // this by the client's router.replace("/fiches")) could still see the
-  // old "false" and bounce the user right back to /onboarding. expire: 0
-  // forces that next read to block on a genuine fresh fetch instead.
+  // Every save here — partial or complete — can change something the
+  // cached getProfile() read serves (prenom, onboarding_completed).
+  // { expire: 0 } is deliberate, not the recommended "max" profile: "max"
+  // serves stale content during background revalidation, so the very next
+  // read (app/(app)/layout.tsx's or app/onboarding/page.tsx's own redirect
+  // check, hit immediately after this by the client's router navigation)
+  // could still see stale data and bounce the user to the wrong place.
+  // expire: 0 forces that next read to block on a genuine fresh fetch.
   revalidateTag(PROFILE_CACHE_TAG, { expire: 0 });
 
   return NextResponse.json({ ok: true });

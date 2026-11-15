@@ -11,7 +11,8 @@ import { AnalyzingScreen } from "@/components/ui/analyzing-screen";
 import { Confetti } from "@/components/ui/confetti";
 import { GradeSlider } from "@/components/examen/grade-slider";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
-import { saveLocalOnboarding, loadLocalOnboarding } from "./local-onboarding";
+import { clearDraftSources } from "@/components/fiches/new/local-draft";
+import { saveLocalOnboarding, loadLocalOnboarding, clearLocalOnboarding } from "./local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { resolveGradeScale, formatGrade } from "@/lib/i18n/grade-scale";
@@ -33,7 +34,7 @@ const CYCLE_VALUES: ClasseCycle[] = ["college", "lycee", "superieur"];
 const DEFAULT_GOAL_OFFSET = 2;
 const DEFAULT_STARTING_AVERAGE = 10;
 
-type Step =
+export type Step =
   | "classe"
   | "niveau"
   | "prenom"
@@ -53,35 +54,88 @@ const STEP_ORDER: Step[] = [
   "moyenneObjectif",
 ];
 
-export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated" }) {
+/** What the server already knows about an authenticated-but-incomplete
+ * profile, so the wizard can resume exactly where the account left off
+ * (see app/onboarding/page.tsx) instead of re-asking classe/niveau/prénom
+ * (now saved right after the prénom step, before signup — see
+ * handlePrenomContinue) or the rhythm/moyennes saved along the way. Never
+ * set for mode="anonymous". */
+export interface OnboardingPrefill {
+  prenom?: string | null;
+  classeCycle?: ClasseCycle | null;
+  classeNiveau?: string | null;
+  revisionJoursSemaine?: number | null;
+  revisionMinutesJour?: number | null;
+  moyenneGeneraleDepart?: number | null;
+  objectifMoyenne?: number | null;
+}
+
+export function OnboardingWizard({
+  mode,
+  initialStep,
+  prefill,
+}: {
+  mode: "anonymous" | "authenticated";
+  /** Authenticated resume only — which of the 3 checkpoints the profile
+   * has already reached (see app/onboarding/page.tsx's bucket logic). */
+  initialStep?: Step;
+  prefill?: OnboardingPrefill;
+}) {
   const router = useRouter();
   const { t, locale } = useLocale();
   const scale = resolveGradeScale(locale, null);
   const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
   const MINUTES_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
-  const [step, setStep] = useState<Step>("classe");
+  const [step, setStep] = useState<Step>(initialStep ?? "classe");
 
-  const [prenom, setPrenom] = useState("");
-  const [cycle, setCycle] = useState<ClasseCycle | null>(null);
-  const [niveau, setNiveau] = useState("");
-  const [superieurText, setSuperieurText] = useState("");
-  const [joursSemaine, setJoursSemaine] = useState(3);
-  const [minutesJour, setMinutesJour] = useState(45);
+  const [prenom, setPrenom] = useState(prefill?.prenom ?? "");
+  const [cycle, setCycle] = useState<ClasseCycle | null>(prefill?.classeCycle ?? null);
+  const [niveau, setNiveau] = useState(
+    prefill?.classeCycle && prefill.classeCycle !== "superieur" ? (prefill.classeNiveau ?? "") : "",
+  );
+  const [superieurText, setSuperieurText] = useState(
+    prefill?.classeCycle === "superieur" ? (prefill.classeNiveau ?? "") : "",
+  );
+  const [joursSemaine, setJoursSemaine] = useState(prefill?.revisionJoursSemaine ?? 3);
+  const [minutesJour, setMinutesJour] = useState(prefill?.revisionMinutesJour ?? 45);
 
-  const [moyenneActuelle, setMoyenneActuelle] = useState(DEFAULT_STARTING_AVERAGE);
-  const [moyenneObjectif, setMoyenneObjectif] = useState(DEFAULT_STARTING_AVERAGE + DEFAULT_GOAL_OFFSET);
+  const [moyenneActuelle, setMoyenneActuelle] = useState(prefill?.moyenneGeneraleDepart ?? DEFAULT_STARTING_AVERAGE);
+  const [moyenneObjectif, setMoyenneObjectif] = useState(
+    prefill?.objectifMoyenne ?? DEFAULT_STARTING_AVERAGE + DEFAULT_GOAL_OFFSET,
+  );
   const [calcResult, setCalcResult] = useState<GeneralGoalCalcResult | null>(null);
   const [analysisRun, setAnalysisRun] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Anonymous only: a visitor who already answered these (e.g. came back
-  // to "/" after already doing this once) doesn't need to redo it —
-  // skip straight to the app instead of re-asking.
+  // Anonymous only — two cases, never both:
+  //  - "nouveau=1" (every landing-page call to action — see
+  //    components/marketing/landing-page.tsx / landing-header.tsx): a
+  //    forced fresh start. Wipe anything left over from a previous
+  //    attempt so this never silently resumes past the first question,
+  //    then clean the param off the address bar.
+  //  - otherwise, a visitor who already answered classe/niveau/prénom
+  //    (saved locally right before being sent to sign up — see
+  //    handlePrenomContinue) came back here mid-flow (browser back from
+  //    /signup, a reload) — skip straight back to signup instead of
+  //    re-asking.
   useEffect(() => {
-    if (mode === "anonymous" && loadLocalOnboarding()) {
-      router.replace("/fiches");
+    if (mode !== "anonymous") return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("nouveau") === "1") {
+      clearLocalOnboarding();
+      consumeResumeFicheCreation();
+      void clearDraftSources().catch(() => {});
+      params.delete("nouveau");
+      const qs = params.toString();
+      window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+      return;
+    }
+
+    if (loadLocalOnboarding()) {
+      router.replace("/signup");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -98,13 +152,94 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
     setStep("prenom");
   }
 
-  function goToMoyenneObjectif() {
+  /** The step that used to be "keep going locally" is now "create your
+   * account" — signup happens right after prénom, not at the very end
+   * (see the result-step redesign below). Anonymous: stash the trio
+   * locally (nothing to attach it to yet) and send the visitor to sign
+   * up; authenticated (an account already exists — e.g. resuming from
+   * bucket 1, see app/onboarding/page.tsx): save it directly and keep
+   * going in this same wizard. */
+  async function handlePrenomContinue() {
+    if (!cycle) return;
+    const finalNiveau = cycle === "superieur" ? superieurText.trim() : niveau;
+    setError(null);
+
+    if (mode === "anonymous") {
+      saveLocalOnboarding({ prenom: prenom.trim(), classeCycle: cycle, classeNiveau: finalNiveau });
+      router.push("/signup");
+      return;
+    }
+
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prenom: prenom.trim(), classeCycle: cycle, classeNiveau: finalNiveau }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+    setStep("jours");
+  }
+
+  /** Authenticated-only from here on (anonymous mode never reaches past
+   * prénom — see handlePrenomContinue above) — each remaining screen
+   * saves straight to the profile as it's answered, "au fil des écrans",
+   * rather than waiting for the final "Terminer". */
+  async function handleJoursMinutesContinue() {
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revisionJoursSemaine: joursSemaine, revisionMinutesJour: minutesJour }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+    setStep("moyenneActuelle");
+  }
+
+  async function handleMoyenneActuelleContinue() {
     setMoyenneObjectif(roundToGradeStep(clampGrade(moyenneActuelle + DEFAULT_GOAL_OFFSET)));
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moyenneGeneraleDepart: moyenneActuelle }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
     setStep("moyenneObjectif");
   }
 
-  function validateObjectif() {
+  async function handleObjectifValidate() {
     if (!cycle) return;
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ objectifMoyenne: moyenneObjectif }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+
     const result = computeGeneralStudyPlan({
       currentAverage20: moyenneActuelle,
       goal20: moyenneObjectif,
@@ -121,7 +256,11 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
 
   /** Mirrors goal-wizard.tsx's adoptSuggestedGoal — lets the student accept
    * the easier milestone offered for "very-ambitious"/"progressive"
-   * results without leaving the result screen. */
+   * results without leaving the result screen. Persists the corrected
+   * objectif too (fire-and-forget: the final "Terminer" below resends it
+   * regardless, so a failure here just means a reload before clicking
+   * Terminer would show the pre-milestone objectif again — not worth
+   * blocking the UI over). */
   function adoptSuggestedObjectif(suggested: number) {
     if (!cycle) return;
     setMoyenneObjectif(suggested);
@@ -132,36 +271,17 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
       revisionJoursSemaine: joursSemaine,
     });
     setCalcResult(result);
+    fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ objectifMoyenne: suggested }),
+    }).catch(() => {});
   }
 
   async function handleFinish() {
     setSubmitting(true);
     setError(null);
     const finalNiveau = cycle === "superieur" ? superieurText.trim() : niveau;
-
-    const moyenneFields = {
-      moyenneGeneraleDepart: moyenneActuelle,
-      objectifMoyenne: moyenneObjectif,
-    };
-
-    if (mode === "anonymous") {
-      // No account yet — nothing to save server-side. Kept in the
-      // browser; applied to the real profile at signup/login (see
-      // components/auth/*-form.tsx), or re-asked here, authenticated,
-      // if those answers ever go missing (a different device, cleared
-      // storage — see local-onboarding.ts).
-      saveLocalOnboarding({
-        prenom,
-        classeCycle: cycle!,
-        classeNiveau: finalNiveau,
-        revisionJoursSemaine: joursSemaine,
-        revisionMinutesJour: minutesJour,
-        ...moyenneFields,
-      });
-      router.replace("/fiches");
-      router.refresh();
-      return;
-    }
 
     const res = await fetch("/api/onboarding", {
       method: "POST",
@@ -172,7 +292,9 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
         classeNiveau: finalNiveau,
         revisionJoursSemaine: joursSemaine,
         revisionMinutesJour: minutesJour,
-        ...moyenneFields,
+        moyenneGeneraleDepart: moyenneActuelle,
+        objectifMoyenne: moyenneObjectif,
+        complete: true,
       }),
     });
 
@@ -184,10 +306,12 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
     }
 
     // Resumes the anonymous "Nouvelle fiche" draft (see creation-flow.tsx)
-    // if this is a brand-new account that came from the public creation
-    // screen — otherwise the normal destination.
+    // if this account came from the public creation screen — otherwise
+    // the normal post-onboarding destination is fiche creation itself
+    // (signup now happens right after prénom, so onboarding always
+    // finishes authenticated — see handlePrenomContinue).
     const resume = consumeResumeFicheCreation();
-    router.replace(resume ? "/fiches/new?resume=1" : "/fiches");
+    router.replace(resume ? "/fiches/new?resume=1" : "/fiches/new");
     router.refresh();
   }
 
@@ -286,9 +410,10 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
               value={prenom}
               onChange={(e) => setPrenom(e.target.value)}
             />
-            <Button className="mt-6 w-full" disabled={!canFinish} onClick={() => setStep("jours")}>
+            <Button className="mt-6 w-full" disabled={!canFinish || submitting} onClick={handlePrenomContinue}>
               {t.onboarding.prenom.continuer}
             </Button>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </div>
         )}
 
@@ -340,9 +465,10 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
                 />
               ))}
             </div>
-            <Button className="mt-6 w-full" onClick={() => setStep("moyenneActuelle")}>
+            <Button className="mt-6 w-full" disabled={submitting} onClick={handleJoursMinutesContinue}>
               {t.onboarding.minutes.continuer}
             </Button>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </div>
         )}
 
@@ -366,9 +492,10 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
                 ariaLabel={t.onboarding.moyenne.actuelle.title}
               />
             </div>
-            <Button className="mt-8 w-full" onClick={goToMoyenneObjectif}>
+            <Button className="mt-8 w-full" disabled={submitting} onClick={handleMoyenneActuelleContinue}>
               {t.onboarding.moyenne.actuelle.continuer}
             </Button>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </div>
         )}
 
@@ -392,9 +519,10 @@ export function OnboardingWizard({ mode }: { mode: "anonymous" | "authenticated"
                 ariaLabel={t.onboarding.moyenne.objectif.title}
               />
             </div>
-            <Button className="mt-8 w-full" onClick={validateObjectif}>
+            <Button className="mt-8 w-full" disabled={submitting} onClick={handleObjectifValidate}>
               {t.onboarding.moyenne.objectif.valider}
             </Button>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </div>
         )}
 

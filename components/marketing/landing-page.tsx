@@ -80,10 +80,10 @@ export function LandingPage() {
 
           <Reveal delay={220}>
             <div className="mx-auto mt-6 flex max-w-md flex-col items-stretch gap-3 sm:mt-8 sm:flex-row sm:justify-center">
-              <ButtonLink href="/onboarding" size="lg" className="w-full sm:w-auto">
+              <ButtonLink href="/onboarding?nouveau=1" size="lg" className="w-full sm:w-auto">
                 {d.hero.ctaPrimary}
               </ButtonLink>
-              <ButtonLink href="/onboarding" variant="secondary" size="lg" className="w-full sm:w-auto">
+              <ButtonLink href="/onboarding?nouveau=1" variant="secondary" size="lg" className="w-full sm:w-auto">
                 {d.hero.essayerGratuitement}
               </ButtonLink>
             </div>
@@ -203,7 +203,7 @@ export function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{d.finalCta.title}</h2>
             <div className="mt-8 flex justify-center">
               <Link
-                href="/onboarding"
+                href="/onboarding?nouveau=1"
                 className={clsx(
                   "inline-flex items-center justify-center font-medium text-accent transition-all duration-150 bg-white hover:bg-white/90 active:scale-[0.96]",
                   SIZE_CLASSES.lg,
