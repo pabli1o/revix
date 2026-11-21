@@ -267,7 +267,19 @@ export function SourcePicker({
           onChange={(e) => onTextDraftChange(e.target.value)}
           placeholder={t.fiches.pasteNotesPlaceholder}
         />
-        <Button size="sm" variant="secondary" className="mt-2" onClick={addText}>
+        {/* Discreet/disabled while the box is empty, solid accent (same
+           blue as the site's primary buttons) once there's something to
+           add — a visual nudge that typing alone is enough to make this
+           button actionable, not just "Générer" (see creation-flow.tsx's
+           own auto-add-on-Générer for the other half of that). Button's
+           own base classes already transition color/opacity smoothly. */}
+        <Button
+          size="sm"
+          variant={textDraft.trim().length > 0 ? "primary" : "secondary"}
+          className="mt-2"
+          disabled={textDraft.trim().length === 0}
+          onClick={addText}
+        >
           {t.fiches.addThisText}
         </Button>
         <p className="mt-1.5 text-xs text-text-muted">{t.fiches.addThisTextHint}</p>
