@@ -1,6 +1,12 @@
 import type { AuthDict } from "../fr/auth";
 
 export const auth: AuthDict = {
+  oauth: {
+    continueWithGoogle: "Continue with Google",
+    orSeparator: "or",
+    completing: "Signing you in…",
+    genericError: "Signing in with Google failed. Try again, or use your email below.",
+  },
   fields: {
     email: "Email address",
     emailPlaceholder: "name@example.com",

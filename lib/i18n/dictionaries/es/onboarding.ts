@@ -23,6 +23,38 @@ export const onboarding: OnboardingDict = {
     placeholder: "Ej.: Lucía, o un apodo…",
     continuer: "Continuar",
   },
+  blocages: {
+    title: "¿Qué es lo que más te cuesta para mejorar tus notas?",
+    subtitle: "Puedes elegir varias respuestas.",
+    continuer: "Continuar",
+    options: {
+      pas_de_depart: "No sé por dónde empezar",
+      procrastination: "Lo dejo todo para el último día",
+      concentration: "No consigo concentrarme",
+      comprehension: "No entiendo bien mis clases",
+      methode: "No tengo un método para estudiar",
+      stress: "Me estreso en los exámenes",
+      temps: "No tengo suficiente tiempo",
+    },
+  },
+  methodeRevision: {
+    title: "¿Cómo estudias hoy en día?",
+    options: {
+      relit: "Releo mis apuntes",
+      recopie: "Copio mis apuntes",
+      fiches_maison: "Hago mis propias fichas",
+      revise_peu: "Casi no estudio",
+    },
+  },
+  prochainExamen: {
+    title: "¿Para cuándo es tu próximo examen importante?",
+    options: {
+      cette_semaine: "Esta semana",
+      ce_mois: "Este mes",
+      dans_2_3_mois: "En 2 o 3 meses",
+      pas_de_date: "Todavía no hay fecha",
+    },
+  },
   moyenne: {
     actuelle: {
       title: "¿Cuál es tu media general?",
@@ -43,8 +75,20 @@ export const onboarding: OnboardingDict = {
     result: {
       headline: (from: string, to: string) => `Para pasar de ${from} a ${to}:`,
       disclaimer: "Estimación general, la afinaremos con tus exámenes.",
-      finish: "Terminar",
+      finish: "Generar mis fichas",
       finishing: "Un momento…",
+      commentReviixAide: {
+        title: "Lo que nos has dicho, y cómo te ayuda Reviix",
+        parBlocage: {
+          pas_de_depart: "No sabes por dónde empezar: Reviix te dice qué repasar cada día.",
+          procrastination: "Lo dejas todo para el último día: tu planning reparte tus repasos día a día.",
+          concentration: "Te cuesta concentrarte: tus fichas son cortas y concretas, para repasar en sesiones breves.",
+          comprehension: "Te cuesta entender tus clases: tus fichas simplifican cada tema y los cuestionarios te entrenan.",
+          methode: "No tienes un método para estudiar: el planning te dice qué hacer, y cuándo.",
+          stress: "Te estresas en los exámenes: los cuestionarios te permiten entrenarte antes del gran día.",
+          temps: "Te falta tiempo: tus fichas están listas en 2 minutos.",
+        },
+      },
     },
   },
   genericError: "Ha ocurrido un error.",

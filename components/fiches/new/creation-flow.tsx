@@ -16,7 +16,7 @@ import { FicheLoader } from "@/components/ui/fiche-loader";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { IconLock } from "@/components/ui/icons";
 import { PricingModal } from "@/components/abonnement/pricing-modal";
-import { SourcePicker, type PendingSource } from "./source-picker";
+import { SourcePicker, makeTextSource, type PendingSource } from "./source-picker";
 import { uploadSourceFile } from "./upload-source";
 import { loadDraftSources, saveDraftSources, clearDraftSources } from "./local-draft";
 import { markResumeFicheCreation } from "./resume-flag";
@@ -148,6 +148,7 @@ export function CreationFlow({
   const { t } = useLocale();
   const [step, setStep] = useState<Step>("sources");
   const [sources, setSources] = useState<PendingSource[]>([]);
+  const [textDraft, setTextDraft] = useState("");
   const [items, setItems] = useState<ValidationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
@@ -316,11 +317,11 @@ export function CreationFlow({
    * can be reassembled in the original chunk order regardless of which
    * one actually finished first.
    */
-  async function handleGenerate() {
+  async function handleGenerate(sourcesToUse: PendingSource[]) {
     setError(null);
     setFreeTrialExhausted(false);
 
-    const { resolved: resolvedSources, failures } = await resolvePendingUploads(sources);
+    const { resolved: resolvedSources, failures } = await resolvePendingUploads(sourcesToUse);
     if (failures.length > 0) {
       // Drop exactly the sources that failed from the visible list and
       // say so, but keep going with whatever did resolve: one bad PDF
@@ -524,6 +525,25 @@ export function CreationFlow({
   }
 
   const isReviewing = (step === "validation" || step === "preparing") && items.length > 0;
+  // Text left in the box counts the same as an already-added source —
+  // see addPendingTextIfAny, called when "Générer" is actually clicked.
+  const canGenerate = sources.length > 0 || textDraft.trim().length > 0;
+
+  /** Text left in the box still counts as a source once "Générer" is
+   * clicked, even if the student never clicked "Ajouter ce texte" (see
+   * the brief — that extra click confused testers). Commits it to
+   * `sources` like any other source (so it's visible, and survives like
+   * any other source for an anonymous visitor's persisted draft) and
+   * returns the array to actually use right now — never `sources`
+   * itself afterward, since this setSources call hasn't re-rendered yet. */
+  function addPendingTextIfAny(): PendingSource[] {
+    const trimmed = textDraft.trim();
+    if (!trimmed) return sources;
+    const next = [...sources, makeTextSource(trimmed, t.fiches.typedNotesName)];
+    updateSources(next);
+    setTextDraft("");
+    return next;
+  }
 
   /** The button's actual onClick for an anonymous visitor: never calls
    * handleGenerate() directly (the server would 401 it anyway — see
@@ -532,11 +552,14 @@ export function CreationFlow({
    * only navigates to /signup if that succeeds, so a storage failure
    * doesn't silently strand the user's work mid-redirect. */
   async function handleGenerateClick() {
+    const effectiveSources = addPendingTextIfAny();
+    if (effectiveSources.length === 0) return;
+
     if (!isAuthenticated) {
       setError(null);
       let dropped: { id: string; nom: string }[];
       try {
-        ({ dropped } = await saveDraftSources(sources));
+        ({ dropped } = await saveDraftSources(effectiveSources));
       } catch (err) {
         console.error("[creation-flow] handleGenerateClick: saveDraftSources() failed:", err);
         setError(t.fiches.draftSaveFailedBeforeSignup);
@@ -545,8 +568,8 @@ export function CreationFlow({
 
       const remaining =
         dropped.length > 0
-          ? sources.filter((s) => !dropped.some((d) => d.id === s.id))
-          : sources;
+          ? effectiveSources.filter((s) => !dropped.some((d) => d.id === s.id))
+          : effectiveSources;
       if (dropped.length > 0) {
         setSources(remaining);
         setError(t.fiches.droppedSources(dropped.map((d) => d.nom)));
@@ -561,7 +584,7 @@ export function CreationFlow({
       router.push("/signup?intent=fiche");
       return;
     }
-    await handleGenerate();
+    await handleGenerate(effectiveSources);
   }
 
   return (
@@ -609,10 +632,19 @@ export function CreationFlow({
           </Card>
         ) : (
           <Card>
-            <SourcePicker sources={sources} onChange={updateSources} deferUpload={!isAuthenticated} />
-            <Button className="mt-6 w-full" disabled={sources.length === 0} onClick={handleGenerateClick}>
+            <SourcePicker
+              sources={sources}
+              onChange={updateSources}
+              deferUpload={!isAuthenticated}
+              textDraft={textDraft}
+              onTextDraftChange={setTextDraft}
+            />
+            <Button className="mt-6 w-full" disabled={!canGenerate} onClick={handleGenerateClick}>
               {t.fiches.generateFiche}
             </Button>
+            {!canGenerate && (
+              <p className="mt-2 text-center text-sm text-text-muted">{t.fiches.generateDisabledReason}</p>
+            )}
           </Card>
         )
       )}

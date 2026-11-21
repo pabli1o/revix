@@ -8,7 +8,7 @@ export const landing: LandingDict = {
     navComment: "How it works",
     navFonctionnalites: "Features",
     navFaq: "FAQ",
-    essayerGratuitement: "Try it for free",
+    cta: "Generate my study notes",
   },
   hero: {
     badge: "For students",
@@ -16,10 +16,9 @@ export const landing: LandingDict = {
     titleBefore: "Go from",
     titleMiddle: "to",
     titleAfter: "average",
-    disclaimer: "Example goal. Results depend on your own work.",
+    disclaimer: "Example goal",
     subtitle: "Reviix works out how much to review to hit your goal, and puts together your notes, planning, and quizzes.",
-    ctaPrimary: "Calculate my plan",
-    essayerGratuitement: "Try it for free",
+    cta: "Generate my study notes",
     tagline: "Notes • Pre-exam planning • Quizzes",
     scrollCue: "Discover",
   },
@@ -113,7 +112,7 @@ export const landing: LandingDict = {
   },
   finalCta: {
     title: "Ready to review faster?",
-    button: "Try it for free",
+    button: "Generate my study notes",
   },
   footer: {
     copyright: (year: number) => `© ${year} Reviix. All rights reserved.`,

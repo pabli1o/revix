@@ -1,4 +1,18 @@
 export const auth = {
+  /** Shared by signup-form.tsx and login-form.tsx — the "Continuer avec
+   * Google" button + "ou" separator above the e-mail form, and the brief
+   * loading page the browser lands on after Google redirects back (see
+   * app/auth/oauth-complete/page.tsx). Requires Google OAuth configured
+   * in the Supabase dashboard (Authentication → Providers → Google) and
+   * a matching OAuth client in Google Cloud Console — code-ready either
+   * way, just inactive (the button still shows, Supabase just rejects
+   * the attempt) until that's done. */
+  oauth: {
+    continueWithGoogle: "Continuer avec Google",
+    orSeparator: "ou",
+    completing: "Connexion en cours…",
+    genericError: "La connexion avec Google a échoué. Réessaie, ou utilise ton e-mail ci-dessous.",
+  },
   fields: {
     email: "Adresse e-mail",
     emailPlaceholder: "prenom@exemple.fr",

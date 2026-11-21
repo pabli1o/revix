@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { ContinueWithGoogleButton } from "@/components/auth/continue-with-google-button";
 import { consumeResumeFicheCreation } from "@/components/fiches/new/resume-flag";
 import { applyLocalOnboardingIfPresent } from "@/components/onboarding/apply-local-onboarding";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
@@ -107,7 +108,11 @@ export function SignupForm({ fromFicheCreation }: { fromFicheCreation: boolean }
           {fromFicheCreation ? t.auth.signup.subtitleFromFiche : t.auth.signup.subtitleDefault}
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3">
+        <div className="mt-8">
+          <ContinueWithGoogleButton />
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <label className="text-sm font-medium" htmlFor="email">
             {t.auth.fields.email}
           </label>

@@ -5,6 +5,15 @@ import { PROFILE_CACHE_TAG } from "@/lib/supabase/profile";
 import type { ClasseCycle } from "@/lib/supabase/database.types";
 import { getDictionary } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import {
+  isValidBlocages,
+  isValidMethodeRevision,
+  isValidProchainExamen,
+  type BlocageOption,
+  type MethodeRevisionOption,
+  type OnboardingReponses,
+  type ProchainExamenOption,
+} from "@/lib/onboarding/qualification";
 
 interface OnboardingBody {
   prenom?: string;
@@ -21,6 +30,13 @@ interface OnboardingBody {
   /** The "moyenne générale" onboarding screens — /20 scale. */
   moyenneGeneraleDepart?: number;
   objectifMoyenne?: number;
+  /** The 3 qualification screens after "objectif" (see wizard.tsx and
+   * lib/onboarding/qualification.ts) — each saved independently as its
+   * own screen is answered, merged into profiles.onboarding_reponses
+   * below rather than overwriting it. */
+  blocages?: BlocageOption[];
+  methodeRevision?: MethodeRevisionOption;
+  prochainExamen?: ProchainExamenOption;
   /** Only true on the final "Terminer" (see wizard.tsx's handleFinish) —
    * every other call from the wizard saves one or two fields "au fil des
    * écrans" as each screen is answered (see handlePrenomContinue,
@@ -87,6 +103,15 @@ export async function POST(request: Request) {
   if (body.objectifMoyenne !== undefined && !isValidGrade20(body.objectifMoyenne)) {
     return NextResponse.json({ error: t.errors.examen.invalidGrade }, { status: 400 });
   }
+  if (body.blocages !== undefined && !isValidBlocages(body.blocages)) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
+  if (body.methodeRevision !== undefined && !isValidMethodeRevision(body.methodeRevision)) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
+  if (body.prochainExamen !== undefined && !isValidProchainExamen(body.prochainExamen)) {
+    return NextResponse.json({ error: t.errors.common.missingOrInvalidFields }, { status: 400 });
+  }
 
   const fields: {
     prenom?: string;
@@ -96,6 +121,7 @@ export async function POST(request: Request) {
     revision_minutes_jour?: number;
     moyenne_generale_depart?: number;
     objectif_moyenne?: number;
+    onboarding_reponses?: OnboardingReponses;
     onboarding_completed?: boolean;
   } = {};
   if (body.prenom !== undefined) fields.prenom = body.prenom.trim();
@@ -125,6 +151,23 @@ export async function POST(request: Request) {
 
   if (body.moyenneGeneraleDepart !== undefined) fields.moyenne_generale_depart = body.moyenneGeneraleDepart;
   if (body.objectifMoyenne !== undefined) fields.objectif_moyenne = body.objectifMoyenne;
+
+  // Each of the 3 qualification screens saves on its own — merge rather
+  // than overwrite, or answering "méthode de révision" would wipe out
+  // the "blocages" screen's answer saved just before it.
+  if (body.blocages !== undefined || body.methodeRevision !== undefined || body.prochainExamen !== undefined) {
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("onboarding_reponses")
+      .eq("id", user.id)
+      .maybeSingle();
+    const merged: OnboardingReponses = { ...((current?.onboarding_reponses as OnboardingReponses | null) ?? {}) };
+    if (body.blocages !== undefined) merged.blocages = body.blocages;
+    if (body.methodeRevision !== undefined) merged.methodeRevision = body.methodeRevision;
+    if (body.prochainExamen !== undefined) merged.prochainExamen = body.prochainExamen;
+    fields.onboarding_reponses = merged;
+  }
+
   if (body.complete) fields.onboarding_completed = true;
 
   if (Object.keys(fields).length === 0) {

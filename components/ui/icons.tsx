@@ -166,3 +166,29 @@ export function IconDocument({ className }: IconProps) {
     </svg>
   );
 }
+
+/** The one icon here that doesn't use currentColor — Google's own 4-color
+ * "G" is part of what makes a "Continuer avec Google" button recognizable,
+ * unlike every other icon in this file which just stands in for an emoji. */
+export function IconGoogle({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        d="M22.5 12.23c0-.82-.07-1.42-.22-2.05H12.2v3.73h5.9c-.12 1-.76 2.5-2.18 3.5l-.02.13 3.17 2.46.22.02c2.02-1.87 3.19-4.62 3.19-7.79z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12.2 22.5c2.9 0 5.33-.96 7.1-2.6l-3.37-2.6c-.9.63-2.12 1.07-3.73 1.07-2.84 0-5.25-1.9-6.11-4.52l-.12.01-3.3 2.56-.04.12A10.3 10.3 0 0012.2 22.5z"
+        fill="#34A853"
+      />
+      <path
+        d="M6.09 13.85a6.27 6.27 0 01-.34-2.02c0-.7.12-1.38.33-2.02l-.01-.14-3.34-2.6-.11.05A10.3 10.3 0 001.5 11.83c0 1.67.4 3.25 1.12 4.6l3.47-2.58z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12.2 5.3c2.02 0 3.38.87 4.16 1.6l3.04-2.96C17.52 2.17 15.1 1.17 12.2 1.17a10.3 10.3 0 00-9.08 5.56l3.46 2.68c.87-2.61 3.27-4.11 6.1-4.11z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}

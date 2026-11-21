@@ -53,10 +53,21 @@ function makeId() {
   return Math.random().toString(36).slice(2);
 }
 
+/** Shared with creation-flow.tsx — a pasted/typed text turns into exactly
+ * this same source shape whether the student clicks "Ajouter ce texte"
+ * here or just clicks "Générer" with text still in the box (see that
+ * file's handleGenerateClick: the box's content counts as a source
+ * automatically, so it needs to build the identical PendingSource). */
+export function makeTextSource(texte: string, nom: string): PendingSource {
+  return { id: makeId(), type: "texte", nom, texte };
+}
+
 export function SourcePicker({
   sources,
   onChange,
   deferUpload = false,
+  textDraft,
+  onTextDraftChange,
 }: {
   sources: PendingSource[];
   onChange: (sources: PendingSource[]) => void;
@@ -65,9 +76,15 @@ export function SourcePicker({
    * PendingSource) instead of uploaded immediately — creation-flow.tsx
    * uploads it for real right before generation, once authenticated. */
   deferUpload?: boolean;
+  /** Lifted to the parent (rather than local state here) so
+   * creation-flow.tsx can tell whether there's unadded text in the box —
+   * "Générer" is active as soon as there's text, a photo, or a file, not
+   * only once "Ajouter ce texte" was clicked — and so it can auto-add it
+   * on a "Générer" click (see handleGenerateClick there). */
+  textDraft: string;
+  onTextDraftChange: (value: string) => void;
 }) {
   const { t } = useLocale();
-  const [textDraft, setTextDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -107,11 +124,8 @@ export function SourcePicker({
 
   function addText() {
     if (!textDraft.trim()) return;
-    onChange([
-      ...sources,
-      { id: makeId(), type: "texte", nom: t.fiches.typedNotesName, texte: textDraft.trim() },
-    ]);
-    setTextDraft("");
+    onChange([...sources, makeTextSource(textDraft.trim(), t.fiches.typedNotesName)]);
+    onTextDraftChange("");
   }
 
   async function handlePhotos(files: FileList | null) {
@@ -250,12 +264,13 @@ export function SourcePicker({
         <Textarea
           rows={5}
           value={textDraft}
-          onChange={(e) => setTextDraft(e.target.value)}
+          onChange={(e) => onTextDraftChange(e.target.value)}
           placeholder={t.fiches.pasteNotesPlaceholder}
         />
         <Button size="sm" variant="secondary" className="mt-2" onClick={addText}>
           {t.fiches.addThisText}
         </Button>
+        <p className="mt-1.5 text-xs text-text-muted">{t.fiches.addThisTextHint}</p>
       </div>
 
       <div className="flex flex-wrap gap-3">

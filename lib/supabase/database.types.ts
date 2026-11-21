@@ -1,6 +1,8 @@
 // Hand-written types mirroring supabase/migrations/*.sql.
 // Kept intentionally close to the SQL so the two stay easy to reconcile.
 
+import type { OnboardingReponses } from "@/lib/onboarding/qualification";
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type ClasseCycle = "college" | "lycee" | "superieur";
@@ -73,6 +75,11 @@ export type ProfileRow = {
   moyenne_generale_depart: number | null;
   /** Manual grade-scale override — see the GradeScale doc comment. */
   echelle_note: GradeScale | null;
+  /** The 3 post-goal qualification screens' answers (see
+   * lib/onboarding/qualification.ts) — saved incrementally as each is
+   * answered, `{}` until the first one is. Never null (see migration
+   * 0018_onboarding_reponses.sql's default). */
+  onboarding_reponses: OnboardingReponses;
   created_at: string;
   updated_at: string;
 };

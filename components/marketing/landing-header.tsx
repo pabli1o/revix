@@ -66,7 +66,7 @@ export function LandingHeader() {
               </a>
             ))}
             <ButtonLink href="/onboarding?nouveau=1" size="lg" className="mt-2 w-full" onClick={() => setOpen(false)}>
-              {t.landing.header.essayerGratuitement}
+              {t.landing.header.cta}
             </ButtonLink>
           </nav>
         </div>

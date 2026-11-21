@@ -23,6 +23,14 @@ import {
   roundToGradeStep,
   type GeneralGoalCalcResult,
 } from "@/lib/examen/goal-calc";
+import {
+  BLOCAGE_OPTIONS,
+  METHODE_REVISION_OPTIONS,
+  PROCHAIN_EXAMEN_OPTIONS,
+  type BlocageOption,
+  type MethodeRevisionOption,
+  type ProchainExamenOption,
+} from "@/lib/onboarding/qualification";
 
 const CYCLE_VALUES: ClasseCycle[] = ["college", "lycee", "superieur"];
 
@@ -61,22 +69,37 @@ export type Step =
   | "prenom"
   | "moyenneActuelle"
   | "moyenneObjectif"
+  | "blocages"
+  | "methodeRevision"
+  | "prochainExamen"
   | "analyzing"
   | "result";
-const STEP_ORDER: Step[] = ["classe", "niveau", "prenom", "moyenneActuelle", "moyenneObjectif"];
+const STEP_ORDER: Step[] = [
+  "classe",
+  "niveau",
+  "prenom",
+  "moyenneActuelle",
+  "moyenneObjectif",
+  "blocages",
+  "methodeRevision",
+  "prochainExamen",
+];
 
 /** What the server already knows about an authenticated-but-incomplete
  * profile, so the wizard can resume exactly where the account left off
  * (see app/onboarding/page.tsx) instead of re-asking classe/niveau/prénom
  * (now saved right after the prénom step, before signup — see
- * handlePrenomContinue) or the moyennes saved along the way. Never set
- * for mode="anonymous". */
+ * handlePrenomContinue) or the moyennes/qualification answers saved along
+ * the way. Never set for mode="anonymous".*/
 export interface OnboardingPrefill {
   prenom?: string | null;
   classeCycle?: ClasseCycle | null;
   classeNiveau?: string | null;
   moyenneGeneraleDepart?: number | null;
   objectifMoyenne?: number | null;
+  blocages?: BlocageOption[] | null;
+  methodeRevision?: MethodeRevisionOption | null;
+  prochainExamen?: ProchainExamenOption | null;
 }
 
 export function OnboardingWizard({
@@ -107,6 +130,13 @@ export function OnboardingWizard({
   const [moyenneActuelle, setMoyenneActuelle] = useState(prefill?.moyenneGeneraleDepart ?? DEFAULT_STARTING_AVERAGE);
   const [moyenneObjectif, setMoyenneObjectif] = useState(
     prefill?.objectifMoyenne ?? DEFAULT_STARTING_AVERAGE + DEFAULT_GOAL_OFFSET,
+  );
+  const [blocages, setBlocages] = useState<BlocageOption[]>(prefill?.blocages ?? []);
+  const [methodeRevision, setMethodeRevision] = useState<MethodeRevisionOption | null>(
+    prefill?.methodeRevision ?? null,
+  );
+  const [prochainExamen, setProchainExamen] = useState<ProchainExamenOption | null>(
+    prefill?.prochainExamen ?? null,
   );
   const [calcResult, setCalcResult] = useState<GeneralGoalCalcResult | null>(null);
   const [analysisRun, setAnalysisRun] = useState(0);
@@ -213,13 +243,77 @@ export function OnboardingWizard({
   }
 
   async function handleObjectifValidate() {
-    if (!cycle) return;
     setError(null);
     setSubmitting(true);
     const res = await fetch("/api/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ objectifMoyenne: moyenneObjectif }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+    // computeGeneralStudyPlan now runs after the 3 qualification screens
+    // below (see handleProchainExamenChoose) — this screen just saves the
+    // goal and moves on.
+    setStep("blocages");
+  }
+
+  function toggleBlocage(value: BlocageOption) {
+    setBlocages((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  }
+
+  async function handleBlocagesContinue() {
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocages }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+    setStep("methodeRevision");
+  }
+
+  async function handleMethodeRevisionChoose(value: MethodeRevisionOption) {
+    setMethodeRevision(value);
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ methodeRevision: value }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? t.onboarding.genericError);
+      return;
+    }
+    setStep("prochainExamen");
+  }
+
+  /** The last qualification screen — only now does the actual plan get
+   * computed (previously done right after "objectif", see
+   * handleObjectifValidate above), since every answer that could inform
+   * the result screen is in by this point. */
+  async function handleProchainExamenChoose(value: ProchainExamenOption) {
+    if (!cycle) return;
+    setProchainExamen(value);
+    setError(null);
+    setSubmitting(true);
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prochainExamen: value }),
     });
     setSubmitting(false);
     if (!res.ok) {
@@ -291,6 +385,9 @@ export function OnboardingWizard({
         revisionMinutesJour: roundToNearestMinutesOption(defaultMinutesPerDay),
         moyenneGeneraleDepart: moyenneActuelle,
         objectifMoyenne: moyenneObjectif,
+        blocages,
+        methodeRevision,
+        prochainExamen,
         complete: true,
       }),
     });
@@ -465,6 +562,88 @@ export function OnboardingWizard({
           </div>
         )}
 
+        {step === "blocages" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("moyenneObjectif")}
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.common.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.blocages.title}</h1>
+            <p className="mt-1 text-sm text-text-muted">{t.onboarding.blocages.subtitle}</p>
+            <div className="mt-6 flex flex-col gap-3">
+              {BLOCAGE_OPTIONS.map((value) => (
+                <ChoiceCard
+                  key={value}
+                  title={t.onboarding.blocages.options[value]}
+                  selected={blocages.includes(value)}
+                  onClick={() => toggleBlocage(value)}
+                />
+              ))}
+            </div>
+            <Button
+              className="mt-6 w-full"
+              disabled={blocages.length === 0 || submitting}
+              onClick={handleBlocagesContinue}
+            >
+              {t.onboarding.blocages.continuer}
+            </Button>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+          </div>
+        )}
+
+        {step === "methodeRevision" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("blocages")}
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.common.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.methodeRevision.title}</h1>
+            <div className="mt-6 flex flex-col gap-3">
+              {METHODE_REVISION_OPTIONS.map((value) => (
+                <ChoiceCard
+                  key={value}
+                  title={t.onboarding.methodeRevision.options[value]}
+                  selected={methodeRevision === value}
+                  disabled={submitting}
+                  onClick={() => handleMethodeRevisionChoose(value)}
+                />
+              ))}
+            </div>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+          </div>
+        )}
+
+        {step === "prochainExamen" && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("methodeRevision")}
+              className="mb-4 rounded-full border border-border bg-black/[0.03] px-4 py-1.5 text-sm text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              ← {t.common.back}
+            </button>
+            <h1 className="font-heading text-2xl font-semibold">{t.onboarding.prochainExamen.title}</h1>
+            <div className="mt-6 flex flex-col gap-3">
+              {PROCHAIN_EXAMEN_OPTIONS.map((value) => (
+                <ChoiceCard
+                  key={value}
+                  title={t.onboarding.prochainExamen.options[value]}
+                  selected={prochainExamen === value}
+                  disabled={submitting}
+                  onClick={() => handleProchainExamenChoose(value)}
+                />
+              ))}
+            </div>
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+          </div>
+        )}
+
         {step === "analyzing" && (
           <AnalyzingScreen
             key={analysisRun}
@@ -555,6 +734,21 @@ export function OnboardingWizard({
                     formatGrade(calcResult.suggestedGoal20!, scale, locale),
                   )}
                 </p>
+              )}
+
+              {blocages.length > 0 && (
+                <div className="mt-4 rounded-xl bg-bg-card p-4 text-left">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    {t.onboarding.moyenne.result.commentReviixAide.title}
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {blocages.map((value) => (
+                      <li key={value} className="text-sm text-text">
+                        {t.onboarding.moyenne.result.commentReviixAide.parBlocage[value]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               <p className="mt-4 text-center text-xs text-text-muted">{t.onboarding.moyenne.result.disclaimer}</p>

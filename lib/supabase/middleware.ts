@@ -4,7 +4,14 @@ import type { Database } from "./database.types";
 import { getSupabasePublishableKey, getSupabaseUrl } from "./env";
 import { LOCALE_COOKIE, isLocale, negotiateLocale } from "@/lib/i18n/locale";
 
-const PUBLIC_PREFIX_PATHS = ["/login", "/signup", "/auth/callback", "/forgot-password", "/reset-password"];
+const PUBLIC_PREFIX_PATHS = [
+  "/login",
+  "/signup",
+  "/auth/callback",
+  "/auth/oauth-complete",
+  "/forgot-password",
+  "/reset-password",
+];
 
 // Exact matches only (never a prefix) — the app shell (Fiches/Examen/
 // Planning/Quiz) is reachable without an account (onboarding happens

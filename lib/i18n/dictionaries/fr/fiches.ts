@@ -123,7 +123,13 @@ export const fiches = {
   pasteNotesLabel: "Colle ou tape tes notes",
   pasteNotesPlaceholder: "Colle ici le contenu de ton cours…",
   addThisText: "+ Ajouter ce texte",
+  // Le texte dans la zone compte déjà comme source dès qu'on clique sur
+  // "Générer" (voir creation-flow.tsx) — ce bouton ne reste utile que
+  // pour ajouter PLUSIEURS textes séparés (un par chapitre, par ex.).
+  addThisTextHint: "Utile si tu veux ajouter plusieurs textes séparés.",
   typedNotesName: "Notes tapées",
+  // Sous le bouton "Générer" quand il est inactif — creation-flow.tsx.
+  generateDisabledReason: "Ajoute un texte, une photo ou un fichier pour continuer.",
   addPhotos: "Ajouter des photos",
   addPdf: "Ajouter un PDF",
   addWord: "Ajouter un Word",

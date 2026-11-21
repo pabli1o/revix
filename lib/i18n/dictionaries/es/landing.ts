@@ -8,7 +8,7 @@ export const landing: LandingDict = {
     navComment: "Cómo funciona",
     navFonctionnalites: "Funciones",
     navFaq: "Preguntas",
-    essayerGratuitement: "Probar gratis",
+    cta: "Generar mis fichas",
   },
   hero: {
     badge: "Para estudiantes",
@@ -16,10 +16,9 @@ export const landing: LandingDict = {
     titleBefore: "Pasa de",
     titleMiddle: "a",
     titleAfter: "de media",
-    disclaimer: "Ejemplo de objetivo. Los resultados dependen de tu trabajo.",
+    disclaimer: "Ejemplo de objetivo",
     subtitle: "Reviix calcula cuánto necesitas estudiar para alcanzar tu objetivo, y prepara tus fichas, tu planning y tus cuestionarios.",
-    ctaPrimary: "Calcular mi plan",
-    essayerGratuitement: "Probar gratis",
+    cta: "Generar mis fichas",
     tagline: "Fichas • Planning antes del examen • Cuestionarios",
     scrollCue: "Descubre",
   },
@@ -113,7 +112,7 @@ export const landing: LandingDict = {
   },
   finalCta: {
     title: "¿Listo para repasar más rápido?",
-    button: "Probar gratis",
+    button: "Generar mis fichas",
   },
   footer: {
     copyright: (year: number) => `© ${year} Reviix. Todos los derechos reservados.`,

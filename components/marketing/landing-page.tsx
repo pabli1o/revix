@@ -81,7 +81,11 @@ export function LandingPage() {
           </Reveal>
 
           <Reveal delay={140}>
-            <p className="mx-auto mt-3 max-w-lg text-xs text-text-muted lg:mt-1">{d.hero.disclaimer}</p>
+            {/* Deliberately tiny/low-contrast (10px, 60% opacity) — just
+               names the "6 to 14" as an example, nothing about the
+               student's own effort (see the dict's doc comment: a tester
+               read the old longer wording as discouraging). */}
+            <p className="mx-auto mt-2 max-w-lg text-[10px] text-text-muted/60 lg:mt-1">{d.hero.disclaimer}</p>
           </Reveal>
 
           <Reveal delay={160}>
@@ -93,10 +97,7 @@ export function LandingPage() {
           <Reveal delay={220}>
             <div className="mx-auto mt-6 flex max-w-md flex-col items-stretch gap-3 sm:mt-8 sm:flex-row sm:justify-center lg:mt-4">
               <ButtonLink href="/onboarding?nouveau=1" size="lg" className="w-full sm:w-auto">
-                {d.hero.ctaPrimary}
-              </ButtonLink>
-              <ButtonLink href="/onboarding?nouveau=1" variant="secondary" size="lg" className="w-full sm:w-auto">
-                {d.hero.essayerGratuitement}
+                {d.hero.cta}
               </ButtonLink>
             </div>
           </Reveal>

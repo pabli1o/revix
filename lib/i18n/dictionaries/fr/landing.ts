@@ -6,7 +6,11 @@ export const landing = {
     navComment: "Comment ça marche",
     navFonctionnalites: "Fonctionnalités",
     navFaq: "FAQ",
-    essayerGratuitement: "Essayer gratuitement",
+    // One single CTA everywhere on the landing page (header menu, hero,
+    // final block — see landing-page.tsx/landing-header.tsx) — a tester
+    // found two buttons confusing (they led to the same place anyway) and
+    // "plan" read as "pricing/subscription", not "study plan".
+    cta: "Générer mes fiches",
   },
   hero: {
     badge: "Pour les étudiants",
@@ -22,10 +26,14 @@ export const landing = {
     titleBefore: "Passe de",
     titleMiddle: "à",
     titleAfter: "de moyenne",
-    disclaimer: "Exemple d'objectif. Les résultats dépendent de ton travail.",
+    // Tiny and discreet on purpose (see its text-[10px] class in
+    // landing-page.tsx) — a tester read the old longer wording ("les
+    // résultats dépendent de ton travail") as discouraging right under the
+    // headline promise. Just names the "6 to 14" as an example, nothing
+    // about the student's own effort.
+    disclaimer: "Exemple d'objectif",
     subtitle: "Reviix calcule combien réviser pour atteindre ton objectif, et prépare tes fiches, ton planning et tes quiz.",
-    ctaPrimary: "Calculer mon plan",
-    essayerGratuitement: "Essayer gratuitement",
+    cta: "Générer mes fiches",
     tagline: "Fiches • Planning avant examen • Quiz",
     // Discreet "scroll down" cue at the bottom of the first screen (see
     // landing-page.tsx's scroll-cue block) — the word, not just the
@@ -127,7 +135,7 @@ export const landing = {
   },
   finalCta: {
     title: "Prêt à réviser plus vite ?",
-    button: "Essayer gratuitement",
+    button: "Générer mes fiches",
   },
   footer: {
     copyright: (year: number) => `© ${year} Reviix. Tous droits réservés.`,
