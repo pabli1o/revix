@@ -4,6 +4,7 @@ export const auth: AuthDict = {
   fields: {
     email: "Email address",
     emailPlaceholder: "name@example.com",
+    confirmEmail: "Retype your email",
     password: "Password",
     newPassword: "New password",
     confirmPassword: "Confirm your password",
@@ -24,7 +25,8 @@ export const auth: AuthDict = {
     submitting: "Logging in…",
     noAccount: "Don't have an account yet?",
     createAccount: "Create an account",
-    errorEmailNotConfirmed: "Your email address hasn't been confirmed yet. Check your inbox.",
+    errorEmailNotConfirmed:
+      "This account was never confirmed. Use “Forgot your password?” below: it'll get you into your account and let you choose a new password.",
     errorInvalidCredentials: "Incorrect email or password.",
   },
   signup: {
@@ -32,12 +34,11 @@ export const auth: AuthDict = {
     subtitleFromFiche: "Create your account to generate your note.",
     passwordTooShort: (min: number) => `Your password must be at least ${min} characters long.`,
     passwordMismatch: "The passwords don't match.",
+    emailMismatch: "The two email addresses don't match.",
     emailAlreadyRegistered: "An account already exists with this email. Log in instead.",
     submit: "Create my account",
     submitting: "Creating…",
-    sentTitle: "Check your inbox!",
-    sentBody: (email: string) =>
-      `We've sent a confirmation link to ${email}. Click it (in this same browser) to activate your account.`,
+    noImmediateSessionError: "Your account was created, but the automatic sign-in didn't work. Log in with your email and password.",
     alreadyAccount: "Already have an account?",
     login: "Log in",
   },

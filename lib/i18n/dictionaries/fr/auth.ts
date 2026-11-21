@@ -2,14 +2,18 @@ export const auth = {
   fields: {
     email: "Adresse e-mail",
     emailPlaceholder: "prenom@exemple.fr",
+    confirmEmail: "Retape ton e-mail",
     password: "Mot de passe",
     newPassword: "Nouveau mot de passe",
     confirmPassword: "Confirme le mot de passe",
     minPasswordPlaceholder: (min: number) => `${min} caractères minimum`,
   },
-  /** Shared across every "va vérifier ta boîte mail" screen (signup,
-   * mot de passe oublié, l'erreur "e-mail non confirmé" à la connexion) —
-   * see components/auth/*-form.tsx and app/forgot-password/page.tsx. */
+  /** Shared across the two screens qui envoient encore un e-mail à
+   * confirmer : mot de passe oublié (app/forgot-password/page.tsx) et le
+   * changement d'adresse dans les réglages (components/abonnement/
+   * profile-form.tsx). Plus utilisé par l'inscription ni par l'erreur de
+   * connexion depuis que la confirmation par e-mail est désactivée côté
+   * Supabase — voir le commentaire sur login.errorEmailNotConfirmed. */
   emailHelp: {
     spamNote: "Pense à vérifier tes indésirables (spam) : l'e-mail s'y cache souvent.",
     resend: "Renvoyer l'e-mail",
@@ -25,7 +29,16 @@ export const auth = {
     submitting: "Connexion…",
     noAccount: "Pas encore de compte ?",
     createAccount: "Créer un compte",
-    errorEmailNotConfirmed: "Ton adresse e-mail n'est pas encore confirmée. Vérifie ta boîte mail.",
+    // La confirmation par e-mail est désactivée côté Supabase : une
+    // inscription normale ne peut plus laisser ce compte non confirmé.
+    // Ce message ne vise donc qu'un compte ancien, créé avant ce
+    // changement, dont l'e-mail n'a jamais été confirmé — Supabase
+    // continue de bloquer sa connexion par mot de passe. Passer par "Mot
+    // de passe oublié" établit une session malgré tout (le lien de
+    // réinitialisation prouve lui aussi qu'on contrôle la boîte mail),
+    // donc c'est une porte de sortie réelle, pas un simple message.
+    errorEmailNotConfirmed:
+      "Ce compte n'a jamais été confirmé. Utilise « Mot de passe oublié » ci-dessous : cela te donnera accès à ton compte et te permettra de choisir un nouveau mot de passe.",
     errorInvalidCredentials: "Email ou mot de passe incorrect.",
   },
   signup: {
@@ -33,12 +46,16 @@ export const auth = {
     subtitleFromFiche: "Crée ton compte pour générer ta fiche.",
     passwordTooShort: (min: number) => `Le mot de passe doit contenir au moins ${min} caractères.`,
     passwordMismatch: "Les mots de passe ne correspondent pas.",
+    emailMismatch: "Les deux adresses e-mail ne correspondent pas.",
     emailAlreadyRegistered: "Un compte existe déjà avec cet e-mail. Connecte-toi plutôt.",
     submit: "Créer mon compte",
     submitting: "Création…",
-    sentTitle: "Vérifie ta boîte mail !",
-    sentBody: (email: string) =>
-      `On a envoyé un lien de confirmation à ${email}. Clique dessus (dans ce même navigateur) pour activer ton compte.`,
+    // Ne devrait plus jamais arriver (la confirmation par e-mail est
+    // désactivée côté Supabase, donc l'inscription renvoie toujours une
+    // session immédiate) — gardé en secours si ce réglage change un jour,
+    // pour ne jamais laisser l'écran bloqué sans explication.
+    noImmediateSessionError:
+      "Ton compte a bien été créé, mais la connexion automatique n'a pas fonctionné. Connecte-toi avec ton e-mail et ton mot de passe.",
     alreadyAccount: "Déjà un compte ?",
     login: "Se connecter",
   },

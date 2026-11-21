@@ -9,12 +9,12 @@ import { useEffect, useRef, useState } from "react";
 const COOLDOWN_SECONDS = 45;
 
 /**
- * Shared by every "renvoyer l'e-mail" button (signup, mot de passe
- * oublié, the "email not confirmed" login error) — components/auth/
- * signup-form.tsx, login-form.tsx, app/forgot-password/page.tsx. Each
- * caller does its own resend call (they hit different Supabase Auth
- * methods); this only owns the shared countdown so a student can't spam
- * the button.
+ * Shared by every remaining "renvoyer l'e-mail" button — mot de passe
+ * oublié (app/forgot-password/page.tsx) — now that email confirmation is
+ * disabled in Supabase and signup/login no longer need a resend path
+ * (see components/auth/signup-form.tsx, login-form.tsx). Each caller does
+ * its own resend call (they hit different Supabase Auth methods); this
+ * only owns the shared countdown so a student can't spam the button.
  */
 export function useResendCooldown() {
   const [secondsLeft, setSecondsLeft] = useState(0);
